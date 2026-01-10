@@ -610,7 +610,7 @@ export function onRefresh(
     if (!isLazyLoad) {
       dispatch({ type: ON_REFRESH });
     }
-    
+
     refreshCharts(chartList, force, interval, dashboardId, dispatch).then(
       () => {
         dispatch(onRefreshSuccess());
