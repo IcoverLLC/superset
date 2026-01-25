@@ -39,7 +39,7 @@ import {
 import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
 import { LocalStorageKeys, setItem } from 'src/utils/localStorageHelpers';
 import { URL_PARAMS } from 'src/constants';
-import { getUrlParam } from 'src/utils/urlUtils';
+import { getUrlParam, UrlParamEntries } from 'src/utils/urlUtils';
 import { setDatasetsStatus } from 'src/dashboard/actions/dashboardState';
 import {
   getFilterValue,
@@ -74,6 +74,25 @@ const DashboardBuilder = lazy(
 
 type PageProps = {
   idOrSlug: string;
+};
+
+const applyPermalinkUrlParams = (urlParams?: UrlParamEntries) => {
+  if (!urlParams || urlParams.length === 0) {
+    return;
+  }
+  try {
+    const currentParams = new URLSearchParams(window.location.search);
+    urlParams.forEach(([key, value]) => {
+      currentParams.set(key, value);
+    });
+    const search = currentParams.toString();
+    const nextUrl = `${window.location.pathname}${
+      search ? `?${search}` : ''
+    }${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  } catch (error) {
+    // Ignore history errors.
+  }
 };
 
 // TODO: move to Dashboard.jsx when it's refactored to functional component
@@ -178,6 +197,7 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
         const permalinkValue = await getPermalinkValue(permalinkKey);
         if (permalinkValue) {
           ({ dataMask, activeTabs } = permalinkValue.state);
+          applyPermalinkUrlParams(permalinkValue.state.urlParams);
         }
       } else if (nativeFilterKeyValue) {
         dataMask = await getFilterValue(id, nativeFilterKeyValue);
