@@ -81,9 +81,7 @@ import { PivotTableChartPlugin as PivotTableChartPluginV2 } from '@superset-ui/p
 import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { FilterPlugins } from 'src/constants';
 import AgGridTableChartPlugin from '@superset-ui/plugin-chart-ag-grid-table';
-import AgGridTableChartPluginCustom, { // #icover
-  AG_GRID_TABLE_CUSTOM_PLUGIN_KEY,
-} from '@superset-ui/plugin-chart-ag-grid-table-custom';
+import AgGridTableChartAgGridTableChartPluginCustomPlugin from '@superset-ui/plugin-chart-ag-grid-table-custom'; // #icover
 import TimeTableChartPlugin from '../TimeTable';
 
 export default class MainPreset extends Preset {
@@ -104,7 +102,7 @@ export default class MainPreset extends Preset {
             key: VizType.TableAgGrid,
           }),
           new AgGridTableChartPluginCustom().configure({ // #icover
-            key: AG_GRID_TABLE_CUSTOM_PLUGIN_KEY,
+            key: VizType.TableAgGrid, 
           }),
         ]
       : [];

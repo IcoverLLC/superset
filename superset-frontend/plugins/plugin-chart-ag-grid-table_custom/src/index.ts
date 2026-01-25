@@ -30,8 +30,6 @@ import { TableChartFormData, TableChartProps } from './types';
 export { default as __hack__ } from './types';
 export * from './types';
 
-export const AG_GRID_TABLE_CUSTOM_PLUGIN_KEY = 'table_ag_grid_custom';
-
 const metadata = new ChartMetadata({
   behaviors: [
     Behavior.InteractiveChart,
@@ -44,7 +42,7 @@ const metadata = new ChartMetadata({
     'Classic row-by-column spreadsheet like view of a dataset. Use tables to showcase a view into the underlying data or to show aggregated metrics.',
   ),
   exampleGallery: [{ url: example1 }, { url: example2 }, { url: example3 }],
-  name: t('Table V2_custom'),
+  name: t('Table V2_icover'), // #icover
   tags: [
     t('Additive'),
     t('Business'),
