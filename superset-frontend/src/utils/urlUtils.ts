@@ -178,15 +178,11 @@ export function getDashboardPermalink({
   anchor?: string;
 }) {
   // only encode filter state if non-empty
-  const { pathname = '', search = '', hash = '' } = window.location;
-  const resolvedHash = anchor ? `#${anchor}` : hash;
-  const url = `${pathname}${search}${resolvedHash}`;
   return getPermalink(`/api/v1/dashboard/${dashboardId}/permalink`, {
     urlParams: getDashboardUrlParams(),
     dataMask,
     activeTabs,
     anchor,
-    url,
   });
 }
 
