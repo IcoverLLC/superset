@@ -55,7 +55,7 @@ const metadata = new ChartMetadata({
   thumbnail,
 });
 
-export default class AgGridTableChartPlugin extends ChartPlugin<
+export default class AgGridTableChartPluginCustom extends ChartPlugin< // #icover
   TableChartFormData,
   TableChartProps
 > {
