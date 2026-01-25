@@ -22,6 +22,7 @@ class DashboardPermalinkState(TypedDict):
     activeTabs: Optional[list[str]]
     anchor: Optional[str]
     urlParams: Optional[list[tuple[str, str]]]
+    url: Optional[str]
 
 
 class DashboardPermalinkValue(TypedDict):
