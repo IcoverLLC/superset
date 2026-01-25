@@ -104,13 +104,13 @@ export default class MainPreset extends Preset {
         ]
       : [];
 
-    const agGridTablePluginCustom = isFeatureEnabled(FeatureFlag.AgGridTableEnabled)
-      ? [
-          new AgGridTableChartPluginCustom().configure({
-            key: VizType.TableAgGrid,
-          })
-        ]
-      : [];
+    // const agGridTablePluginCustom = isFeatureEnabled(FeatureFlag.AgGridTableEnabled)
+    //   ? [
+    //       new AgGridTableChartPluginCustom().configure({
+    //         key: VizType.TableAgGrid,
+    //       })
+    //     ]
+    //   : [];
 
     super({
       name: 'Legacy charts',
@@ -206,7 +206,7 @@ export default class MainPreset extends Preset {
         }).configure({ key: VizType.Cartodiagram }),
         ...experimentalPlugins,
         ...agGridTablePlugin,
-        ...agGridTablePluginCustom,
+        // ...agGridTablePluginCustom,
       ],
     });
   }
