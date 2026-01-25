@@ -57,7 +57,10 @@ const SortSeqLabel = styled.span`
 `;
 
 const HeaderAction = styled.div`
-  display: none;
+  display: inline-flex;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
   position: absolute;
   right: 0;
   &.main {
