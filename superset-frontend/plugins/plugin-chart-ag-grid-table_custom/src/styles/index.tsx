@@ -352,7 +352,9 @@ export const StyledChartContainer = styled.div<{
     }
 
     [role='columnheader']:hover .customHeaderAction {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
 
     .ag-row {
