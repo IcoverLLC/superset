@@ -39,6 +39,7 @@ import {
   CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
+import type { ColumnApi, ColumnState } from 'ag-grid-community';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
@@ -48,6 +49,7 @@ import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
+import { Header as GridHeader } from '../gridHeader/Header';
 
 export interface AgGridTableProps {
   gridTheme?: string;
@@ -119,8 +121,13 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const inputRef = useRef<HTMLInputElement>(null);
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
+    const hasStoredColumnState = useRef(false);
 
     const searchId = `search-${id}`;
+    const storageKey = useMemo(
+      () => `aggrid_cols_state_custom:${id}`,
+      [id],
+    );
     const gridInitialState: GridState = {
       ...(serverPagination && {
         sort: {
@@ -135,6 +142,13 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         sortable: true,
         resizable: true,
         minWidth: 100,
+      }),
+      [],
+    );
+
+    const gridComponents = useMemo(
+      () => ({
+        agColumnHeader: GridHeader,
       }),
       [],
     );
@@ -249,15 +263,77 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     }, [hasServerPageLengthChanged]);
 
     useEffect(() => {
-      if (gridRef.current?.api) {
+      if (gridRef.current?.api && !hasStoredColumnState.current) {
         gridRef.current.api.sizeColumnsToFit();
       }
     }, [width]);
 
+    const applyStoredColumnState = useCallback(
+      (columnApi: ColumnApi) => {
+        if (!storageKey) {
+          return false;
+        }
+        try {
+          const storedState = localStorage.getItem(storageKey);
+          if (!storedState) {
+            return false;
+          }
+          const parsedState = JSON.parse(storedState);
+          if (!Array.isArray(parsedState)) {
+            return false;
+          }
+          columnApi.applyColumnState({
+            state: parsedState as ColumnState[],
+            applyOrder: true,
+          });
+          return true;
+        } catch (error) {
+          return false;
+        }
+      },
+      [storageKey],
+    );
+
+    const persistColumnState = useCallback(
+      (columnApi: ColumnApi) => {
+        if (!storageKey) {
+          return;
+        }
+        try {
+          const state = columnApi.getColumnState();
+          localStorage.setItem(storageKey, JSON.stringify(state));
+          hasStoredColumnState.current = true;
+        } catch (error) {
+          // Ignore localStorage errors.
+        }
+      },
+      [storageKey],
+    );
+
     const onGridReady = (params: GridReadyEvent) => {
-      // This will make columns fill the grid width
-      params.api.sizeColumnsToFit();
+      const restoredState = applyStoredColumnState(params.columnApi);
+      hasStoredColumnState.current = restoredState;
+      if (!restoredState) {
+        // This will make columns fill the grid width
+        params.api.sizeColumnsToFit();
+      }
     };
+
+    const handleColumnStateChange = useCallback(
+      event => {
+        persistColumnState(event.columnApi);
+      },
+      [persistColumnState],
+    );
+
+    const handleColumnResized = useCallback(
+      event => {
+        if (event.finished) {
+          persistColumnState(event.columnApi);
+        }
+      },
+      [persistColumnState],
+    );
 
     return (
       <div style={containerStyles} ref={containerRef}>
@@ -309,10 +385,16 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           rowHeight={30}
           columnDefs={colDefsFromProps}
           defaultColDef={defaultColDef}
+          components={gridComponents}
+          frameworkComponents={gridComponents}
           onColumnGroupOpened={params => params.api.sizeColumnsToFit()}
           rowSelection="multiple"
           animateRows
           onCellClicked={handleCrossFilter}
+          onColumnVisible={handleColumnStateChange}
+          onColumnPinned={handleColumnStateChange}
+          onColumnMoved={handleColumnStateChange}
+          onColumnResized={handleColumnResized}
           initialState={gridInitialState}
           suppressAggFuncInHeader
           enableCellTextSelection

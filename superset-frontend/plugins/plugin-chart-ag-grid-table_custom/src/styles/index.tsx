@@ -347,6 +347,14 @@ export const StyledChartContainer = styled.div<{
       font-weight: ${theme.fontWeightStrong};
     }
 
+    .ag-header-cell {
+      overflow: hidden;
+    }
+
+    [role='columnheader']:hover .customHeaderAction {
+      display: flex;
+    }
+
     .ag-row {
       font-size: ${theme.fontSizeSM}px;
     }
