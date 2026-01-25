@@ -39,14 +39,14 @@ import {
   CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
-import type { ColumnApi, ColumnState } from 'ag-grid-community';
+import type { ColumnApi, ColumnState, GridApi } from 'ag-grid-community';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
 import { debounce, isEqual } from 'lodash';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
-import { SearchOption, SortByItem } from '../types';
+import { SearchOption, SortByItem, TableChartFormData } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { Header as GridHeader } from '../gridHeader/Header';
@@ -82,11 +82,133 @@ export interface AgGridTableProps {
   cleanedTotals: DataRecord;
   showTotals: boolean;
   width: number;
+  formData?: TableChartFormData;
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
 
 const isSearchFocused = new Map<string, boolean>();
+
+type PersistedAgGridState = {
+  v: 1;
+  colState: ColumnState[];
+  filterModel: unknown;
+};
+
+type PersistHelpers = {
+  clearPersistedState: () => void;
+  storageKey: string;
+  paramName: string;
+};
+
+const buildUrlParamName = (id: string | number) => `agcs_${id}`;
+
+const encodeState = (obj: PersistedAgGridState) => {
+  try {
+    const json = JSON.stringify(obj);
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(json);
+    let binary = '';
+    bytes.forEach(byte => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+  } catch (error) {
+    return '';
+  }
+};
+
+const decodeState = (value: string): PersistedAgGridState | null => {
+  try {
+    const paddedValue = value.padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const base64 = paddedValue.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const decoder = new TextDecoder();
+    const json = decoder.decode(bytes);
+    const parsed = JSON.parse(json) as PersistedAgGridState;
+    if (parsed?.v !== 1 || !Array.isArray(parsed?.colState)) {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+};
+
+const readStateFromUrl = (paramName: string) => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const encoded = urlParams.get(paramName);
+    if (!encoded) return null;
+    return decodeState(encoded);
+  } catch (error) {
+    return null;
+  }
+};
+
+const deleteStateFromUrl = (paramName: string) => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has(paramName)) return;
+    urlParams.delete(paramName);
+    const search = urlParams.toString();
+    const nextUrl = `${window.location.pathname}${
+      search ? `?${search}` : ''
+    }${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  } catch (error) {
+    // Ignore history errors.
+  }
+};
+
+const writeStateToUrl = (paramName: string, encodedOrNull: string | null) => {
+  if (!encodedOrNull) {
+    deleteStateFromUrl(paramName);
+    return;
+  }
+  if (encodedOrNull.length > 1800) {
+    deleteStateFromUrl(paramName);
+    return;
+  }
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set(paramName, encodedOrNull);
+    const search = urlParams.toString();
+    const nextUrl = `${window.location.pathname}${
+      search ? `?${search}` : ''
+    }${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  } catch (error) {
+    // Ignore history errors.
+  }
+};
+
+const getColDefsSignature = (colDefs: ColDef[]) => {
+  const parts: string[] = [];
+  const collectParts = (defs: ColDef[]) => {
+    defs.forEach(def => {
+      const signature = [def.colId, def.field, def.headerName]
+        .filter(Boolean)
+        .join(':');
+      if (signature) {
+        parts.push(signature);
+      }
+      const maybeChildren = def as ColDef & { children?: ColDef[] };
+      if (Array.isArray(maybeChildren.children)) {
+        collectParts(maybeChildren.children);
+      }
+    });
+  };
+  collectParts(colDefs);
+  return parts.join('|');
+};
 
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
@@ -116,18 +238,37 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     cleanedTotals,
     showTotals,
     width,
+    formData,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
+    const gridApiRef = useRef<GridApi | null>(null);
+    const columnApiRef = useRef<ColumnApi | null>(null);
+    const isApplyingStateRef = useRef(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
     const hasStoredColumnState = useRef(false);
 
-    const searchId = `search-${id}`;
-    const storageKey = useMemo(
-      () => `aggrid_cols_state_custom:${id}`,
-      [id],
+    const resolvedSliceId = useMemo(
+      () =>
+        formData?.slice_id ??
+        formData?.sliceId ??
+        serverPaginationData?.slice_id ??
+        serverPaginationData?.sliceId ??
+        id,
+      [formData, serverPaginationData, id],
     );
+
+    const searchId = `search-${resolvedSliceId}`;
+    const storageKey = useMemo(
+      () => `aggrid_state_custom:${resolvedSliceId}`,
+      [resolvedSliceId],
+    );
+    const paramName = useMemo(
+      () => buildUrlParamName(resolvedSliceId),
+      [resolvedSliceId],
+    );
+
     const gridInitialState: GridState = {
       ...(serverPagination && {
         sort: {
@@ -136,14 +277,34 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }),
     };
 
+    const persistHelpers = useMemo<PersistHelpers>(
+      () => ({
+        clearPersistedState: () => {
+          try {
+            localStorage.removeItem(storageKey);
+          } catch (error) {
+            // Ignore localStorage errors.
+          }
+          deleteStateFromUrl(paramName);
+          hasStoredColumnState.current = false;
+        },
+        storageKey,
+        paramName,
+      }),
+      [storageKey, paramName],
+    );
+
     const defaultColDef = useMemo<ColDef>(
       () => ({
         filter: true,
         sortable: true,
         resizable: true,
         minWidth: 100,
+        headerComponentParams: {
+          persistHelpers,
+        },
       }),
-      [],
+      [persistHelpers],
     );
 
     const gridComponents = useMemo(
@@ -268,50 +429,86 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     }, [width]);
 
-    const applyStoredColumnState = useCallback(
-      (columnApi: ColumnApi) => {
-        if (!storageKey) {
+    const applySavedState = useCallback(
+      (columnApi: ColumnApi, gridApi: GridApi) => {
+        if (isApplyingStateRef.current) {
           return false;
         }
+        const applyState = (state: PersistedAgGridState) => {
+          columnApi.applyColumnState({
+            state: state.colState,
+            applyOrder: true,
+          });
+          gridApi.setFilterModel(state.filterModel ?? null);
+          gridApi.onFilterChanged();
+        };
+
+        const urlState = readStateFromUrl(paramName);
+        if (urlState) {
+          isApplyingStateRef.current = true;
+          try {
+            applyState(urlState);
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(urlState));
+            } catch (error) {
+              // Ignore localStorage errors.
+            }
+            hasStoredColumnState.current = true;
+            return true;
+          } finally {
+            isApplyingStateRef.current = false;
+          }
+        }
+
         try {
           const storedState = localStorage.getItem(storageKey);
           if (!storedState) {
             return false;
           }
-          const parsedState = JSON.parse(storedState);
-          if (!Array.isArray(parsedState)) {
+          const parsedState = JSON.parse(storedState) as PersistedAgGridState;
+          if (parsedState?.v !== 1 || !Array.isArray(parsedState?.colState)) {
             return false;
           }
-          columnApi.applyColumnState({
-            state: parsedState as ColumnState[],
-            applyOrder: true,
-          });
-          return true;
+          isApplyingStateRef.current = true;
+          try {
+            applyState(parsedState);
+            hasStoredColumnState.current = true;
+            return true;
+          } finally {
+            isApplyingStateRef.current = false;
+          }
         } catch (error) {
           return false;
         }
       },
-      [storageKey],
+      [paramName, storageKey],
     );
 
-    const persistColumnState = useCallback(
-      (columnApi: ColumnApi) => {
-        if (!storageKey) {
+    const persistState = useCallback(
+      (columnApi: ColumnApi, gridApi: GridApi) => {
+        if (isApplyingStateRef.current) {
           return;
         }
+        const state: PersistedAgGridState = {
+          v: 1,
+          colState: columnApi.getColumnState(),
+          filterModel: gridApi.getFilterModel(),
+        };
         try {
-          const state = columnApi.getColumnState();
           localStorage.setItem(storageKey, JSON.stringify(state));
           hasStoredColumnState.current = true;
         } catch (error) {
           // Ignore localStorage errors.
         }
+        writeStateToUrl(paramName, encodeState(state));
       },
-      [storageKey],
+      [paramName, storageKey],
     );
 
     const onGridReady = (params: GridReadyEvent) => {
-      const restoredState = applyStoredColumnState(params.columnApi);
+      gridApiRef.current = params.api;
+      columnApiRef.current = params.columnApi;
+      const restoredState = applySavedState(params.columnApi, params.api);
       hasStoredColumnState.current = restoredState;
       if (!restoredState) {
         // This will make columns fill the grid width
@@ -321,19 +518,48 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
     const handleColumnStateChange = useCallback(
       event => {
-        persistColumnState(event.columnApi);
+        persistState(event.columnApi, event.api);
       },
-      [persistColumnState],
+      [persistState],
     );
 
     const handleColumnResized = useCallback(
       event => {
         if (event.finished) {
-          persistColumnState(event.columnApi);
+          persistState(event.columnApi, event.api);
         }
       },
-      [persistColumnState],
+      [persistState],
     );
+
+    const handleFilterChanged = useCallback(
+      event => {
+        persistState(event.columnApi, event.api);
+      },
+      [persistState],
+    );
+
+    const handleColumnEverythingChanged = useCallback(
+      event => {
+        if (isApplyingStateRef.current) return;
+        requestAnimationFrame(() => {
+          applySavedState(event.columnApi, event.api);
+        });
+      },
+      [applySavedState],
+    );
+
+    const colDefsSignature = useMemo(
+      () => getColDefsSignature(colDefsFromProps),
+      [colDefsFromProps],
+    );
+
+    useEffect(() => {
+      if (!columnApiRef.current || !gridApiRef.current) return;
+      requestAnimationFrame(() => {
+        applySavedState(columnApiRef.current!, gridApiRef.current!);
+      });
+    }, [applySavedState, colDefsSignature]);
 
     return (
       <div style={containerStyles} ref={containerRef}>
@@ -395,6 +621,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
           onColumnResized={handleColumnResized}
+          onFilterChanged={handleFilterChanged}
+          onColumnEverythingChanged={handleColumnEverythingChanged}
           initialState={gridInitialState}
           suppressAggFuncInHeader
           enableCellTextSelection
@@ -484,6 +712,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               serverPaginationData?.sortBy || [],
             ),
             isActiveFilterValue,
+            persistHelpers,
           }}
         />
         {serverPagination && (

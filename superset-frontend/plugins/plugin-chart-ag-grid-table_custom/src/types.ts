@@ -191,6 +191,11 @@ export interface SortState {
 export interface CustomContext {
   initialSortState: SortState[];
   onColumnHeaderClicked: (args: { column: SortState }) => void;
+  persistHelpers?: {
+    clearPersistedState: () => void;
+    storageKey: string;
+    paramName: string;
+  };
 }
 
 export interface CustomHeaderParams extends IHeaderParams {

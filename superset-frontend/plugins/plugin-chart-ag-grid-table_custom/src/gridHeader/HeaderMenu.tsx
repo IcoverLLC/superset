@@ -53,6 +53,17 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   isMain,
   onVisibleChange,
 }: HeaderMenuProps) => {
+  const persistHelpers =
+    (
+      api.getContext?.() as {
+        persistHelpers?: { clearPersistedState?: () => void };
+      }
+    )?.persistHelpers || {};
+  const clearPersistedState =
+    typeof persistHelpers.clearPersistedState === 'function'
+      ? persistHelpers.clearPersistedState
+      : () => {};
+
   const pinColumn = useCallback(
     (pinLoc: ColumnPinnedType) => {
       api.setColumnsPinned([colId], pinLoc);
@@ -158,6 +169,9 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
             api.ensureColumnVisible(firstColumn, 'start');
           }
         }
+        api.setFilterModel(null);
+        api.onFilterChanged();
+        clearPersistedState();
       },
     },
   );
