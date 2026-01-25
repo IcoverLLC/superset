@@ -31,6 +31,7 @@ interface Params {
   displayName: string;
   column: Column;
   api: GridApi;
+  showFilter?: (buttonElement: HTMLElement) => void;
   setSort: (sort: string | null, multiSort: boolean) => void;
 }
 
@@ -103,6 +104,7 @@ export const Header: React.FC<Params> = ({
   setSort,
   column,
   api,
+  showFilter,
 }: Params) => {
   const theme = useTheme();
   const colId = column.getColId();
@@ -141,16 +143,32 @@ export const Header: React.FC<Params> = ({
     setSortIndex(hasMultiSort ? updatedSortIndex : null);
   }, [api, column]);
 
-  const onFilterMenuClick = useCallback(
+  const onFilterMenuMouseDown = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      (
+        event.nativeEvent as {
+          stopImmediatePropagation?: () => void;
+        }
+      ).stopImmediatePropagation?.();
+    },
+    [],
+  );
+
+  const onFilterMenuClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
       const target = event.currentTarget as HTMLElement;
       const apiWithMenus = api as GridApi & {
         showFilterMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
         showColumnMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
         showFilterMenu?: (colId: string) => void;
       };
+
+      if (showFilter) {
+        showFilter(target);
+        return;
+      }
 
       if (apiWithMenus.showFilterMenuAfterButtonClick) {
         apiWithMenus.showFilterMenuAfterButtonClick(column, target);
@@ -166,7 +184,7 @@ export const Header: React.FC<Params> = ({
         apiWithMenus.showFilterMenu(colId);
       }
     },
-    [api, colId, column],
+    [api, colId, column, showFilter],
   );
 
   useEffect(() => {
@@ -226,10 +244,11 @@ export const Header: React.FC<Params> = ({
           {colId !== PIVOT_COL_ID && (
             <FilterTrigger
               type="button"
+              onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
             >
-              <Icons.FilterOutlined iconSize="m" />
+              <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>
           )}
           {colId && (
