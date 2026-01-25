@@ -153,33 +153,21 @@ const readStateFromUrl = (paramName: string) => {
   }
 };
 
-const deleteStateFromUrl = (paramName: string) => {
+const safeWriteToUrl = (paramName: string, encodedOrNull: string | null) => {
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has(paramName)) return;
-    urlParams.delete(paramName);
-    const search = urlParams.toString();
-    const nextUrl = `${window.location.pathname}${
-      search ? `?${search}` : ''
-    }${window.location.hash}`;
-    window.history.replaceState(window.history.state, '', nextUrl);
-  } catch (error) {
-    // Ignore history errors.
-  }
-};
-
-const writeStateToUrl = (paramName: string, encodedOrNull: string | null) => {
-  if (!encodedOrNull) {
-    deleteStateFromUrl(paramName);
-    return;
-  }
-  if (encodedOrNull.length > 1800) {
-    deleteStateFromUrl(paramName);
-    return;
-  }
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set(paramName, encodedOrNull);
+    const currentValue = urlParams.get(paramName);
+    if (encodedOrNull == null) {
+      if (currentValue == null) {
+        return;
+      }
+      urlParams.delete(paramName);
+    } else {
+      if (currentValue === encodedOrNull) {
+        return;
+      }
+      urlParams.set(paramName, encodedOrNull);
+    }
     const search = urlParams.toString();
     const nextUrl = `${window.location.pathname}${
       search ? `?${search}` : ''
@@ -244,6 +232,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const gridApiRef = useRef<GridApi | null>(null);
     const columnApiRef = useRef<ColumnApi | null>(null);
     const isApplyingStateRef = useRef(false);
+    const isRestoringRef = useRef(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -285,7 +274,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           } catch (error) {
             // Ignore localStorage errors.
           }
-          deleteStateFromUrl(paramName);
+          safeWriteToUrl(paramName, null);
           hasStoredColumnState.current = false;
         },
         storageKey,
@@ -343,6 +332,21 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           debouncedSearch.cancel();
         },
       [debouncedSearch],
+    );
+
+    const writeUrlDebounced = useMemo(
+      () =>
+        debounce((encoded: string) => {
+          safeWriteToUrl(paramName, encoded);
+        }, 500),
+      [paramName],
+    );
+
+    useEffect(
+      () => () => {
+        writeUrlDebounced.cancel();
+      },
+      [writeUrlDebounced],
     );
 
     useEffect(() => {
@@ -435,6 +439,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           return false;
         }
         const applyState = (state: PersistedAgGridState) => {
+          isRestoringRef.current = true;
           columnApi.applyColumnState({
             state: state.colState,
             applyOrder: true,
@@ -457,6 +462,11 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             return true;
           } finally {
             isApplyingStateRef.current = false;
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                isRestoringRef.current = false;
+              }),
+            );
           }
         }
 
@@ -476,6 +486,11 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             return true;
           } finally {
             isApplyingStateRef.current = false;
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                isRestoringRef.current = false;
+              }),
+            );
           }
         } catch (error) {
           return false;
@@ -486,7 +501,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
     const persistState = useCallback(
       (columnApi?: ColumnApi | null, gridApi?: GridApi | null) => {
-        if (isApplyingStateRef.current) {
+        if (isRestoringRef.current || isApplyingStateRef.current) {
           return;
         }
         const ca = columnApi ?? columnApiRef.current;
@@ -504,9 +519,12 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         } catch (error) {
           // Ignore localStorage errors.
         }
-        writeStateToUrl(paramName, encodeState(state));
+        const encoded = encodeState(state);
+        if (encoded.length <= 1800) {
+          writeUrlDebounced(encoded);
+        }
       },
-      [paramName, storageKey],
+      [storageKey, writeUrlDebounced],
     );
 
     const persistNow = useCallback(() => {
@@ -550,7 +568,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
     const handleColumnEverythingChanged = useCallback(
       event => {
-        if (isApplyingStateRef.current) return;
+        if (isApplyingStateRef.current || isRestoringRef.current) return;
         requestAnimationFrame(() => {
           applySavedState(event.columnApi, event.api);
         });
