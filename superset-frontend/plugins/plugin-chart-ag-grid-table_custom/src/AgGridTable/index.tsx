@@ -485,22 +485,14 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     const persistState = useCallback(
-      (
-        columnApi: ColumnApi | null | undefined,
-        gridApi: GridApi | null | undefined,
-      ) => {
+      (columnApi: ColumnApi, gridApi: GridApi) => {
         if (isApplyingStateRef.current) {
-          return;
-        }
-        const resolvedColumnApi = columnApi ?? columnApiRef.current;
-        const resolvedGridApi = gridApi ?? gridApiRef.current;
-        if (!resolvedColumnApi || !resolvedGridApi) {
           return;
         }
         const state: PersistedAgGridState = {
           v: 1,
-          colState: resolvedColumnApi.getColumnState(),
-          filterModel: resolvedGridApi.getFilterModel(),
+          colState: columnApi.getColumnState(),
+          filterModel: gridApi.getFilterModel(),
         };
         try {
           localStorage.setItem(storageKey, JSON.stringify(state));
