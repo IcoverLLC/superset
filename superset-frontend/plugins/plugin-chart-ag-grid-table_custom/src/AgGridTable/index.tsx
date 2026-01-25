@@ -485,14 +485,18 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     const persistState = useCallback(
-      (columnApi: ColumnApi, gridApi: GridApi) => {
+      (columnApi?: ColumnApi | null, gridApi?: GridApi | null) => {
         if (isApplyingStateRef.current) {
           return;
         }
+        const ca = columnApi ?? columnApiRef.current;
+        const ga = gridApi ?? gridApiRef.current;
+        if (!ca || typeof ca.getColumnState !== 'function') return;
+        if (!ga || typeof ga.getFilterModel !== 'function') return;
         const state: PersistedAgGridState = {
           v: 1,
-          colState: columnApi.getColumnState(),
-          filterModel: gridApi.getFilterModel(),
+          colState: ca.getColumnState(),
+          filterModel: ga.getFilterModel(),
         };
         try {
           localStorage.setItem(storageKey, JSON.stringify(state));
@@ -504,6 +508,11 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       },
       [paramName, storageKey],
     );
+
+    const persistNow = useCallback(() => {
+      if (!columnApiRef.current || !gridApiRef.current) return;
+      persistState(columnApiRef.current, gridApiRef.current);
+    }, [persistState]);
 
     const onGridReady = (params: GridReadyEvent) => {
       gridApiRef.current = params.api;
@@ -517,26 +526,26 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     };
 
     const handleColumnStateChange = useCallback(
-      event => {
-        persistState(event.columnApi, event.api);
+      () => {
+        persistNow();
       },
-      [persistState],
+      [persistNow],
     );
 
     const handleColumnResized = useCallback(
       event => {
         if (event.finished) {
-          persistState(event.columnApi, event.api);
+          persistNow();
         }
       },
-      [persistState],
+      [persistNow],
     );
 
     const handleFilterChanged = useCallback(
-      event => {
-        persistState(event.columnApi, event.api);
+      () => {
+        persistNow();
       },
-      [persistState],
+      [persistNow],
     );
 
     const handleColumnEverythingChanged = useCallback(
