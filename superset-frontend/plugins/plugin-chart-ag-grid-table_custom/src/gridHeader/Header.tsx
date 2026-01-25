@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { styled, useTheme, t } from '@superset-ui/core';
 import type { Column, GridApi } from 'ag-grid-community';
@@ -75,6 +76,22 @@ const HeaderAction = styled.div`
   }
 `;
 
+const FilterTrigger = styled.button`
+  cursor: pointer;
+  padding: ${({ theme }) => theme.sizeUnit * 2}px;
+  background-color: var(--ag-background-color);
+  box-shadow: 0 0 2px var(--ag-chip-border-color);
+  border-radius: 50%;
+  border: none;
+  margin-right: ${({ theme }) => theme.sizeUnit}px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover {
+    box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
+  }
+`;
+
 const IconPlaceholder = styled.div`
   position: absolute;
   top: 0;
@@ -123,6 +140,34 @@ export const Header: React.FC<Params> = ({
     setCurrentSort(column.getSort() ?? null);
     setSortIndex(hasMultiSort ? updatedSortIndex : null);
   }, [api, column]);
+
+  const onFilterMenuClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = event.currentTarget as HTMLElement;
+      const apiWithMenus = api as GridApi & {
+        showFilterMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
+        showColumnMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
+        showFilterMenu?: (colId: string) => void;
+      };
+
+      if (apiWithMenus.showFilterMenuAfterButtonClick) {
+        apiWithMenus.showFilterMenuAfterButtonClick(column, target);
+        return;
+      }
+
+      if (apiWithMenus.showColumnMenuAfterButtonClick) {
+        apiWithMenus.showColumnMenuAfterButtonClick(column, target);
+        return;
+      }
+
+      if (apiWithMenus.showFilterMenu) {
+        apiWithMenus.showFilterMenu(colId);
+      }
+    },
+    [api, colId, column],
+  );
 
   useEffect(() => {
     api.addEventListener('sortChanged', onSortChanged);
@@ -178,6 +223,15 @@ export const Header: React.FC<Params> = ({
             colId === PIVOT_COL_ID ? ' main' : ''
           }`}
         >
+          {colId !== PIVOT_COL_ID && (
+            <FilterTrigger
+              type="button"
+              onClick={onFilterMenuClick}
+              aria-label={t('Open filter menu')}
+            >
+              <Icons.FilterOutlined iconSize="m" />
+            </FilterTrigger>
+          )}
           {colId && (
             <HeaderMenu
               colId={colId}
