@@ -239,13 +239,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const hasStoredColumnState = useRef(false);
 
     const resolvedSliceId = useMemo(
-      () =>
-        formData?.slice_id ??
-        formData?.sliceId ??
-        serverPaginationData?.slice_id ??
-        serverPaginationData?.sliceId ??
-        id,
-      [formData, serverPaginationData, id],
+      () => formData?.slice_id ?? id,
+      [formData, id],
     );
 
     const searchId = `search-${resolvedSliceId}`;

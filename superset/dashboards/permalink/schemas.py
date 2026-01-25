@@ -47,6 +47,11 @@ class DashboardPermalinkStateSchema(Schema):
         allow_none=True,
         metadata={"description": "URL Parameters"},
     )
+    url = fields.String(
+        required=False,
+        allow_none=True,
+        metadata={"description": "Full dashboard URL including search/hash"},
+    )
     anchor = fields.String(
         required=False,
         allow_none=True,
