@@ -26,9 +26,8 @@ import {
   ChangeEvent,
   useEffect,
 } from 'react';
-import { createPortal } from 'react-dom';
 
-import { Menu, ThemedAgGridReact } from '@superset-ui/core/components';
+import { ThemedAgGridReact } from '@superset-ui/core/components';
 import {
   AgGridReact,
   AllCommunityModule,
@@ -40,7 +39,12 @@ import {
   CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
-import type { ColumnApi, ColumnState } from 'ag-grid-community';
+import type {
+  ColumnApi,
+  ColumnState,
+  GetContextMenuItemsParams,
+  MenuItemDef,
+} from 'ag-grid-community';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
@@ -106,14 +110,6 @@ const formatCellValue = (value: unknown): string => {
   return String(value);
 };
 
-type ContextMenuState = {
-  open: boolean;
-  x: number;
-  y: number;
-  value: unknown;
-  valueFormatted?: unknown;
-};
-
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
     gridHeight,
@@ -145,7 +141,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const contextMenuRef = useRef<HTMLDivElement>(null);
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
     const hasStoredColumnState = useRef(false);
@@ -193,13 +188,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
     );
-    const [ctxMenu, setCtxMenu] = useState<ContextMenuState>({
-      open: false,
-      x: 0,
-      y: 0,
-      value: undefined,
-      valueFormatted: undefined,
-    });
 
     const debouncedSearch = useMemo(
       () =>
@@ -369,68 +357,39 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [persistColumnState],
     );
 
-    const closeContextMenu = useCallback(() => {
-      setCtxMenu(prev => ({ ...prev, open: false }));
-    }, []);
+    const getContextMenuItems = useCallback(
+      (params: GetContextMenuItemsParams) => {
+        const defaultItems = params.defaultItems ?? [];
+        const items: Array<string | MenuItemDef> = [];
 
-    const handleCellContextMenu = useCallback(params => {
-      const event = params?.event as MouseEvent | undefined;
-      if (!event) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      setCtxMenu({
-        open: true,
-        x: event.clientX,
-        y: event.clientY,
-        value: params.value,
-        valueFormatted: params.valueFormatted,
-      });
-    }, []);
+        const copyValue = (value: unknown) => {
+          const textToCopy = formatCellValue(value);
+          copyTextToClipboard(() => Promise.resolve(textToCopy));
+        };
 
-    const copyValue = useCallback((value: unknown) => {
-      const textToCopy = formatCellValue(value);
-      copyTextToClipboard(() => Promise.resolve(textToCopy));
-      closeContextMenu();
-    }, [closeContextMenu]);
+        items.push({
+          name: t('Copy cell value'),
+          action: () => copyValue(params.value),
+        });
 
-    useEffect(() => {
-      if (!ctxMenu.open) {
-        return undefined;
-      }
-
-      const handleOutsideClick = (event: MouseEvent) => {
         if (
-          contextMenuRef.current &&
-          !contextMenuRef.current.contains(event.target as Node)
+          params.valueFormatted !== null &&
+          params.valueFormatted !== undefined
         ) {
-          closeContextMenu();
+          items.push({
+            name: t('Copy cell value (formatted)'),
+            action: () => copyValue(params.valueFormatted),
+          });
         }
-      };
 
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          closeContextMenu();
+        if (defaultItems.length > 0) {
+          items.push('separator', ...defaultItems);
         }
-      };
 
-      const handleClose = () => {
-        closeContextMenu();
-      };
-
-      window.addEventListener('mousedown', handleOutsideClick);
-      window.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('scroll', handleClose, true);
-      window.addEventListener('resize', handleClose);
-
-      return () => {
-        window.removeEventListener('mousedown', handleOutsideClick);
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('scroll', handleClose, true);
-        window.removeEventListener('resize', handleClose);
-      };
-    }, [closeContextMenu, ctxMenu.open]);
+        return items;
+      },
+      [t],
+    );
 
     return (
       <div style={containerStyles} ref={containerRef}>
@@ -488,7 +447,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           rowSelection="multiple"
           animateRows
           onCellClicked={handleCrossFilter}
-          onCellContextMenu={handleCellContextMenu}
           onColumnVisible={handleColumnStateChange}
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
@@ -497,6 +455,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           suppressAggFuncInHeader
           enableCellTextSelection
           quickFilterText={serverPagination ? '' : quickFilterText}
+          getContextMenuItems={getContextMenuItems}
           suppressMovableColumns={!allowRearrangeColumns}
           pagination={pagination}
           paginationPageSize={pageSize}
@@ -584,46 +543,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             isActiveFilterValue,
           }}
         />
-        {ctxMenu.open &&
-          createPortal(
-            <div
-              ref={contextMenuRef}
-              style={{
-                position: 'fixed',
-                top: ctxMenu.y,
-                left: ctxMenu.x,
-                zIndex: 9999,
-                background: 'var(--ant-color-bg-container, #fff)',
-                boxShadow:
-                  '0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04)',
-                borderRadius: 4,
-                padding: 4,
-              }}
-              onContextMenu={event => event.preventDefault()}
-            >
-              <Menu
-                selectable={false}
-                items={[
-                  {
-                    key: 'copy-value',
-                    label: t('Copy cell value'),
-                    onClick: () => copyValue(ctxMenu.value),
-                  },
-                  ...(ctxMenu.valueFormatted !== null &&
-                  ctxMenu.valueFormatted !== undefined
-                    ? [
-                        {
-                          key: 'copy-value-formatted',
-                          label: t('Copy cell value (formatted)'),
-                          onClick: () => copyValue(ctxMenu.valueFormatted),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>,
-            document.body,
-          )}
         {serverPagination && (
           <Pagination
             currentPage={serverPaginationData?.currentPage || 0}
