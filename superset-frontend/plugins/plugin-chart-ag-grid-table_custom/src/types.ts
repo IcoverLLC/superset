@@ -104,6 +104,9 @@ export type TableChartFormData = QueryFormData & {
   time_grain_sqla?: TimeGranularity;
   column_config?: Record<string, TableColumnConfig>;
   allow_rearrange_columns?: boolean;
+  default_hidden_columns?: string[];
+  default_pinned_left_columns?: string[];
+  default_pinned_right_columns?: string[];
 };
 
 export interface TableChartProps extends ChartProps {
@@ -191,6 +194,9 @@ export interface SortState {
 export interface CustomContext {
   initialSortState: SortState[];
   onColumnHeaderClicked: (args: { column: SortState }) => void;
+  defaultHiddenColumns?: string[];
+  defaultPinnedLeftColumns?: string[];
+  defaultPinnedRightColumns?: string[];
 }
 
 export interface CustomHeaderParams extends IHeaderParams {

@@ -36,6 +36,10 @@ import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
+import {
+  applyDefaultColumnState,
+  buildDefaultColumnState,
+} from './columnDefaults';
 
 interface InputData {
   [key: string]: any;
@@ -57,6 +61,9 @@ type UseColDefsProps = {
   emitCrossFilters?: boolean;
   alignPositiveNegative: boolean;
   slice_id: number;
+  defaultHiddenColumns?: string[];
+  defaultPinnedLeftColumns?: string[];
+  defaultPinnedRightColumns?: string[];
 };
 
 type ValueRange = [number, number];
@@ -144,6 +151,9 @@ export const useColDefs = ({
   emitCrossFilters,
   alignPositiveNegative,
   slice_id,
+  defaultHiddenColumns,
+  defaultPinnedLeftColumns,
+  defaultPinnedRightColumns,
 }: UseColDefsProps) => {
   const getCommonColProps = useCallback(
     (
@@ -298,7 +308,7 @@ export const useColDefs = ({
   const colDefs = useMemo(() => {
     const groupIndexMap = new Map<string, number>();
 
-    return columns.reduce<ColDef[]>((acc, col) => {
+    const baseColDefs = columns.reduce<ColDef[]>((acc, col) => {
       const colDef = getCommonColProps(col);
 
       if (col?.originalLabel) {
@@ -321,7 +331,22 @@ export const useColDefs = ({
 
       return acc;
     }, []);
-  }, [stringifiedCols, getCommonColProps]);
+
+    return applyDefaultColumnState(
+      baseColDefs,
+      buildDefaultColumnState(
+        defaultHiddenColumns,
+        defaultPinnedLeftColumns,
+        defaultPinnedRightColumns,
+      ),
+    );
+  }, [
+    stringifiedCols,
+    getCommonColProps,
+    defaultHiddenColumns,
+    defaultPinnedLeftColumns,
+    defaultPinnedRightColumns,
+  ]);
 
   return colDefs;
 };

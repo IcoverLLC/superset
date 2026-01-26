@@ -24,6 +24,7 @@ import type { Column, GridApi } from 'ag-grid-community';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { PIVOT_COL_ID } from './constants';
 import { HeaderMenu } from './HeaderMenu';
+import { CustomContext } from '../types';
 
 interface Params {
   enableFilterButton?: boolean;
@@ -33,6 +34,7 @@ interface Params {
   api: GridApi;
   showFilter?: (buttonElement: HTMLElement) => void;
   setSort: (sort: string | null, multiSort: boolean) => void;
+  context?: CustomContext;
 }
 
 const SORT_DIRECTION = [null, 'asc', 'desc'];
@@ -108,6 +110,7 @@ export const Header: React.FC<Params> = ({
   column,
   api,
   showFilter,
+  context,
 }: Params) => {
   const theme = useTheme();
   const colId = column.getColId();
@@ -263,6 +266,9 @@ export const Header: React.FC<Params> = ({
               invisibleColumns={invisibleColumns}
               isMain={colId === PIVOT_COL_ID}
               onVisibleChange={onVisibleChange}
+              defaultHiddenColumns={context?.defaultHiddenColumns}
+              defaultPinnedLeftColumns={context?.defaultPinnedLeftColumns}
+              defaultPinnedRightColumns={context?.defaultPinnedRightColumns}
             />
           )}
         </HeaderAction>
