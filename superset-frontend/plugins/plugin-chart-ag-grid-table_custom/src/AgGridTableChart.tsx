@@ -19,7 +19,6 @@
 import {
   DataRecord,
   DataRecordValue,
-  ensureIsArray,
   GenericDataType,
   getTimeFormatterForGranularity,
   t,
@@ -43,7 +42,6 @@ import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVis
 import { useColDefs } from './utils/useColDefs';
 import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
 import { StyledChartContainer } from './styles';
-import { normalizeDefaultColumnKeys } from './utils/columnDefaults';
 
 const getGridHeight = (height: number, includeSearch: boolean | undefined) => {
   let calculatedGridHeight = height;
@@ -84,7 +82,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     columnColorFormatters,
     basicColorFormatters,
     width,
-    formData,
   } = props;
 
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
@@ -134,16 +131,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       .filter(col => col?.config?.visible !== false);
   }, [columns, selectedComparisonColumns]);
 
-  const { hidden, pinnedLeft, pinnedRight } = useMemo(
-    () =>
-      normalizeDefaultColumnKeys(
-        ensureIsArray(formData?.default_hidden_columns),
-        ensureIsArray(formData?.default_pinned_left_columns),
-        ensureIsArray(formData?.default_pinned_right_columns),
-      ),
-    [formData],
-  );
-
   const colDefs = useColDefs({
     columns: isUsingTimeComparison
       ? (filteredColumns as InputColumn[])
@@ -162,9 +149,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     emitCrossFilters,
     alignPositiveNegative,
     slice_id,
-    defaultHiddenColumns: hidden,
-    defaultPinnedLeftColumns: pinnedLeft,
-    defaultPinnedRightColumns: pinnedRight,
   });
 
   const gridHeight = getGridHeight(height, includeSearch);
@@ -305,9 +289,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         cleanedTotals={totals || {}}
         showTotals={showTotals}
         width={width}
-        defaultHiddenColumns={hidden}
-        defaultPinnedLeftColumns={pinnedLeft}
-        defaultPinnedRightColumns={pinnedRight}
       />
     </StyledChartContainer>
   );

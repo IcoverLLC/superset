@@ -28,7 +28,6 @@ import {
   type DropdownProps,
 } from '@superset-ui/core/components';
 import { PIVOT_COL_ID } from './constants';
-import { isServiceColumnKey } from '../utils/columnDefaults';
 
 const IconEmpty = styled.span`
   width: 14px;
@@ -43,9 +42,6 @@ export type HeaderMenuProps = {
   invisibleColumns: Column[];
   isMain?: boolean;
   onVisibleChange: DropdownProps['onOpenChange'];
-  defaultHiddenColumns?: string[];
-  defaultPinnedLeftColumns?: string[];
-  defaultPinnedRightColumns?: string[];
 };
 
 export const HeaderMenu: React.FC<HeaderMenuProps> = ({
@@ -56,9 +52,6 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   invisibleColumns,
   isMain,
   onVisibleChange,
-  defaultHiddenColumns = [],
-  defaultPinnedLeftColumns = [],
-  defaultPinnedRightColumns = [],
 }: HeaderMenuProps) => {
   const pinColumn = useCallback(
     (pinLoc: ColumnPinnedType) => {
@@ -152,41 +145,15 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       label: t('Reset columns'),
       icon: <IconEmpty className="anticon" />,
       onClick: () => {
-        const columns = api.getColumns() || [];
-        const userColumns = columns.filter(
-          c => !isServiceColumnKey(c.getColId()),
-        );
-        const toColumnKey = (key: string) => api.getColumn(key);
-        const resolvedHidden = defaultHiddenColumns
-          .map(toColumnKey)
-          .filter(Boolean)
-          .map(column => (column as Column).getColId())
-          .filter(colKey => !isServiceColumnKey(colKey));
-        const resolvedPinnedLeft = defaultPinnedLeftColumns
-          .map(toColumnKey)
-          .filter(Boolean)
-          .map(column => (column as Column).getColId())
-          .filter(colKey => !isServiceColumnKey(colKey));
-        const resolvedPinnedRight = defaultPinnedRightColumns
-          .map(toColumnKey)
-          .filter(Boolean)
-          .map(column => (column as Column).getColId())
-          .filter(colKey => !isServiceColumnKey(colKey));
-
-        api.setColumnsVisible(userColumns, true);
-        api.setColumnsVisible(resolvedHidden, false);
-        api.setColumnsPinned(userColumns, null);
-        if (resolvedPinnedLeft.length > 0) {
-          api.setColumnsPinned(resolvedPinnedLeft, 'left');
-        }
-        if (resolvedPinnedRight.length > 0) {
-          api.setColumnsPinned(resolvedPinnedRight, 'right');
-        }
-        if (columns.length > 0) {
-          api.moveColumns(columns, 0);
-          const firstColumn = columns.find(
-            c => c.getColId() !== PIVOT_COL_ID,
+        api.setColumnsVisible(invisibleColumns, true);
+        const columns = api.getColumns();
+        if (columns) {
+          const pinnedColumns = columns.filter(
+            c => c.getColId() !== PIVOT_COL_ID && c.isPinned(),
           );
+          api.setColumnsPinned(pinnedColumns, null);
+          api.moveColumns(columns, 0);
+          const firstColumn = columns.find(c => c.getColId() !== PIVOT_COL_ID);
           if (firstColumn) {
             api.ensureColumnVisible(firstColumn, 'start');
           }
