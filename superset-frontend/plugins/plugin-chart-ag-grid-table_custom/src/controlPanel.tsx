@@ -148,19 +148,6 @@ const pinnedByDefaultControl: ColumnConfigFormItem = {
   },
 };
 
-const showCopyButtonControl: ColumnConfigFormItem = {
-  name: 'showCopyButton',
-  config: {
-    controlType: 'Checkbox',
-    label: t('Кнопка копирования в ячейке'),
-    description: t(
-      'Показывает иконку копирования справа в каждой ячейке этого столбца',
-    ),
-    defaultValue: false,
-    debounceDelay: 200,
-  },
-};
-
 const columnConfigFormLayout: ColumnConfigFormLayout = {
   ...DEFAULT_CONFIG_FORM_LAYOUT,
   [GenericDataType.String]: [
@@ -168,21 +155,18 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.String
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
-    [showCopyButtonControl],
   ],
   [GenericDataType.Temporal]: [
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Temporal
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
-    [showCopyButtonControl],
   ],
   [GenericDataType.Boolean]: [
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Boolean
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
-    [showCopyButtonControl],
   ],
   [GenericDataType.Numeric]: (
     DEFAULT_CONFIG_FORM_LAYOUT[
@@ -195,7 +179,6 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
           children: [
             ...item.children,
             [hideByDefaultControl, pinnedByDefaultControl],
-            [showCopyButtonControl],
           ],
         }
       : item,
