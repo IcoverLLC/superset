@@ -25,7 +25,7 @@ import {
   getTimeFormatterForGranularity,
   t,
 } from '@superset-ui/core';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { isEqual } from 'lodash';
 import type { CellContextMenuEvent } from 'ag-grid-community';
 
@@ -121,6 +121,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   } = props;
 
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
+  const lastContextMenuTsRef = useRef<number>(0);
 
   useEffect(() => {
     const options = columns
@@ -227,6 +228,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   const handleCellContextMenu = useCallback(
     (event: CellContextMenuEvent) => {
+      const now = Date.now();
+      if (now - lastContextMenuTsRef.current < 150) {
+        return;
+      }
+      lastContextMenuTsRef.current = now;
+
       const mouseEvent = event.event as MouseEvent | null;
       if (mouseEvent) {
         mouseEvent.preventDefault();

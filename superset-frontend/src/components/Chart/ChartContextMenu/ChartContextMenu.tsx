@@ -23,6 +23,7 @@ import {
   useCallback,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import ReactDOM from 'react-dom';
@@ -87,6 +88,8 @@ type ContextMenuFiltersWithCopy = ContextMenuFilters & {
   copyValue?: string;
 };
 
+const AUTO_CLOSE_GUARD_MS = 200;
+
 const ChartContextMenu = (
   {
     id,
@@ -114,6 +117,7 @@ const ChartContextMenu = (
   );
 
   const [visible, setVisible] = useState(false);
+  const lastShowTsRef = useRef<number>(0);
 
   const isDisplayed = (item: ContextMenuItem) =>
     displayedItems === ContextMenuItem.All ||
@@ -407,6 +411,8 @@ const ChartContextMenu = (
         clientY: adjustedY,
         filters,
       });
+      lastShowTsRef.current = Date.now();
+      setVisible(true);
 
       // Since Ant Design's Dropdown does not offer an imperative API
       // and we can't attach event triggers to charts SVG elements, we
@@ -443,10 +449,16 @@ const ChartContextMenu = (
         )}
         trigger={['click']}
         onOpenChange={value => {
-          setVisible(value);
           if (!value) {
+            const sinceShow = Date.now() - lastShowTsRef.current;
+            if (sinceShow < AUTO_CLOSE_GUARD_MS) {
+              return;
+            }
+            setVisible(false);
             onClose();
+            return;
           }
+          setVisible(true);
         }}
         open={visible}
       >
