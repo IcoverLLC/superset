@@ -80,9 +80,13 @@ export const CopyableCell = ({
   displayNode,
   textToCopy,
 }: CopyableCellProps) => {
-  const handleCopy = (event: MouseEvent<HTMLButtonElement>) => {
+  const stopEvent = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+  };
+
+  const handleCopy = (event: MouseEvent<HTMLButtonElement>) => {
+    stopEvent(event);
     copyTextToClipboard(() => Promise.resolve(textToCopy));
   };
 
@@ -93,6 +97,7 @@ export const CopyableCell = ({
         type="button"
         aria-label={t('Copy')}
         onClick={handleCopy}
+        onMouseDown={stopEvent}
         className="aggrid-copy-btn"
       >
         <Icons.CopyOutlined iconSize="m" />
