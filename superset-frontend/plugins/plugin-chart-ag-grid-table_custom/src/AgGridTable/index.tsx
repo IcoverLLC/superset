@@ -39,7 +39,12 @@ import {
   CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
-import type { ColumnApi, ColumnState } from 'ag-grid-community';
+import type {
+  ColumnApi,
+  ColumnState,
+  GetContextMenuItemsParams,
+  MenuItemDef,
+} from 'ag-grid-community';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
@@ -50,6 +55,7 @@ import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { Header as GridHeader } from '../gridHeader/Header';
+import copyTextToClipboard from 'src/utils/copy';
 
 export interface AgGridTableProps {
   gridTheme?: string;
@@ -87,6 +93,22 @@ export interface AgGridTableProps {
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
 
 const isSearchFocused = new Map<string, boolean>();
+
+const formatCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return String(value);
+    }
+  }
+
+  return String(value);
+};
 
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
@@ -335,6 +357,40 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [persistColumnState],
     );
 
+    const getContextMenuItems = useCallback(
+      (params: GetContextMenuItemsParams) => {
+        const defaultItems = params.defaultItems ?? [];
+        const items: Array<string | MenuItemDef> = [];
+
+        const copyValue = (value: unknown) => {
+          const textToCopy = formatCellValue(value);
+          copyTextToClipboard(() => Promise.resolve(textToCopy));
+        };
+
+        items.push({
+          name: t('Copy cell value'),
+          action: () => copyValue(params.value),
+        });
+
+        if (
+          params.valueFormatted !== null &&
+          params.valueFormatted !== undefined
+        ) {
+          items.push({
+            name: t('Copy cell value (formatted)'),
+            action: () => copyValue(params.valueFormatted),
+          });
+        }
+
+        if (defaultItems.length > 0) {
+          items.push('separator', ...defaultItems);
+        }
+
+        return items;
+      },
+      [t],
+    );
+
     return (
       <div style={containerStyles} ref={containerRef}>
         <div className="dropdown-controls-container">
@@ -399,6 +455,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           suppressAggFuncInHeader
           enableCellTextSelection
           quickFilterText={serverPagination ? '' : quickFilterText}
+          getContextMenuItems={getContextMenuItems}
           suppressMovableColumns={!allowRearrangeColumns}
           pagination={pagination}
           paginationPageSize={pageSize}
