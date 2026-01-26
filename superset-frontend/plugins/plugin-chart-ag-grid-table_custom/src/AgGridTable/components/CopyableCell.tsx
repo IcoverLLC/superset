@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Icons, styled, t } from '@superset-ui/core';
+import { CopyOutlined } from '@ant-design/icons';
+import { styled, t } from '@superset-ui/core';
 import copyTextToClipboard from 'src/utils/copy';
 import { MouseEvent, ReactNode } from 'react';
 
@@ -28,27 +29,20 @@ const CellWrapper = styled.div`
     gap: ${theme.sizeUnit}px;
     width: 100%;
     height: 100%;
-    overflow: visible;
   `}
 `;
 
 const CellContent = styled.div`
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 `;
 
 const CopyButton = styled.button`
   ${({ theme }) => `
     background: transparent;
     border: none;
-    padding: 0 ${theme.gridUnit}px;
-    width: ${theme.gridUnit * 6}px;
-    height: ${theme.gridUnit * 6}px;
-    flex: 0 0 ${theme.gridUnit * 6}px;
-    color: ${theme.colorText};
+    padding: 0;
+    color: ${theme.colorTextBase};
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -56,9 +50,7 @@ const CopyButton = styled.button`
     opacity: 0;
     transition: color 0.2s ease, opacity 0.2s ease;
 
-    .ag-cell:hover &,
-    .ag-cell:focus-within &,
-    &:hover,
+    ${CellWrapper}:hover &,
     &:focus-visible {
       opacity: 1;
       color: ${theme.colorPrimary};
@@ -82,15 +74,14 @@ export const CopyableCell = ({
   };
 
   return (
-    <CellWrapper className="aggrid-copy-cell">
+    <CellWrapper>
       <CellContent>{displayNode}</CellContent>
       <CopyButton
         type="button"
         aria-label={t('Copy')}
         onClick={handleCopy}
-        className="aggrid-copy-btn"
       >
-        <Icons.CopyOutlined iconSize="m" />
+        <CopyOutlined />
       </CopyButton>
     </CellWrapper>
   );
