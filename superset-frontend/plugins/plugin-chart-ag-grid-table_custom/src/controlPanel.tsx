@@ -115,6 +115,33 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
     })
     .flat();
 
+const getDefaultColumnChoices = (
+  explore: ControlPanelState,
+  chart?: { queriesResponse?: Array<{ colnames?: string[] }> },
+) => {
+  const { colnames = [] } = chart?.queriesResponse?.[0] ?? {};
+  const verboseMap = explore?.datasource?.hasOwnProperty('verbose_map')
+    ? (explore?.datasource as Dataset)?.verbose_map
+    : explore?.datasource?.columns ?? {};
+
+  return (colnames || []).map(colname => [
+    colname,
+    Array.isArray(verboseMap) ? colname : (verboseMap[colname] ?? colname),
+  ]);
+};
+
+const defaultColumnsControl = (label: string, description: string) => ({
+  type: 'SelectControl',
+  label,
+  description,
+  multi: true,
+  default: [],
+  resetOnHide: false,
+  mapStateToProps: (state: ControlPanelState, _: ControlState, chart: any) => ({
+    choices: getDefaultColumnChoices(state, chart),
+  }),
+});
+
 /**
  * Visibility check
  */
@@ -589,6 +616,39 @@ const config: ControlPanelConfig = {
                 };
               },
             },
+          },
+        ],
+        [
+          {
+            name: 'default_hidden_columns',
+            config: defaultColumnsControl(
+              t('Hidden by default'),
+              t(
+                'Columns hidden on initial render. Dashboard users can change visibility and pinning.',
+              ),
+            ),
+          },
+        ],
+        [
+          {
+            name: 'default_pinned_left_columns',
+            config: defaultColumnsControl(
+              t('Pinned left by default'),
+              t(
+                'Columns pinned left on initial render. Dashboard users can change visibility and pinning.',
+              ),
+            ),
+          },
+        ],
+        [
+          {
+            name: 'default_pinned_right_columns',
+            config: defaultColumnsControl(
+              t('Pinned right by default'),
+              t(
+                'Columns pinned right on initial render. Dashboard users can change visibility and pinning.',
+              ),
+            ),
           },
         ],
       ],

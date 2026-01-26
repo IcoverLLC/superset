@@ -82,6 +82,9 @@ export interface AgGridTableProps {
   cleanedTotals: DataRecord;
   showTotals: boolean;
   width: number;
+  defaultHiddenColumns: string[];
+  defaultPinnedLeftColumns: string[];
+  defaultPinnedRightColumns: string[];
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
@@ -116,6 +119,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     cleanedTotals,
     showTotals,
     width,
+    defaultHiddenColumns,
+    defaultPinnedLeftColumns,
+    defaultPinnedRightColumns,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -484,6 +490,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               serverPaginationData?.sortBy || [],
             ),
             isActiveFilterValue,
+            defaultHiddenColumns,
+            defaultPinnedLeftColumns,
+            defaultPinnedRightColumns,
           }}
         />
         {serverPagination && (
