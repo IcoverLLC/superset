@@ -98,12 +98,6 @@ export const CopyableCell = ({
         aria-label={t('Copy')}
         onClick={handleCopy}
         onMouseDown={stopEvent}
-        onPointerDown={stopEvent}
-        onMouseDownCapture={stopEvent}
-        onPointerDownCapture={stopEvent}
-        onMouseUp={stopEvent}
-        onTouchStart={stopEvent}
-        onClickCapture={stopEvent}
         className="aggrid-copy-btn"
       >
         <Icons.CopyOutlined iconSize="m" />
