@@ -61,6 +61,7 @@ export type TableColumnConfig = {
   displayTypeIcon?: boolean;
   hideByDefault?: boolean;
   pinnedByDefault?: 'left' | 'right' | null;
+  showCopyButton?: boolean;
 };
 
 export interface DataColumnMeta {

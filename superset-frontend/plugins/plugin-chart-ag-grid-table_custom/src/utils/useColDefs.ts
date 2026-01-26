@@ -34,6 +34,7 @@ import { getAggFunc } from './getAggFunc';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
+import { CopyableCell } from '../AgGridTable/components/CopyableCell';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
 
@@ -60,6 +61,17 @@ type UseColDefsProps = {
 };
 
 type ValueRange = [number, number];
+
+const getCopyValue = (valueFormatted: unknown, value: unknown) => {
+  const displayValue = valueFormatted ?? value;
+  if (displayValue === null || displayValue === undefined) {
+    return '';
+  }
+  if (typeof displayValue === 'number' && Number.isNaN(displayValue)) {
+    return '';
+  }
+  return String(displayValue);
+};
 
 function getValueRange(
   key: string,
@@ -244,8 +256,18 @@ export const useColDefs = ({
             'last',
           ],
         }),
-        cellRenderer: (p: CellRendererProps) =>
-          isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
+        cellRenderer: (p: CellRendererProps) => {
+          const renderedContent = isTextColumn
+            ? TextCellRenderer(p)
+            : NumericCellRenderer(p);
+          if (!config?.showCopyButton) {
+            return renderedContent;
+          }
+          return CopyableCell({
+            displayNode: renderedContent,
+            textToCopy: getCopyValue(p.valueFormatted, p.value),
+          });
+        },
         cellRendererParams: {
           allowRenderHtml: true,
           columns,
