@@ -35,6 +35,7 @@ import {
   Currency,
   JsonObject,
   Metric,
+  ContextMenuFilters,
 } from '@superset-ui/core';
 import {
   ColDef,
@@ -179,6 +180,11 @@ export interface AgGridTableChartTransformedProps<
   basicColorFormatters?: { [Key: string]: BasicColorFormatterType }[];
   basicColorColumnFormatters?: { [Key: string]: BasicColorFormatterType }[];
   formData: TableChartFormData;
+  onContextMenu?: (
+    clientX: number,
+    clientY: number,
+    filters?: ContextMenuFilters,
+  ) => void;
 }
 
 export enum ColorSchemeEnum {

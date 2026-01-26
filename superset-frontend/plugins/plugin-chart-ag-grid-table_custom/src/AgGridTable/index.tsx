@@ -39,7 +39,11 @@ import {
   CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
-import type { ColumnApi, ColumnState } from 'ag-grid-community';
+import type {
+  CellContextMenuEvent,
+  ColumnApi,
+  ColumnState,
+} from 'ag-grid-community';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
@@ -82,6 +86,7 @@ export interface AgGridTableProps {
   cleanedTotals: DataRecord;
   showTotals: boolean;
   width: number;
+  onCellContextMenu?: (event: CellContextMenuEvent) => void;
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
@@ -116,6 +121,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     cleanedTotals,
     showTotals,
     width,
+    onCellContextMenu,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -395,6 +401,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
           onColumnResized={handleColumnResized}
+          onCellContextMenu={onCellContextMenu}
           initialState={gridInitialState}
           suppressAggFuncInHeader
           enableCellTextSelection

@@ -19,12 +19,15 @@
 import {
   DataRecord,
   DataRecordValue,
+  BinaryQueryObjectFilterClause,
+  ContextMenuFilters,
   GenericDataType,
   getTimeFormatterForGranularity,
   t,
 } from '@superset-ui/core';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { isEqual } from 'lodash';
+import type { CellContextMenuEvent } from 'ag-grid-community';
 
 import {
   CellClickedEvent,
@@ -41,6 +44,7 @@ import { updateTableOwnState } from './utils/externalAPIs';
 import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVisibility';
 import { useColDefs } from './utils/useColDefs';
 import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
+import { formatColumnValue } from './utils/formatValue';
 import { StyledChartContainer } from './styles';
 
 const getGridHeight = (height: number, includeSearch: boolean | undefined) => {
@@ -49,6 +53,37 @@ const getGridHeight = (height: number, includeSearch: boolean | undefined) => {
     calculatedGridHeight -= 16;
   }
   return calculatedGridHeight - 80;
+};
+
+const getSerializableValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'number' && Number.isNaN(value)) {
+    return '';
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return String(value);
+  }
+};
+
+const getCopyValue = (valueFormatted: unknown, value: unknown): string => {
+  const candidate =
+    valueFormatted !== undefined && valueFormatted !== null
+      ? valueFormatted
+      : value;
+  return getSerializableValue(candidate);
 };
 
 export default function TableChart<D extends DataRecord = DataRecord>(
@@ -82,6 +117,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     columnColorFormatters,
     basicColorFormatters,
     width,
+    onContextMenu,
   } = props;
 
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
@@ -189,6 +225,82 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     [emitCrossFilters, setDataMask, filters, timeGrain],
   );
 
+  const handleCellContextMenu = useCallback(
+    (event: CellContextMenuEvent) => {
+      const mouseEvent = event.event as MouseEvent | null;
+      if (mouseEvent) {
+        mouseEvent.preventDefault();
+        mouseEvent.stopPropagation();
+      }
+      if (!onContextMenu || !event.column) {
+        return;
+      }
+
+      const colDef = event.column.getColDef();
+      const colId = colDef.field ?? event.column.getColId();
+      const isMetric =
+        colDef.context?.isMetric || colDef.context?.isPercentMetric;
+      const rowData = (event.data || {}) as DataRecord;
+      const cellValue = event.value ?? rowData?.[colId];
+      const drillToDetailFilters: BinaryQueryObjectFilterClause[] = columns
+        .filter(col => !col.isMetric && !col.isPercentMetric)
+        .map(col => {
+          const rowValue = rowData?.[col.key];
+          const formattedVal = formatColumnValue(
+            col,
+            rowValue as DataRecordValue,
+          )[1];
+          return {
+            col: col.key,
+            op: '==',
+            val: rowValue as DataRecordValue,
+            formattedVal,
+          };
+        });
+
+      const crossFilter =
+        !isMetric && colId
+          ? getCrossFilterDataMask({
+              key: colId,
+              value: cellValue as DataRecordValue,
+              filters,
+              timeGrain,
+              isActiveFilterValue,
+              timestampFormatter,
+            })
+          : undefined;
+
+      const drillBy =
+        !isMetric && colId
+          ? {
+              filters: [
+                {
+                  col: colId,
+                  op: '==',
+                  val: cellValue as DataRecordValue,
+                },
+              ],
+              groupbyFieldName: 'groupby',
+            }
+          : undefined;
+
+      onContextMenu(mouseEvent?.clientX || 0, mouseEvent?.clientY || 0, {
+        drillToDetail: drillToDetailFilters,
+        crossFilter,
+        drillBy,
+        copyValue: getCopyValue(event.valueFormatted, cellValue),
+      } as unknown as ContextMenuFilters);
+    },
+    [
+      onContextMenu,
+      columns,
+      filters,
+      timeGrain,
+      isActiveFilterValue,
+      timestampFormatter,
+    ],
+  );
+
   const handleServerPaginationChange = useCallback(
     (pageNumber: number, pageSize: number) => {
       const modifiedOwnState = {
@@ -289,6 +401,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         cleanedTotals={totals || {}}
         showTotals={showTotals}
         width={width}
+        onCellContextMenu={handleCellContextMenu}
       />
     </StyledChartContainer>
   );
