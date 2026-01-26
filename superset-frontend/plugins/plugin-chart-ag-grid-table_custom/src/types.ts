@@ -59,6 +59,8 @@ export type TableColumnConfig = {
   visible?: boolean;
   customColumnName?: string;
   displayTypeIcon?: boolean;
+  hideByDefault?: boolean;
+  pinnedByDefault?: 'left' | 'right' | null;
 };
 
 export interface DataColumnMeta {
@@ -223,7 +225,7 @@ export interface InputColumn {
   isNumeric: boolean;
   isMetric: boolean;
   isPercentMetric: boolean;
-  config: Record<string, any>;
+  config: TableColumnConfig;
   formatter?: Function;
   originalLabel?: string;
   metricName?: string;
