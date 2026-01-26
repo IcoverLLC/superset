@@ -55,6 +55,12 @@ import {
   validateMaxValue,
   validateServerPagination,
 } from '@superset-ui/core';
+import { DEFAULT_CONFIG_FORM_LAYOUT } from 'src/explore/components/controls/ColumnConfigControl/constants';
+import {
+  ColumnConfigFormItem,
+  ColumnConfigFormLayout,
+  TabLayoutItem,
+} from 'src/explore/components/controls/ColumnConfigControl/types';
 
 import { isEmpty, last } from 'lodash';
 import { PAGE_SIZE_OPTIONS, SERVER_PAGE_SIZE_OPTIONS } from './consts';
@@ -114,6 +120,70 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
       return [];
     })
     .flat();
+
+const hideByDefaultControl: ColumnConfigFormItem = {
+  name: 'hideByDefault',
+  config: {
+    controlType: 'Checkbox',
+    label: t('Hide by default'),
+    description: t('Hide the column when the table first renders'),
+    defaultValue: false,
+    debounceDelay: 200,
+  },
+};
+
+const pinnedByDefaultControl: ColumnConfigFormItem = {
+  name: 'pinnedByDefault',
+  config: {
+    controlType: 'Select',
+    label: t('Pin by default'),
+    description: t('Pin the column when the table first renders'),
+    defaultValue: null,
+    options: [
+      { value: null, label: t('None') },
+      { value: 'left', label: t('Left') },
+      { value: 'right', label: t('Right') },
+    ],
+    debounceDelay: 200,
+  },
+};
+
+const columnConfigFormLayout: ColumnConfigFormLayout = {
+  ...DEFAULT_CONFIG_FORM_LAYOUT,
+  [GenericDataType.String]: [
+    ...(DEFAULT_CONFIG_FORM_LAYOUT[
+      GenericDataType.String
+    ] as ColumnConfigFormItem[][]),
+    [hideByDefaultControl, pinnedByDefaultControl],
+  ],
+  [GenericDataType.Temporal]: [
+    ...(DEFAULT_CONFIG_FORM_LAYOUT[
+      GenericDataType.Temporal
+    ] as ColumnConfigFormItem[][]),
+    [hideByDefaultControl, pinnedByDefaultControl],
+  ],
+  [GenericDataType.Boolean]: [
+    ...(DEFAULT_CONFIG_FORM_LAYOUT[
+      GenericDataType.Boolean
+    ] as ColumnConfigFormItem[][]),
+    [hideByDefaultControl, pinnedByDefaultControl],
+  ],
+  [GenericDataType.Numeric]: (
+    DEFAULT_CONFIG_FORM_LAYOUT[
+      GenericDataType.Numeric
+    ] as TabLayoutItem[]
+  ).map((item, index) =>
+    index === 0
+      ? {
+          ...item,
+          children: [
+            ...item.children,
+            [hideByDefaultControl, pinnedByDefaultControl],
+          ],
+        }
+      : item,
+  ),
+};
 
 /**
  * Visibility check
@@ -508,6 +578,7 @@ const config: ControlPanelConfig = {
               width: 400,
               height: 320,
               renderTrigger: true,
+              configFormLayout: columnConfigFormLayout,
               shouldMapStateToProps() {
                 return true;
               },
