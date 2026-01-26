@@ -284,12 +284,15 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             }
           : undefined;
 
-      onContextMenu(mouseEvent?.clientX || 0, mouseEvent?.clientY || 0, {
+      const clientX = mouseEvent?.clientX ?? 0;
+      const clientY = mouseEvent?.clientY ?? 0;
+      const payload = {
         drillToDetail: drillToDetailFilters,
         crossFilter,
         drillBy,
         copyValue: getCopyValue(event.valueFormatted, cellValue),
-      } as unknown as ContextMenuFilters);
+      } as unknown as ContextMenuFilters;
+      requestAnimationFrame(() => onContextMenu?.(clientX, clientY, payload));
     },
     [
       onContextMenu,
