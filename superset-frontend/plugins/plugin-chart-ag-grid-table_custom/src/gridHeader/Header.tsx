@@ -63,6 +63,13 @@ const HeaderAction = styled.div`
   pointer-events: none;
   position: absolute;
   right: 0;
+  &.pinned-visible {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    align-items: center;
+  }
   &.main {
     flex-direction: row;
     justify-content: center;
@@ -130,6 +137,7 @@ export const Header: React.FC<Params> = ({
   const [invisibleColumns, setInvisibleColumns] = useState<Column[]>([]);
   const [currentSort, setCurrentSort] = useState<string | null>(null);
   const [sortIndex, setSortIndex] = useState<number | null>();
+  const [isFilterActive, setIsFilterActive] = useState(false);
   const onSort = useCallback(
     event => {
       sortOption.current = (sortOption.current + 1) % SORT_DIRECTION.length;
@@ -203,6 +211,25 @@ export const Header: React.FC<Params> = ({
     [api, colId, column, showFilter],
   );
 
+  const syncFilterState = useCallback(() => {
+    try {
+      const columnHasFilter = column?.isFilterActive?.() ?? false;
+      if (columnHasFilter) {
+        setIsFilterActive(true);
+        return;
+      }
+      const filterModel = api?.getFilterModel?.();
+      const columnFilter = colId ? filterModel?.[colId] : null;
+      const hasModel =
+        Boolean(columnFilter) &&
+        (typeof columnFilter !== 'object' ||
+          Object.keys(columnFilter).length > 0);
+      setIsFilterActive(hasModel);
+    } catch (error) {
+      setIsFilterActive(false);
+    }
+  }, [api, colId, column]);
+
   useEffect(() => {
     api.addEventListener('sortChanged', onSortChanged);
 
@@ -211,6 +238,20 @@ export const Header: React.FC<Params> = ({
       api.removeEventListener('sortChanged', onSortChanged);
     };
   }, [api, onSortChanged]);
+
+  useEffect(() => {
+    api.addEventListener('filterChanged', syncFilterState);
+    syncFilterState();
+
+    return () => {
+      if (api.isDestroyed()) return;
+      api.removeEventListener('filterChanged', syncFilterState);
+    };
+  }, [api, syncFilterState]);
+
+  const filterIconColor = isFilterActive
+    ? theme.colorPrimary
+    : theme.colorTextTertiary;
 
   return (
     <>
@@ -255,7 +296,7 @@ export const Header: React.FC<Params> = ({
         <HeaderAction
           className={`customHeaderAction${
             colId === PIVOT_COL_ID ? ' main' : ''
-          }`}
+          }${isFilterActive ? ' pinned-visible' : ''}`}
         >
           {colId !== PIVOT_COL_ID && (
             <FilterTrigger
@@ -263,6 +304,7 @@ export const Header: React.FC<Params> = ({
               onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
+              style={{ color: filterIconColor }}
             >
               <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>
