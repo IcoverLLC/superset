@@ -87,12 +87,25 @@ const FilterTrigger = styled.button`
   box-shadow: 0 0 2px var(--ag-chip-border-color);
   border-radius: 50%;
   border: none;
+  color: ${({ theme }) => theme.colorTextTertiary};
   margin-right: ${({ theme }) => theme.sizeUnit}px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover {
+  outline: none;
+  .ag-icon,
+  svg {
+    color: currentColor;
+    fill: currentColor;
+  }
+  &:hover,
+  &:focus {
+    color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
+  }
+  &:focus-visible {
+    color: ${({ theme }) => theme.colorPrimary};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.colorBorderSecondary};
   }
 `;
 
