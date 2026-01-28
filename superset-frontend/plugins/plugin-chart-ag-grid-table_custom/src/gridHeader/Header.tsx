@@ -109,35 +109,6 @@ const FilterTrigger = styled.button`
   }
 `;
 
-const FilterActiveBadge = styled.button`
-  cursor: pointer;
-  padding: ${({ theme }) => theme.sizeUnit}px;
-  width: ${({ theme }) => theme.sizeUnit * 6}px;
-  height: ${({ theme }) => theme.sizeUnit * 6}px;
-  margin-left: ${({ theme }) => theme.sizeUnit}px;
-  background-color: var(--ag-background-color);
-  box-shadow: 0 0 2px var(--ag-chip-border-color);
-  border-radius: 50%;
-  border: none;
-  color: ${({ theme }) => theme.colorPrimary};
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  .ag-icon,
-  svg {
-    color: currentColor;
-    fill: currentColor;
-  }
-  &:hover,
-  &:focus {
-    box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
-  }
-  &:focus-visible {
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.colorBorderSecondary};
-  }
-`;
-
 const IconPlaceholder = styled.div`
   position: absolute;
   top: 0;
@@ -159,7 +130,6 @@ export const Header: React.FC<Params> = ({
   const [invisibleColumns, setInvisibleColumns] = useState<Column[]>([]);
   const [currentSort, setCurrentSort] = useState<string | null>(null);
   const [sortIndex, setSortIndex] = useState<number | null>();
-  const [isFilterActive, setIsFilterActive] = useState(false);
   const onSort = useCallback(
     event => {
       sortOption.current = (sortOption.current + 1) % SORT_DIRECTION.length;
@@ -188,26 +158,6 @@ export const Header: React.FC<Params> = ({
     setCurrentSort(column.getSort() ?? null);
     setSortIndex(hasMultiSort ? updatedSortIndex : null);
   }, [api, column]);
-
-  const syncFilterState = useCallback(() => {
-    try {
-      const activeByColumn =
-        typeof column.isFilterActive === 'function'
-          ? column.isFilterActive()
-          : false;
-      if (activeByColumn) {
-        setIsFilterActive(true);
-        return;
-      }
-      const model = (api as GridApi & { getFilterModel?: () => unknown })
-        .getFilterModel?.();
-      const activeByModel =
-        model && colId && (model as Record<string, unknown>)[colId] != null;
-      setIsFilterActive(Boolean(activeByModel));
-    } catch {
-      setIsFilterActive(false);
-    }
-  }, [api, column, colId]);
 
   const onFilterMenuMouseDown = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -262,16 +212,6 @@ export const Header: React.FC<Params> = ({
     };
   }, [api, onSortChanged]);
 
-  useEffect(() => {
-    syncFilterState();
-    api.addEventListener('filterChanged', syncFilterState);
-
-    return () => {
-      if (api.isDestroyed()) return;
-      api.removeEventListener('filterChanged', syncFilterState);
-    };
-  }, [api, syncFilterState]);
-
   return (
     <>
       {colId !== PIVOT_COL_ID && (
@@ -287,17 +227,6 @@ export const Header: React.FC<Params> = ({
           })}
         >
           <div className="ag-header-cell-text">{displayName}</div>
-          {showFilter && colId !== PIVOT_COL_ID && isFilterActive && (
-            <FilterActiveBadge
-              type="button"
-              onMouseDown={onFilterMenuMouseDown}
-              onClick={onFilterMenuClick}
-              aria-label={t('Column filter is active')}
-              title={t('Column filter is active')}
-            >
-              <Icons.FilterOutlined iconSize="m" />
-            </FilterActiveBadge>
-          )}
           {enableSorting && (
             <HeaderCellSort>
               <Icons.Sort iconSize="xxl" />
