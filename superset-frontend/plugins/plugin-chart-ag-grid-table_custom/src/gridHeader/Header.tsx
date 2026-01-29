@@ -106,13 +106,12 @@ const FilterTrigger = styled.button`
     fill: currentColor;
   }
   &:hover,
-  &:focus {
+  &:focus-visible {
     color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
   }
-  &:focus-visible {
+  &.active {
     color: ${({ theme }) => theme.colorPrimary};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.colorBorderSecondary};
   }
 `;
 
@@ -249,10 +248,6 @@ export const Header: React.FC<Params> = ({
     };
   }, [api, syncFilterState]);
 
-  const filterIconColor = isFilterActive
-    ? theme.colorPrimary
-    : theme.colorTextTertiary;
-
   return (
     <>
       {colId !== PIVOT_COL_ID && (
@@ -304,7 +299,7 @@ export const Header: React.FC<Params> = ({
               onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
-              style={{ color: filterIconColor }}
+              className={isFilterActive ? 'active' : undefined}
             >
               <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>
