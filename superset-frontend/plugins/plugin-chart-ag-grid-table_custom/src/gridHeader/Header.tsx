@@ -24,8 +24,6 @@ import type { Column, GridApi } from 'ag-grid-community';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { PIVOT_COL_ID } from './constants';
 import { HeaderMenu } from './HeaderMenu';
-import { isValidCssColor } from '../utils/isValidCssColor';
-import type { CustomColDef } from '../types';
 
 interface Params {
   enableFilterButton?: boolean;
@@ -192,8 +190,6 @@ export const Header: React.FC<Params> = ({
   showFilter,
 }: Params) => {
   const colId = column.getColId();
-  const colDef = column.getColDef() as CustomColDef;
-  const headerBgColor = isValidCssColor(colDef?.context?.headerBgColor);
   const pinnedLeft = column.isPinnedLeft();
   const pinnedRight = column.isPinnedRight();
   const sortOption = useRef<number>(0);
@@ -304,9 +300,7 @@ export const Header: React.FC<Params> = ({
   }, [api, syncFilterState]);
 
   return (
-    <HeaderRoot
-      style={headerBgColor ? { backgroundColor: headerBgColor } : undefined}
-    >
+    <HeaderRoot>
       {colId !== PIVOT_COL_ID && (
         <HeaderCell
           tabIndex={0}

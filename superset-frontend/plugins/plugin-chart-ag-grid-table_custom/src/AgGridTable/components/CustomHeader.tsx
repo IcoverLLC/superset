@@ -31,7 +31,6 @@ import {
   UserProvidedColDef,
 } from '../../types';
 import CustomPopover from './CustomPopover';
-import { isValidCssColor } from '../../utils/isValidCssColor';
 import {
   Container,
   FilterIconWrapper,
@@ -67,7 +66,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const colDef = column?.getColDef() as CustomColDef;
   const userColDef = column.getUserProvidedColDef() as UserProvidedColDef;
   const isPercentMetric = colDef?.context?.isPercentMetric;
-  const headerBgColor = isValidCssColor(colDef?.context?.headerBgColor);
 
   const [isFilterVisible, setFilterVisible] = useState(false);
   const [isMenuVisible, setMenuVisible] = useState(false);
@@ -149,9 +147,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   );
 
   return (
-    <Container
-      style={headerBgColor ? { backgroundColor: headerBgColor } : undefined}
-    >
+    <Container>
       <HeaderContainer onClick={toggleSort} className="custom-header">
         <HeaderLabel>{displayName}</HeaderLabel>
         <SortIconWrapper>

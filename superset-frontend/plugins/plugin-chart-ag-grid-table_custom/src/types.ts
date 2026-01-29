@@ -221,7 +221,6 @@ export interface CustomColDef extends ColDef {
     isPercentMetric?: boolean;
     isNumeric?: boolean;
     hideSummary?: boolean;
-    headerBgColor?: string;
   };
 }
 
