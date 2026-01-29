@@ -64,6 +64,7 @@ const HeaderCellSort = styled.div`
   position: relative;
   display: inline-flex;
   align-items: flex-start;
+  margin-right: ${({ theme }) => theme.sizeUnit}px;
 `;
 
 const SortSeqLabel = styled.span`
@@ -71,21 +72,20 @@ const SortSeqLabel = styled.span`
   right: 0;
 `;
 
-const HeaderAction = styled.div`
+const HeaderActionGroup = styled.div`
   display: inline-flex;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
   position: absolute;
   right: 0;
   z-index: 2;
-  &.pinned-visible {
-    display: flex;
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    align-items: center;
-  }
+  align-items: center;
+`;
+
+const HeaderAction = styled.div`
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  align-items: center;
   &.main {
     flex-direction: row;
     justify-content: center;
@@ -153,6 +153,7 @@ export const Header: React.FC<Params> = ({
   const [currentSort, setCurrentSort] = useState<string | null>(null);
   const [sortIndex, setSortIndex] = useState<number | null>();
   const [isFilterActive, setIsFilterActive] = useState(false);
+  const isSortActive = currentSort === 'asc' || currentSort === 'desc';
   const onSort = useCallback(
     event => {
       sortOption.current = (sortOption.current + 1) % SORT_DIRECTION.length;
@@ -278,8 +279,7 @@ export const Header: React.FC<Params> = ({
             ),
           })}
         >
-          <div className="ag-header-cell-text">{displayName}</div>
-          {enableSorting && (
+          {enableSorting && isSortActive && (
             <HeaderCellSort>
               <Icons.Sort iconSize="xxl" />
               <IconPlaceholder>
@@ -301,37 +301,50 @@ export const Header: React.FC<Params> = ({
               )}
             </HeaderCellSort>
           )}
+          <div className="ag-header-cell-text">{displayName}</div>
         </HeaderCell>
       )}
       {colId && api && (
-        <HeaderAction
-          className={`customHeaderAction${
-            colId === PIVOT_COL_ID ? ' main' : ''
-          }${isFilterActive ? ' pinned-visible' : ''}`}
-        >
-          {colId !== PIVOT_COL_ID && (
+        <HeaderActionGroup>
+          {colId !== PIVOT_COL_ID && isFilterActive && (
             <FilterTrigger
               type="button"
               onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
-              className={isFilterActive ? 'active' : undefined}
+              className="active"
             >
               <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>
           )}
-          {colId && (
-            <HeaderMenu
-              colId={colId}
-              api={api}
-              pinnedLeft={pinnedLeft}
-              pinnedRight={pinnedRight}
-              invisibleColumns={invisibleColumns}
-              isMain={colId === PIVOT_COL_ID}
-              onVisibleChange={onVisibleChange}
-            />
-          )}
-        </HeaderAction>
+          <HeaderAction
+            className={`customHeaderAction${
+              colId === PIVOT_COL_ID ? ' main' : ''
+            }`}
+          >
+            {colId !== PIVOT_COL_ID && !isFilterActive && (
+              <FilterTrigger
+                type="button"
+                onMouseDown={onFilterMenuMouseDown}
+                onClick={onFilterMenuClick}
+                aria-label={t('Open filter menu')}
+              >
+                <span className="ag-icon ag-icon-filter" aria-hidden="true" />
+              </FilterTrigger>
+            )}
+            {colId && (
+              <HeaderMenu
+                colId={colId}
+                api={api}
+                pinnedLeft={pinnedLeft}
+                pinnedRight={pinnedRight}
+                invisibleColumns={invisibleColumns}
+                isMain={colId === PIVOT_COL_ID}
+                onVisibleChange={onVisibleChange}
+              />
+            )}
+          </HeaderAction>
+        </HeaderActionGroup>
       )}
     </HeaderRoot>
   );
