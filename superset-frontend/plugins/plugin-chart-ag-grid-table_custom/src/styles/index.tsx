@@ -351,25 +351,6 @@ export const StyledChartContainer = styled.div<{
       overflow: hidden;
     }
 
-    .ag-header-row,
-    .ag-header-cell,
-    .ag-header-cell-label {
-      height: auto;
-    }
-
-    .ag-header-cell-label {
-      align-items: center;
-      white-space: normal;
-    }
-
-    .ag-header-cell-text {
-      flex: 1 1 auto;
-      min-width: 0;
-      white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
     [role='columnheader']:hover .customHeaderAction {
       opacity: 1;
       visibility: visible;
