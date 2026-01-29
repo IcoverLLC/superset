@@ -40,6 +40,13 @@ const SORT_DIRECTION = [null, 'asc', 'desc'];
 const HeaderCell = styled.div`
   display: flex;
   flex: 1;
+  align-items: flex-start;
+  min-height: 100%;
+  .ag-header-cell-text {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   &[role='button'] {
     cursor: pointer;
   }
@@ -48,7 +55,7 @@ const HeaderCell = styled.div`
 const HeaderCellSort = styled.div`
   position: relative;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
 `;
 
 const SortSeqLabel = styled.span`
