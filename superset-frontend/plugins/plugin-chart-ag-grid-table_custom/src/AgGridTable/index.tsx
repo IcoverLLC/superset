@@ -93,15 +93,6 @@ ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
 
 const isSearchFocused = new Map<string, boolean>();
 
-type SavedGridState = {
-  version: number;
-  columnState: ColumnState[] | null;
-  sortModel: ReturnType<AgGridReact['api']['getSortModel']> | null;
-  filterModel: ReturnType<AgGridReact['api']['getFilterModel']> | null;
-  columnGroupState: ReturnType<ColumnApi['getColumnGroupState']> | null;
-  ts: number;
-};
-
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
     gridHeight,
@@ -137,11 +128,10 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
     const hasStoredColumnState = useRef(false);
-    const isRestoringGridState = useRef(false);
 
     const searchId = `search-${id}`;
     const storageKey = useMemo(
-      () => `aggrid_state_custom:${id ?? 'unknown'}`,
+      () => `aggrid_cols_state_custom:${id}`,
       [id],
     );
     const gridInitialState: GridState = {
@@ -286,86 +276,50 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     }, [width]);
 
-    const persistGridState = useCallback(
-      (columnApi: ColumnApi, api?: AgGridReact['api']) => {
-        if (!storageKey || isRestoringGridState.current) {
-          return;
+    const applyStoredColumnState = useCallback(
+      (columnApi: ColumnApi) => {
+        if (!storageKey) {
+          return false;
         }
         try {
-          const gridApi = api ?? gridRef.current?.api;
-          const savedState: SavedGridState = {
-            version: 1,
-            columnState: columnApi.getColumnState(),
-            sortModel: gridApi?.getSortModel?.() ?? null,
-            filterModel: gridApi?.getFilterModel?.() ?? null,
-            columnGroupState:
-              columnApi.getColumnGroupState?.() ?? null,
-            ts: Date.now(),
-          };
-          sessionStorage.setItem(storageKey, JSON.stringify(savedState));
-          hasStoredColumnState.current = true;
+          const storedState = localStorage.getItem(storageKey);
+          if (!storedState) {
+            return false;
+          }
+          const parsedState = JSON.parse(storedState);
+          if (!Array.isArray(parsedState)) {
+            return false;
+          }
+          columnApi.applyColumnState({
+            state: parsedState as ColumnState[],
+            applyOrder: true,
+          });
+          return true;
         } catch (error) {
-          // Ignore sessionStorage errors.
+          return false;
         }
       },
       [storageKey],
     );
 
-    const applyStoredGridState = useCallback(
-      (columnApi: ColumnApi, api?: AgGridReact['api']) => {
+    const persistColumnState = useCallback(
+      (columnApi: ColumnApi) => {
         if (!storageKey) {
-          return false;
+          return;
         }
         try {
-          const storedState = sessionStorage.getItem(storageKey);
-          if (!storedState) {
-            return false;
-          }
-          const parsedState = JSON.parse(storedState) as SavedGridState;
-          if (!parsedState || typeof parsedState !== 'object') {
-            return false;
-          }
-          isRestoringGridState.current = true;
-          const gridApi = api ?? gridRef.current?.api;
-          if (Array.isArray(parsedState.columnState)) {
-            columnApi.applyColumnState({
-              state: parsedState.columnState,
-              applyOrder: true,
-            });
-          }
-          if (
-            parsedState.columnGroupState &&
-            columnApi.setColumnGroupState
-          ) {
-            columnApi.setColumnGroupState(parsedState.columnGroupState);
-          }
-          if (parsedState.filterModel && gridApi?.setFilterModel) {
-            gridApi.setFilterModel(parsedState.filterModel);
-            gridApi.onFilterChanged?.();
-          }
-          if (parsedState.sortModel && gridApi?.setSortModel) {
-            gridApi.setSortModel(parsedState.sortModel);
-            gridApi.onSortChanged?.();
-          }
-          gridApi?.refreshHeader?.();
-          gridApi?.refreshCells?.();
-          return true;
+          const state = columnApi.getColumnState();
+          localStorage.setItem(storageKey, JSON.stringify(state));
+          hasStoredColumnState.current = true;
         } catch (error) {
-          return false;
-        } finally {
-          window.setTimeout(() => {
-            isRestoringGridState.current = false;
-          }, 0);
+          // Ignore localStorage errors.
         }
       },
       [storageKey],
     );
 
     const onGridReady = (params: GridReadyEvent) => {
-      const restoredState = applyStoredGridState(
-        params.columnApi,
-        params.api,
-      );
+      const restoredState = applyStoredColumnState(params.columnApi);
       hasStoredColumnState.current = restoredState;
       if (!restoredState) {
         // This will make columns fill the grid width
@@ -375,32 +329,18 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
     const handleColumnStateChange = useCallback(
       event => {
-        persistGridState(event.columnApi, event.api);
+        persistColumnState(event.columnApi);
       },
-      [persistGridState],
+      [persistColumnState],
     );
 
     const handleColumnResized = useCallback(
       event => {
         if (event.finished) {
-          persistGridState(event.columnApi, event.api);
+          persistColumnState(event.columnApi);
         }
       },
-      [persistGridState],
-    );
-
-    const handleSortChanged = useCallback(
-      event => {
-        persistGridState(event.columnApi, event.api);
-      },
-      [persistGridState],
-    );
-
-    const handleFilterChanged = useCallback(
-      event => {
-        persistGridState(event.columnApi, event.api);
-      },
-      [persistGridState],
+      [persistColumnState],
     );
 
     const suppressBrowserContextMenu = useCallback(
@@ -476,8 +416,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
           onColumnResized={handleColumnResized}
-          onSortChanged={handleSortChanged}
-          onFilterChanged={handleFilterChanged}
           onCellContextMenu={onCellContextMenu}
           initialState={gridInitialState}
           suppressAggFuncInHeader
