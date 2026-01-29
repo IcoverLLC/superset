@@ -148,6 +148,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         sortable: true,
         resizable: true,
         minWidth: 100,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
       }),
       [],
     );
@@ -401,7 +403,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           onGridReady={onGridReady}
           className="ag-container"
           rowData={rowData}
-          headerHeight={36}
           rowHeight={30}
           columnDefs={colDefsFromProps}
           defaultColDef={defaultColDef}
