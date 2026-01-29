@@ -159,12 +159,23 @@ const hideSummaryControl: ColumnConfigFormItem = {
   },
 };
 
+const headerBgColorControl: ColumnConfigFormItem = {
+  name: 'headerBgColor',
+  config: {
+    controlType: 'Input',
+    label: t('Header background color'),
+    description: t('CSS color value for the column header background'),
+    debounceDelay: 200,
+  },
+};
+
 const columnConfigFormLayout: ColumnConfigFormLayout = {
   ...DEFAULT_CONFIG_FORM_LAYOUT,
   [GenericDataType.String]: [
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.String
     ] as ColumnConfigFormItem[][]),
+    [headerBgColorControl],
     [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
@@ -172,6 +183,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Temporal
     ] as ColumnConfigFormItem[][]),
+    [headerBgColorControl],
     [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
@@ -179,6 +191,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Boolean
     ] as ColumnConfigFormItem[][]),
+    [headerBgColorControl],
     [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
@@ -192,6 +205,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
           ...item,
           children: [
             ...item.children,
+            [headerBgColorControl],
             [hideByDefaultControl, pinnedByDefaultControl],
             [hideSummaryControl],
           ],
