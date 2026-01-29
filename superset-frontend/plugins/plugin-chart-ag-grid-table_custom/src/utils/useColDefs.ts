@@ -196,6 +196,18 @@ export const useColDefs = ({
         dataType === GenericDataType.String ||
         dataType === GenericDataType.Temporal;
 
+      const headerBgColor = config?.headerBgColor?.trim();
+      const isValidHeaderBgColor =
+        !!headerBgColor &&
+        typeof CSS !== 'undefined' &&
+        typeof CSS.supports === 'function' &&
+        CSS.supports('background-color', headerBgColor);
+      const headerStyle = isValidHeaderBgColor
+        ? {
+            backgroundColor: headerBgColor,
+          }
+        : undefined;
+
       const valueRange =
         !hasBasicColorFormatters &&
         !hasColumnColorFormatters &&
@@ -219,7 +231,7 @@ export const useColDefs = ({
         });
       };
 
-      return {
+      const colDef = {
         field: colId,
         headerName: getHeaderLabel(col),
         valueFormatter: p => valueFormatter(p, col),
@@ -290,7 +302,6 @@ export const useColDefs = ({
           isPercentMetric,
           isNumeric,
           hideSummary: config?.hideSummary,
-          headerBgColor: config?.headerBgColor,
         },
         lockPinned: !allowRearrangeColumns,
         sortable: !serverPagination || !isPercentMetric,
@@ -312,6 +323,15 @@ export const useColDefs = ({
         wrapText: !config?.truncateLongCells,
         autoHeight: !config?.truncateLongCells,
       };
+
+      if (headerStyle) {
+        colDef.headerStyle = {
+          ...(colDef.headerStyle || {}),
+          ...headerStyle,
+        };
+      }
+
+      return colDef;
     },
     [
       columns,
