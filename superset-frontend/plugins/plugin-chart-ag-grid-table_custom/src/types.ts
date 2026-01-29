@@ -63,6 +63,7 @@ export type TableColumnConfig = {
   hideByDefault?: boolean;
   pinnedByDefault?: 'left' | 'right' | null;
   showCopyButton?: boolean;
+  hideSummary?: boolean;
 };
 
 export interface DataColumnMeta {
@@ -218,6 +219,7 @@ export interface CustomColDef extends ColDef {
     isMetric?: boolean;
     isPercentMetric?: boolean;
     isNumeric?: boolean;
+    hideSummary?: boolean;
   };
 }
 
