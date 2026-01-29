@@ -129,7 +129,9 @@ const HeaderAction = styled.div`
 
 const FilterTrigger = styled.button`
   cursor: pointer;
-  padding: ${({ theme }) => theme.sizeUnit * 1.6}px;
+  padding: 0;
+  width: 28px;
+  height: 28px;
   background-color: var(--ag-background-color);
   box-shadow: 0 0 2px var(--ag-chip-border-color);
   border-radius: 50%;
@@ -141,7 +143,7 @@ const FilterTrigger = styled.button`
   outline: none;
   opacity: 0;
   pointer-events: none;
-  font-size: ${({ theme }) => theme.fontSizeSM}px;
+  font-size: ${({ theme }) => theme.fontSizeXS}px;
   .ag-icon,
   svg {
     color: currentColor;
@@ -151,9 +153,6 @@ const FilterTrigger = styled.button`
   &:focus-visible {
     color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
-  }
-  &.active {
-    color: ${({ theme }) => theme.colorPrimary};
   }
   &.is-visible {
     opacity: 1;
