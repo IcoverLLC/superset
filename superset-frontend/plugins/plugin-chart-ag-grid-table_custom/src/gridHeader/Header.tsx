@@ -130,11 +130,11 @@ const HeaderAction = styled.div`
 const FilterTrigger = styled.button`
   cursor: pointer;
   padding: 0;
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   background-color: var(--ag-background-color);
   box-shadow: 0 0 2px var(--ag-chip-border-color);
-  border-radius: 20%;
+  border-radius: 50%;
   border: none;
   color: ${({ theme }) => theme.colorTextTertiary};
   display: inline-flex;
