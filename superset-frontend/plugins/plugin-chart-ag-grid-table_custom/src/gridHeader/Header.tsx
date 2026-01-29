@@ -18,7 +18,7 @@
  */
 import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { styled, useTheme, t } from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import type { Column, GridApi } from 'ag-grid-community';
 
 import { Icons } from '@superset-ui/core/components/Icons';
@@ -60,18 +60,26 @@ const HeaderRoot = styled.div`
   align-items: flex-start;
 `;
 
-const HeaderCellSort = styled.div`
-  position: relative;
+const HeaderLabel = styled.div`
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  margin-right: ${({ theme }) => theme.sizeUnit * 1.5}px;
+  column-gap: ${({ theme }) => theme.sizeUnit / 2}px;
+`;
+
+const HeaderCellSort = styled.span`
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
+  color: ${({ theme }) => theme.colorPrimary};
+  svg {
+    width: ${({ theme }) => theme.fontSizeXS}px;
+    height: ${({ theme }) => theme.fontSizeXS}px;
+  }
 `;
 
 const SortSeqLabel = styled.span`
-  position: absolute;
-  right: -${({ theme }) => theme.sizeUnit / 2}px;
-  top: -${({ theme }) => theme.sizeUnit / 2}px;
+  margin-left: ${({ theme }) => theme.sizeUnit / 2}px;
   font-size: ${({ theme }) => theme.fontSizeXS}px;
   line-height: 1;
 `;
@@ -82,6 +90,7 @@ const HeaderActionGroup = styled.div`
   right: 0;
   z-index: 2;
   align-items: center;
+  column-gap: ${({ theme }) => theme.sizeUnit}px;
 `;
 
 const HeaderAction = styled.div`
@@ -115,7 +124,6 @@ const FilterTrigger = styled.button`
   border-radius: 50%;
   border: none;
   color: ${({ theme }) => theme.colorTextTertiary};
-  margin-right: ${({ theme }) => theme.sizeUnit}px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -149,7 +157,6 @@ export const Header: React.FC<Params> = ({
   api,
   showFilter,
 }: Params) => {
-  const theme = useTheme();
   const colId = column.getColId();
   const pinnedLeft = column.isPinnedLeft();
   const pinnedRight = column.isPinnedRight();
@@ -286,37 +293,22 @@ export const Header: React.FC<Params> = ({
             ),
           })}
         >
-          {enableSorting && isSortActive && (
-            <HeaderCellSort>
-              {currentSort === 'asc' && (
-                <Icons.SortAsc iconSize="m" iconColor={theme.colorPrimary} />
-              )}
-              {currentSort === 'desc' && (
-                <Icons.SortDesc iconSize="m" iconColor={theme.colorPrimary} />
-              )}
-              {typeof sortIndex === 'number' && (
-                <SortSeqLabel>{sortIndex + 1}</SortSeqLabel>
-              )}
-            </HeaderCellSort>
-          )}
-          <div className="ag-header-cell-text">{displayName}</div>
+          <HeaderLabel>
+            <div className="ag-header-cell-text">{displayName}</div>
+            {enableSorting && isSortActive && (
+              <HeaderCellSort>
+                {currentSort === 'asc' && <Icons.CaretUpOutlined />}
+                {currentSort === 'desc' && <Icons.CaretDownOutlined />}
+                {typeof sortIndex === 'number' && (
+                  <SortSeqLabel>{sortIndex + 1}</SortSeqLabel>
+                )}
+              </HeaderCellSort>
+            )}
+          </HeaderLabel>
         </HeaderCell>
       )}
       {colId && api && (
         <HeaderActionGroup>
-          {colId !== PIVOT_COL_ID && (
-            <FilterTrigger
-              type="button"
-              onMouseDown={onFilterMenuMouseDown}
-              onClick={onFilterMenuClick}
-              aria-label={t('Open filter menu')}
-              className={`filter-trigger${
-                isFilterActive ? ' active is-visible' : ''
-              }`}
-            >
-              <span className="ag-icon ag-icon-filter" aria-hidden="true" />
-            </FilterTrigger>
-          )}
           <HeaderAction
             className={`customHeaderAction${
               colId === PIVOT_COL_ID ? ' main' : ''
@@ -334,6 +326,19 @@ export const Header: React.FC<Params> = ({
               />
             )}
           </HeaderAction>
+          {colId !== PIVOT_COL_ID && (
+            <FilterTrigger
+              type="button"
+              onMouseDown={onFilterMenuMouseDown}
+              onClick={onFilterMenuClick}
+              aria-label={t('Open filter menu')}
+              className={`filter-trigger${
+                isFilterActive ? ' active is-visible' : ''
+              }`}
+            >
+              <span className="ag-icon ag-icon-filter" aria-hidden="true" />
+            </FilterTrigger>
+          )}
         </HeaderActionGroup>
       )}
     </HeaderRoot>
