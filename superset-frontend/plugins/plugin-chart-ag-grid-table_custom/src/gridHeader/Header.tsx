@@ -52,6 +52,14 @@ const HeaderCell = styled.div`
   }
 `;
 
+const HeaderRoot = styled.div`
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+`;
+
 const HeaderCellSort = styled.div`
   position: relative;
   display: inline-flex;
@@ -70,6 +78,7 @@ const HeaderAction = styled.div`
   pointer-events: none;
   position: absolute;
   right: 0;
+  z-index: 2;
   &.pinned-visible {
     display: flex;
     opacity: 1;
@@ -256,7 +265,7 @@ export const Header: React.FC<Params> = ({
   }, [api, syncFilterState]);
 
   return (
-    <>
+    <HeaderRoot>
       {colId !== PIVOT_COL_ID && (
         <HeaderCell
           tabIndex={0}
@@ -324,6 +333,6 @@ export const Header: React.FC<Params> = ({
           )}
         </HeaderAction>
       )}
-    </>
+    </HeaderRoot>
   );
 };

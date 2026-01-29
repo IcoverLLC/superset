@@ -351,7 +351,8 @@ export const StyledChartContainer = styled.div<{
       overflow: hidden;
     }
 
-    [role='columnheader']:hover .customHeaderAction {
+    .ag-header-cell:hover .customHeaderAction {
+      display: flex;
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
