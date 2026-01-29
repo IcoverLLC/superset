@@ -290,6 +290,7 @@ export const useColDefs = ({
           isPercentMetric,
           isNumeric,
           hideSummary: config?.hideSummary,
+          headerBgColor: config?.headerBgColor,
         },
         lockPinned: !allowRearrangeColumns,
         sortable: !serverPagination || !isPercentMetric,

@@ -64,6 +64,7 @@ export type TableColumnConfig = {
   pinnedByDefault?: 'left' | 'right' | null;
   showCopyButton?: boolean;
   hideSummary?: boolean;
+  headerBgColor?: string;
 };
 
 export interface DataColumnMeta {
@@ -220,6 +221,7 @@ export interface CustomColDef extends ColDef {
     isPercentMetric?: boolean;
     isNumeric?: boolean;
     hideSummary?: boolean;
+    headerBgColor?: string;
   };
 }
 
