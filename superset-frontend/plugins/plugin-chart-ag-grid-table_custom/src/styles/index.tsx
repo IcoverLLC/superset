@@ -352,9 +352,13 @@ export const StyledChartContainer = styled.div<{
     }
 
     .ag-header-cell:hover .customHeaderAction {
-      display: flex;
       opacity: 1;
       visibility: visible;
+      pointer-events: auto;
+    }
+
+    .ag-header-cell:hover .filter-trigger {
+      opacity: 1;
       pointer-events: auto;
     }
 

@@ -64,12 +64,16 @@ const HeaderCellSort = styled.div`
   position: relative;
   display: inline-flex;
   align-items: flex-start;
-  margin-right: ${({ theme }) => theme.sizeUnit}px;
+  margin-right: ${({ theme }) => theme.sizeUnit * 1.5}px;
+  line-height: 1;
 `;
 
 const SortSeqLabel = styled.span`
   position: absolute;
-  right: 0;
+  right: -${({ theme }) => theme.sizeUnit / 2}px;
+  top: -${({ theme }) => theme.sizeUnit / 2}px;
+  font-size: ${({ theme }) => theme.fontSizeXS}px;
+  line-height: 1;
 `;
 
 const HeaderActionGroup = styled.div`
@@ -81,7 +85,7 @@ const HeaderActionGroup = styled.div`
 `;
 
 const HeaderAction = styled.div`
-  display: none;
+  display: inline-flex;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -116,6 +120,8 @@ const FilterTrigger = styled.button`
   align-items: center;
   justify-content: center;
   outline: none;
+  opacity: 0;
+  pointer-events: none;
   .ag-icon,
   svg {
     color: currentColor;
@@ -129,11 +135,10 @@ const FilterTrigger = styled.button`
   &.active {
     color: ${({ theme }) => theme.colorPrimary};
   }
-`;
-
-const IconPlaceholder = styled.div`
-  position: absolute;
-  top: 0;
+  &.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
 `;
 
 export const Header: React.FC<Params> = ({
@@ -198,6 +203,8 @@ export const Header: React.FC<Params> = ({
 
   const onFilterMenuClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
       const target = event.currentTarget as HTMLElement;
       const apiWithMenus = api as GridApi & {
         showFilterMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
@@ -281,21 +288,12 @@ export const Header: React.FC<Params> = ({
         >
           {enableSorting && isSortActive && (
             <HeaderCellSort>
-              <Icons.Sort iconSize="xxl" />
-              <IconPlaceholder>
-                {currentSort === 'asc' && (
-                  <Icons.SortAsc
-                    iconSize="xxl"
-                    iconColor={theme.colorPrimary}
-                  />
-                )}
-                {currentSort === 'desc' && (
-                  <Icons.SortDesc
-                    iconSize="xxl"
-                    iconColor={theme.colorPrimary}
-                  />
-                )}
-              </IconPlaceholder>
+              {currentSort === 'asc' && (
+                <Icons.SortAsc iconSize="m" iconColor={theme.colorPrimary} />
+              )}
+              {currentSort === 'desc' && (
+                <Icons.SortDesc iconSize="m" iconColor={theme.colorPrimary} />
+              )}
               {typeof sortIndex === 'number' && (
                 <SortSeqLabel>{sortIndex + 1}</SortSeqLabel>
               )}
@@ -306,13 +304,15 @@ export const Header: React.FC<Params> = ({
       )}
       {colId && api && (
         <HeaderActionGroup>
-          {colId !== PIVOT_COL_ID && isFilterActive && (
+          {colId !== PIVOT_COL_ID && (
             <FilterTrigger
               type="button"
               onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
-              className="active"
+              className={`filter-trigger${
+                isFilterActive ? ' active is-visible' : ''
+              }`}
             >
               <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>
@@ -322,16 +322,6 @@ export const Header: React.FC<Params> = ({
               colId === PIVOT_COL_ID ? ' main' : ''
             }`}
           >
-            {colId !== PIVOT_COL_ID && !isFilterActive && (
-              <FilterTrigger
-                type="button"
-                onMouseDown={onFilterMenuMouseDown}
-                onClick={onFilterMenuClick}
-                aria-label={t('Open filter menu')}
-              >
-                <span className="ag-icon ag-icon-filter" aria-hidden="true" />
-              </FilterTrigger>
-            )}
             {colId && (
               <HeaderMenu
                 colId={colId}
