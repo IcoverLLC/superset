@@ -206,6 +206,19 @@ export const useColDefs = ({
 
       const filter = getFilterType(col);
 
+      const baseCellRenderer = (p: CellRendererProps) => {
+        const renderedContent = isTextColumn
+          ? TextCellRenderer(p)
+          : NumericCellRenderer(p);
+        if (!config?.showCopyButton) {
+          return renderedContent;
+        }
+        return CopyableCell({
+          displayNode: renderedContent,
+          textToCopy: getCopyValue(p.valueFormatted, p.value),
+        });
+      };
+
       return {
         field: colId,
         headerName: getHeaderLabel(col),
@@ -257,16 +270,10 @@ export const useColDefs = ({
           ],
         }),
         cellRenderer: (p: CellRendererProps) => {
-          const renderedContent = isTextColumn
-            ? TextCellRenderer(p)
-            : NumericCellRenderer(p);
-          if (!config?.showCopyButton) {
-            return renderedContent;
+          if (p.node?.rowPinned === 'bottom' && config?.hideSummary) {
+            return '';
           }
-          return CopyableCell({
-            displayNode: renderedContent,
-            textToCopy: getCopyValue(p.valueFormatted, p.value),
-          });
+          return baseCellRenderer(p);
         },
         cellRendererParams: {
           allowRenderHtml: true,
@@ -282,6 +289,7 @@ export const useColDefs = ({
           isMetric,
           isPercentMetric,
           isNumeric,
+          hideSummary: config?.hideSummary,
         },
         lockPinned: !allowRearrangeColumns,
         sortable: !serverPagination || !isPercentMetric,

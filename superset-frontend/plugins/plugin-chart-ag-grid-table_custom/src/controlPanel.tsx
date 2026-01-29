@@ -148,6 +148,17 @@ const pinnedByDefaultControl: ColumnConfigFormItem = {
   },
 };
 
+const hideSummaryControl: ColumnConfigFormItem = {
+  name: 'hideSummary',
+  config: {
+    controlType: 'Checkbox',
+    label: t('Hide summary value'),
+    description: t('Hide the summary (totals) value for this column'),
+    defaultValue: false,
+    debounceDelay: 200,
+  },
+};
+
 const columnConfigFormLayout: ColumnConfigFormLayout = {
   ...DEFAULT_CONFIG_FORM_LAYOUT,
   [GenericDataType.String]: [
@@ -155,18 +166,21 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.String
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
+    [hideSummaryControl],
   ],
   [GenericDataType.Temporal]: [
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Temporal
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
+    [hideSummaryControl],
   ],
   [GenericDataType.Boolean]: [
     ...(DEFAULT_CONFIG_FORM_LAYOUT[
       GenericDataType.Boolean
     ] as ColumnConfigFormItem[][]),
     [hideByDefaultControl, pinnedByDefaultControl],
+    [hideSummaryControl],
   ],
   [GenericDataType.Numeric]: (
     DEFAULT_CONFIG_FORM_LAYOUT[
@@ -179,6 +193,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
           children: [
             ...item.children,
             [hideByDefaultControl, pinnedByDefaultControl],
+            [hideSummaryControl],
           ],
         }
       : item,
