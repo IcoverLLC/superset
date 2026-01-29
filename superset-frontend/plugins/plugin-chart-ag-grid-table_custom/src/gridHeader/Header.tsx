@@ -134,7 +134,7 @@ const FilterTrigger = styled.button`
   height: 28px;
   background-color: var(--ag-background-color);
   box-shadow: 0 0 2px var(--ag-chip-border-color);
-  border-radius: 50%;
+  border-radius: 20%;
   border: none;
   color: ${({ theme }) => theme.colorTextTertiary};
   display: inline-flex;
