@@ -78,6 +78,17 @@ const HeaderCellSort = styled.span`
   }
 `;
 
+const FilterIndicator = styled.span`
+  display: inline-flex;
+  align-items: center;
+  color: ${({ theme }) => theme.colorPrimary};
+  margin-right: ${({ theme }) => theme.sizeUnit / 2}px;
+  svg {
+    width: ${({ theme }) => theme.fontSizeXS}px;
+    height: ${({ theme }) => theme.fontSizeXS}px;
+  }
+`;
+
 const SortSeqLabel = styled.span`
   margin-left: ${({ theme }) => theme.sizeUnit / 2}px;
   font-size: ${({ theme }) => theme.fontSizeXS}px;
@@ -118,7 +129,7 @@ const HeaderAction = styled.div`
 
 const FilterTrigger = styled.button`
   cursor: pointer;
-  padding: ${({ theme }) => theme.sizeUnit * 2}px;
+  padding: ${({ theme }) => theme.sizeUnit * 1.6}px;
   background-color: var(--ag-background-color);
   box-shadow: 0 0 2px var(--ag-chip-border-color);
   border-radius: 50%;
@@ -130,6 +141,7 @@ const FilterTrigger = styled.button`
   outline: none;
   opacity: 0;
   pointer-events: none;
+  font-size: ${({ theme }) => theme.fontSizeSM}px;
   .ag-icon,
   svg {
     color: currentColor;
@@ -148,6 +160,27 @@ const FilterTrigger = styled.button`
     pointer-events: auto;
   }
 `;
+
+const hasMeaningfulValue = (value: unknown): boolean => {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(item => hasMeaningfulValue(item));
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return true;
+  }
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(item =>
+      hasMeaningfulValue(item),
+    );
+  }
+  return false;
+};
 
 export const Header: React.FC<Params> = ({
   enableSorting,
@@ -242,23 +275,11 @@ export const Header: React.FC<Params> = ({
   );
 
   const syncFilterState = useCallback(() => {
-    try {
-      const columnHasFilter = column?.isFilterActive?.() ?? false;
-      if (columnHasFilter) {
-        setIsFilterActive(true);
-        return;
-      }
-      const filterModel = api?.getFilterModel?.();
-      const columnFilter = colId ? filterModel?.[colId] : null;
-      const hasModel =
-        Boolean(columnFilter) &&
-        (typeof columnFilter !== 'object' ||
-          Object.keys(columnFilter).length > 0);
-      setIsFilterActive(hasModel);
-    } catch (error) {
-      setIsFilterActive(false);
-    }
-  }, [api, colId, column]);
+    const filterModel = api?.getFilterModel?.();
+    const columnFilter = colId ? filterModel?.[colId] : null;
+    const hasModel = Boolean(columnFilter && hasMeaningfulValue(columnFilter));
+    setIsFilterActive(hasModel);
+  }, [api, colId]);
 
   useEffect(() => {
     api.addEventListener('sortChanged', onSortChanged);
@@ -295,8 +316,13 @@ export const Header: React.FC<Params> = ({
         >
           <HeaderLabel>
             <div className="ag-header-cell-text">{displayName}</div>
-            {enableSorting && isSortActive && (
+            {enableSorting && (isSortActive || isFilterActive) && (
               <HeaderCellSort>
+                {isFilterActive && (
+                  <FilterIndicator aria-hidden="true">
+                    <Icons.FilterOutlined />
+                  </FilterIndicator>
+                )}
                 {currentSort === 'asc' && <Icons.CaretUpOutlined />}
                 {currentSort === 'desc' && <Icons.CaretDownOutlined />}
                 {typeof sortIndex === 'number' && (
@@ -309,6 +335,17 @@ export const Header: React.FC<Params> = ({
       )}
       {colId && api && (
         <HeaderActionGroup>
+          {colId !== PIVOT_COL_ID && (
+            <FilterTrigger
+              type="button"
+              onMouseDown={onFilterMenuMouseDown}
+              onClick={onFilterMenuClick}
+              aria-label={t('Open filter menu')}
+              className={`filter-trigger${isFilterActive ? ' active' : ''}`}
+            >
+              <span className="ag-icon ag-icon-filter" aria-hidden="true" />
+            </FilterTrigger>
+          )}
           <HeaderAction
             className={`customHeaderAction${
               colId === PIVOT_COL_ID ? ' main' : ''
@@ -326,19 +363,6 @@ export const Header: React.FC<Params> = ({
               />
             )}
           </HeaderAction>
-          {colId !== PIVOT_COL_ID && (
-            <FilterTrigger
-              type="button"
-              onMouseDown={onFilterMenuMouseDown}
-              onClick={onFilterMenuClick}
-              aria-label={t('Open filter menu')}
-              className={`filter-trigger${
-                isFilterActive ? ' active is-visible' : ''
-              }`}
-            >
-              <span className="ag-icon ag-icon-filter" aria-hidden="true" />
-            </FilterTrigger>
-          )}
         </HeaderActionGroup>
       )}
     </HeaderRoot>
