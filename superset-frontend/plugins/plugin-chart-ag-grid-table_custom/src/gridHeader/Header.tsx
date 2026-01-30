@@ -19,7 +19,7 @@
 import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { styled, t } from '@superset-ui/core';
-import type { Column, GridApi } from 'ag-grid-community';
+import type { Column, ColumnApi, GridApi } from 'ag-grid-community';
 
 import { Icons } from '@superset-ui/core/components/Icons';
 import { PIVOT_COL_ID } from './constants';
@@ -31,6 +31,7 @@ interface Params {
   displayName: string;
   column: Column;
   api: GridApi;
+  columnApi?: ColumnApi;
   context?: {
     serverPagination?: boolean;
   };
@@ -190,6 +191,7 @@ export const Header: React.FC<Params> = ({
   setSort,
   column,
   api,
+  columnApi,
   context,
   showFilter,
 }: Params) => {
@@ -360,6 +362,7 @@ export const Header: React.FC<Params> = ({
                 colId={colId}
                 column={column}
                 api={api}
+                columnApi={columnApi}
                 pinnedLeft={pinnedLeft}
                 pinnedRight={pinnedRight}
                 invisibleColumns={invisibleColumns}
