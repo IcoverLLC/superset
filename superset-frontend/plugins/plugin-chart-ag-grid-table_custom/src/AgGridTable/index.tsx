@@ -427,6 +427,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           paginationPageSizeSelector={PAGE_SIZE_OPTIONS}
           suppressDragLeaveHidesColumns
           pinnedBottomRowData={showTotals ? [cleanedTotals] : undefined}
+          groupDefaultExpanded={0}
           localeText={{
             // Pagination controls
             next: t('Next'),
@@ -506,6 +507,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               serverPaginationData?.sortBy || [],
             ),
             isActiveFilterValue,
+            serverPagination,
           }}
         />
         {serverPagination && (
