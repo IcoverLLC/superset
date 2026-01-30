@@ -18,7 +18,12 @@
  */
 import { useCallback } from 'react';
 import { styled, t } from '@superset-ui/core';
-import type { Column, ColumnPinnedType, GridApi } from 'ag-grid-community';
+import type {
+  Column,
+  ColumnApi,
+  ColumnPinnedType,
+  GridApi,
+} from 'ag-grid-community';
 
 import { Icons } from '@superset-ui/core/components/Icons';
 import { Menu, MenuItem } from '@superset-ui/core/components/Menu';
@@ -35,8 +40,9 @@ const IconEmpty = styled.span`
 
 export type HeaderMenuProps = {
   colId: string;
-  column?: Column;
+  column: Column;
   api: GridApi;
+  columnApi?: ColumnApi;
   pinnedLeft?: boolean;
   pinnedRight?: boolean;
   invisibleColumns: Column[];
@@ -49,6 +55,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   colId,
   column,
   api,
+  columnApi: columnApiProp,
   pinnedLeft,
   pinnedRight,
   invisibleColumns,
@@ -135,11 +142,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         api.autoSizeAllColumns();
       },
     },
-  ];
-
-  mainMenuItems.push(unHideAction);
-
-  mainMenuItems.push(
+    unHideAction,
     {
       type: 'divider',
     },
@@ -163,43 +166,19 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         }
       },
     },
-  );
-
-  const menuItems: MenuItem[] = [
-    {
-      key: 'copy',
-      label: t('Copy'),
-      icon: <Icons.CopyOutlined iconSize="m" />,
-      onClick: () => {
-        copyTextToClipboard(
-          () =>
-            new Promise((resolve, reject) => {
-              const data = api.getDataAsCsv({
-                columnKeys: [colId],
-                suppressQuotes: true,
-              });
-              if (data) {
-                resolve(data);
-              } else {
-                reject();
-              }
-            }),
-        );
-      },
-    },
   ];
 
-  const columnApi = api.getColumnApi?.();
+  const columnApi = columnApiProp ?? api.getColumnApi?.();
   const rowGroupColumns = columnApi?.getRowGroupColumns?.() || [];
   const hasGrouping = rowGroupColumns.length > 0;
   const isGroupedByThis = rowGroupColumns.some(
     groupedColumn => groupedColumn.getColId() === colId,
   );
-  const colDef = column?.getColDef();
+  const colDef = column.getColDef();
   const isMetric =
     colDef?.context?.isMetric || colDef?.context?.isPercentMetric;
   const isGroupable =
-    !!columnApi && !!column && !isMetric && colDef?.enableRowGroup !== false;
+    !!columnApi && !isMetric && colDef?.enableRowGroup !== false;
   const groupingDisabled = !!serverPagination;
   const groupingDisabledLabel = t(
     'Grouping is available only when client-side pagination is used.',
@@ -235,91 +214,94 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     [columnApi, rowGroupColumns],
   );
 
-  if (isGroupable && !isMain) {
-    const groupByThisColumnItem: MenuItem = {
-      key: 'groupByThisColumn',
-      label: (
-        <span title={groupingDisabled ? groupingDisabledLabel : undefined}>
-          {t('Group by this column / Сгруппировать по этому столбцу')}
-        </span>
-      ),
-      icon: <Icons.GroupOutlined iconSize="m" />,
-      disabled: groupingDisabled,
-      onClick: () => {
-        if (groupingDisabled) {
-          return;
-        }
-        setSingleGroupColumn(colId);
-      },
-    };
-
-    const ungroupItem: MenuItem = {
-      key: 'ungroup',
-      label: t('Ungroup / Убрать группировку'),
-      icon: <Icons.DeleteOutlined iconSize="m" />,
-      onClick: () => clearGrouping(),
-    };
-
-    const clearGroupingItem: MenuItem = {
-      key: 'clearGrouping',
-      label: t('Clear grouping / Сбросить группировку'),
-      icon: <Icons.DeleteOutlined iconSize="m" />,
-      onClick: () => clearGrouping(),
-    };
-
-    if (!isGroupedByThis) {
-      menuItems.push(groupByThisColumnItem);
-    }
-
-    if (isGroupedByThis) {
-      menuItems.push(ungroupItem);
-    }
-
-    if (hasGrouping) {
-      menuItems.push(clearGroupingItem);
-    }
-
-    if (
-      (!isGroupedByThis && !groupingDisabled) ||
-      isGroupedByThis ||
-      hasGrouping
-    ) {
-      menuItems.push({
-        type: 'divider',
-      });
-    }
-  }
-
-  if (pinnedLeft || pinnedRight) {
-    menuItems.push({
-      key: 'unpin',
-      label: t('Unpin'),
-      icon: <Icons.UnlockOutlined iconSize="m" />,
-      onClick: () => pinColumn(null),
-    });
-  }
-  if (!pinnedLeft) {
-    menuItems.push({
-      key: 'pinLeft',
-      label: t('Pin Left'),
-      icon: <Icons.VerticalRightOutlined iconSize="m" />,
-      onClick: () => pinColumn('left'),
-    });
-  }
-
-  if (!pinnedRight) {
-    menuItems.push({
-      key: 'pinRight',
-      label: t('Pin Right'),
-      icon: <Icons.VerticalLeftOutlined iconSize="m" />,
-      onClick: () => pinColumn('right'),
-    });
-  }
-
-  menuItems.push(
+  const menuItems: MenuItem[] = [
     {
-      type: 'divider',
+      key: 'copy',
+      label: t('Copy'),
+      icon: <Icons.CopyOutlined iconSize="m" />,
+      onClick: () => {
+        copyTextToClipboard(
+          () =>
+            new Promise((resolve, reject) => {
+              const data = api.getDataAsCsv({
+                columnKeys: [colId],
+                suppressQuotes: true,
+              });
+              if (data) {
+                resolve(data);
+              } else {
+                reject();
+              }
+            }),
+        );
+      },
     },
+    ...(isGroupable && !isMain
+      ? [
+          !isGroupedByThis && {
+            key: 'groupByThisColumn',
+            label: (
+              <span title={groupingDisabled ? groupingDisabledLabel : undefined}>
+                {t('Group by this column / Сгруппировать по этому столбцу')}
+              </span>
+            ),
+            icon: <Icons.UnorderedListOutlined iconSize="m" />,
+            disabled: groupingDisabled,
+            onClick: () => {
+              if (groupingDisabled) {
+                return;
+              }
+              setSingleGroupColumn(colId);
+            },
+          },
+          isGroupedByThis && {
+            key: 'ungroup',
+            label: t('Ungroup / Убрать группировку'),
+            icon: <Icons.DeleteOutlined iconSize="m" />,
+            onClick: () => clearGrouping(),
+          },
+          hasGrouping && {
+            key: 'clearGrouping',
+            label: t('Clear grouping / Сбросить группировку'),
+            icon: <Icons.DeleteOutlined iconSize="m" />,
+            onClick: () => clearGrouping(),
+          },
+          ((!isGroupedByThis && !groupingDisabled) ||
+            isGroupedByThis ||
+            hasGrouping) && { type: 'divider' },
+        ].filter(Boolean) as MenuItem[]
+      : []),
+    ...(pinnedLeft || pinnedRight
+      ? [
+          {
+            key: 'unpin',
+            label: t('Unpin'),
+            icon: <Icons.UnlockOutlined iconSize="m" />,
+            onClick: () => pinColumn(null),
+          },
+        ]
+      : []),
+    ...(!pinnedLeft
+      ? [
+          {
+            key: 'pinLeft',
+            label: t('Pin Left'),
+            icon: <Icons.VerticalRightOutlined iconSize="m" />,
+            onClick: () => pinColumn('left'),
+          },
+        ]
+      : []),
+    ...(!pinnedRight
+      ? [
+          {
+            key: 'pinRight',
+            label: t('Pin Right'),
+            icon: <Icons.VerticalLeftOutlined iconSize="m" />,
+            onClick: () => pinColumn('right'),
+          },
+        ]
+      : []),
+    { type: 'divider' },
     {
       key: 'autosize',
       label: t('Autosize Column'),
@@ -337,11 +319,8 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       },
       disabled: api.getColumns()?.length === invisibleColumns.length + 1,
     },
-  );
-
-  if (invisibleColumns.length > 0) {
-    menuItems.push(unHideAction);
-  }
+    ...(invisibleColumns.length > 0 ? [unHideAction] : []),
+  ];
 
   return (
     <MenuDotsDropdown
