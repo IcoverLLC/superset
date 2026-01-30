@@ -41,16 +41,19 @@ export type HeaderMenuProps = {
   pinnedRight?: boolean;
   invisibleColumns: Column[];
   isMain?: boolean;
+  serverPagination?: boolean;
   onVisibleChange: DropdownProps['onOpenChange'];
 };
 
 export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   colId,
+  column,
   api,
   pinnedLeft,
   pinnedRight,
   invisibleColumns,
   isMain,
+  serverPagination,
   onVisibleChange,
 }: HeaderMenuProps) => {
   const pinColumn = useCallback(
@@ -185,6 +188,107 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       },
     },
   ];
+
+  const columnApi = api.getColumnApi?.();
+  const rowGroupColumns = columnApi?.getRowGroupColumns?.() || [];
+  const hasGrouping = rowGroupColumns.length > 0;
+  const isGroupedByThis = rowGroupColumns.some(
+    groupedColumn => groupedColumn.getColId() === colId,
+  );
+  const colDef = column?.getColDef();
+  const isMetric =
+    colDef?.context?.isMetric || colDef?.context?.isPercentMetric;
+  const isGroupable =
+    !!columnApi && !!column && !isMetric && colDef?.enableRowGroup !== false;
+  const groupingDisabled = !!serverPagination;
+  const groupingDisabledLabel = t(
+    'Grouping is available only when client-side pagination is used.',
+  );
+
+  const clearGrouping = useCallback(() => {
+    if (!columnApi) {
+      return;
+    }
+    if (columnApi.setRowGroupColumns) {
+      columnApi.setRowGroupColumns([]);
+      return;
+    }
+    rowGroupColumns.forEach(groupedColumn => {
+      columnApi.removeRowGroupColumn?.(groupedColumn);
+    });
+  }, [columnApi, rowGroupColumns]);
+
+  const setSingleGroupColumn = useCallback(
+    (columnId: string) => {
+      if (!columnApi) {
+        return;
+      }
+      if (columnApi.setRowGroupColumns) {
+        columnApi.setRowGroupColumns([columnId]);
+        return;
+      }
+      rowGroupColumns.forEach(groupedColumn => {
+        columnApi.removeRowGroupColumn?.(groupedColumn);
+      });
+      columnApi.addRowGroupColumn?.(columnId);
+    },
+    [columnApi, rowGroupColumns],
+  );
+
+  if (isGroupable && !isMain) {
+    const groupByThisColumnItem: MenuItem = {
+      key: 'groupByThisColumn',
+      label: (
+        <span title={groupingDisabled ? groupingDisabledLabel : undefined}>
+          {t('Group by this column / Сгруппировать по этому столбцу')}
+        </span>
+      ),
+      icon: <Icons.GroupOutlined iconSize="m" />,
+      disabled: groupingDisabled,
+      onClick: () => {
+        if (groupingDisabled) {
+          return;
+        }
+        setSingleGroupColumn(colId);
+      },
+    };
+
+    const ungroupItem: MenuItem = {
+      key: 'ungroup',
+      label: t('Ungroup / Убрать группировку'),
+      icon: <Icons.DeleteOutlined iconSize="m" />,
+      onClick: () => clearGrouping(),
+    };
+
+    const clearGroupingItem: MenuItem = {
+      key: 'clearGrouping',
+      label: t('Clear grouping / Сбросить группировку'),
+      icon: <Icons.DeleteOutlined iconSize="m" />,
+      onClick: () => clearGrouping(),
+    };
+
+    if (!isGroupedByThis) {
+      menuItems.push(groupByThisColumnItem);
+    }
+
+    if (isGroupedByThis) {
+      menuItems.push(ungroupItem);
+    }
+
+    if (hasGrouping) {
+      menuItems.push(clearGroupingItem);
+    }
+
+    if (
+      (!isGroupedByThis && !groupingDisabled) ||
+      isGroupedByThis ||
+      hasGrouping
+    ) {
+      menuItems.push({
+        type: 'divider',
+      });
+    }
+  }
 
   if (pinnedLeft || pinnedRight) {
     menuItems.push({

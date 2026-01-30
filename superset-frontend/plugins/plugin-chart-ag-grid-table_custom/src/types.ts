@@ -83,6 +83,7 @@ export interface DataColumnMeta {
   isMetric?: boolean;
   isPercentMetric?: boolean;
   isNumeric?: boolean;
+  aggFunc?: string;
   config?: TableColumnConfig;
   isChildColumn?: boolean;
 }
@@ -202,6 +203,7 @@ export interface SortState {
 export interface CustomContext {
   initialSortState: SortState[];
   onColumnHeaderClicked: (args: { column: SortState }) => void;
+  serverPagination?: boolean;
 }
 
 export interface CustomHeaderParams extends IHeaderParams {
@@ -239,6 +241,7 @@ export interface InputColumn {
   formatter?: Function;
   originalLabel?: string;
   metricName?: string;
+  aggFunc?: string;
 }
 
 export type CellRendererProps = CustomCellRendererProps & {

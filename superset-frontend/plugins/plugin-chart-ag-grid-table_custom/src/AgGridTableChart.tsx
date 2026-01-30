@@ -204,6 +204,9 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   const toggleFilter = useCallback(
     (event: CellClickedEvent | IMenuActionParams) => {
+      if ('node' in event && event.node?.group) {
+        return;
+      }
       if (
         emitCrossFilters &&
         event.column &&

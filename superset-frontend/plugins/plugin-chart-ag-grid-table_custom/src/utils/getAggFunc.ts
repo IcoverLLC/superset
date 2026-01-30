@@ -17,12 +17,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { CUSTOM_AGG_FUNCS } from '../consts';
 import { InputColumn } from '../types';
 
 export const getAggFunc = (col: InputColumn) =>
   col.isMetric || col.isPercentMetric
-    ? CUSTOM_AGG_FUNCS.queryTotal
+    ? col.aggFunc || (col.isNumeric ? 'sum' : undefined)
     : col.isNumeric
       ? 'sum'
       : undefined;
