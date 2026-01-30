@@ -31,9 +31,6 @@ interface Params {
   displayName: string;
   column: Column;
   api: GridApi;
-  context?: {
-    serverPagination?: boolean;
-  };
   showFilter?: (buttonElement: HTMLElement) => void;
   setSort: (sort: string | null, multiSort: boolean) => void;
 }
@@ -190,13 +187,11 @@ export const Header: React.FC<Params> = ({
   setSort,
   column,
   api,
-  context,
   showFilter,
 }: Params) => {
   const colId = column.getColId();
   const pinnedLeft = column.isPinnedLeft();
   const pinnedRight = column.isPinnedRight();
-  const serverPagination = context?.serverPagination;
   const sortOption = useRef<number>(0);
   const [invisibleColumns, setInvisibleColumns] = useState<Column[]>([]);
   const [currentSort, setCurrentSort] = useState<string | null>(null);
@@ -358,13 +353,11 @@ export const Header: React.FC<Params> = ({
             {colId && (
               <HeaderMenu
                 colId={colId}
-                column={column}
                 api={api}
                 pinnedLeft={pinnedLeft}
                 pinnedRight={pinnedRight}
                 invisibleColumns={invisibleColumns}
                 isMain={colId === PIVOT_COL_ID}
-                serverPagination={serverPagination}
                 onVisibleChange={onVisibleChange}
               />
             )}
