@@ -27,16 +27,11 @@ import {
   FeatureFlag,
   GenericDataType,
   getMetricLabel,
-  isAdhocMetricSimple,
-  isAdhocMetricSQL,
-  isSavedMetric,
   getNumberFormatter,
   getTimeFormatter,
   getTimeFormatterForGranularity,
   isFeatureEnabled,
-  Metric,
   NumberFormats,
-  QueryFormMetric,
   QueryMode,
   SMART_DATE_ID,
   t,
@@ -62,55 +57,6 @@ import {
 
 const { PERCENT_3_POINT } = NumberFormats;
 const { DATABASE_DATETIME } = TimeFormats;
-
-const AGGREGATE_FUNCTION_MAP: Record<string, string> = {
-  SUM: 'sum',
-  AVG: 'avg',
-  MIN: 'min',
-  MAX: 'max',
-  COUNT: 'count',
-  COUNT_DISTINCT: 'count',
-};
-
-const getAggFuncFromAggregate = (aggregate?: string) => {
-  if (!aggregate) {
-    return undefined;
-  }
-  return AGGREGATE_FUNCTION_MAP[aggregate.toUpperCase()];
-};
-
-const inferAggFuncFromExpression = (expression?: string) => {
-  if (!expression) {
-    return undefined;
-  }
-  if (/count\s*\(\s*distinct/i.test(expression)) {
-    return AGGREGATE_FUNCTION_MAP.COUNT_DISTINCT;
-  }
-  const match = expression.match(/^\s*([a-zA-Z_]+)\s*\(/);
-  if (!match) {
-    return undefined;
-  }
-  return getAggFuncFromAggregate(match[1]);
-};
-
-const getMetricAggFunc = (
-  metric: QueryFormMetric,
-  datasourceMetrics: Metric[] = [],
-) => {
-  if (isAdhocMetricSimple(metric)) {
-    return getAggFuncFromAggregate(metric.aggregate);
-  }
-  if (isAdhocMetricSQL(metric)) {
-    return inferAggFuncFromExpression(metric.sqlExpression);
-  }
-  if (isSavedMetric(metric)) {
-    const savedMetric = datasourceMetrics.find(
-      entry => entry.metric_name === metric,
-    );
-    return inferAggFuncFromExpression(savedMetric?.expression || '');
-  }
-  return undefined;
-};
 
 function isNumeric(key: string, data: DataRecord[] = []) {
   return data.every(
@@ -414,24 +360,6 @@ const processColumns = memoizeOne(function processColumns(
   const percentMetricsSet = new Set(percentMetrics);
   const rawPercentMetricsSet = new Set(rawPercentMetrics);
 
-  const metricAggFuncMap = new Map<string, string>();
-
-  (metrics_ ?? []).forEach(metric => {
-    const label = getMetricLabel(metric);
-    const aggFunc = getMetricAggFunc(metric, props.datasource.metrics || []);
-    if (aggFunc) {
-      metricAggFuncMap.set(label, aggFunc);
-    }
-  });
-
-  (percentMetrics_ ?? []).forEach(metric => {
-    const label = getMetricLabel(metric);
-    const aggFunc = getMetricAggFunc(metric, props.datasource.metrics || []);
-    if (aggFunc) {
-      metricAggFuncMap.set(`%${label}`, aggFunc);
-    }
-  });
-
   const columns: DataColumnMeta[] = (colnames || [])
     .filter(
       key =>
@@ -502,7 +430,6 @@ const processColumns = memoizeOne(function processColumns(
         isNumeric: dataType === GenericDataType.Numeric,
         isMetric,
         isPercentMetric,
-        aggFunc: metricAggFuncMap.get(key),
         formatter,
         config,
       };

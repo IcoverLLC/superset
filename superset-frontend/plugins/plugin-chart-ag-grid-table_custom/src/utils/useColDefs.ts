@@ -231,8 +231,6 @@ export const useColDefs = ({
         });
       };
 
-      const aggFunc = getAggFunc(col);
-
       const colDef = {
         field: colId,
         headerName: getHeaderLabel(col),
@@ -264,17 +262,8 @@ export const useColDefs = ({
           },
         }),
         cellDataType: getCellDataType(col),
-        defaultAggFunc: aggFunc,
-        initialAggFunc: aggFunc,
-        ...(aggFunc && {
-          aggFunc,
-        }),
-        ...((isMetric || isPercentMetric) && {
-          enableValue: true,
-        }),
-        ...(!(isMetric || isPercentMetric) && {
-          enableRowGroup: true,
-        }),
+        defaultAggFunc: getAggFunc(col),
+        initialAggFunc: getAggFunc(col),
         ...(config?.hideByDefault && {
           hide: true,
         }),
