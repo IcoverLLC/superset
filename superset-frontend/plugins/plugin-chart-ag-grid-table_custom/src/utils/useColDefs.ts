@@ -17,7 +17,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ColDef } from '@superset-ui/core/components/ThemedAgGridReact';
+import {
+  ColDef,
+  ValueFormatterParams,
+  ValueGetterParams,
+  CellClassParams,
+} from '@superset-ui/core/components/ThemedAgGridReact';
 import { useCallback, useMemo } from 'react';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
@@ -231,12 +236,12 @@ export const useColDefs = ({
         });
       };
 
-      const colDef = {
+      const colDef: ColDef & { isMain: boolean } = {
         field: colId,
         headerName: getHeaderLabel(col),
-        valueFormatter: p => valueFormatter(p, col),
-        valueGetter: p => valueGetter(p, col),
-        cellStyle: p =>
+        valueFormatter: (p: ValueFormatterParams) => valueFormatter(p, col),
+        valueGetter: (p: ValueGetterParams) => valueGetter(p, col),
+        cellStyle: (p: CellClassParams) =>
           getCellStyle({
             ...p,
             hasColumnColorFormatters,
@@ -245,7 +250,7 @@ export const useColDefs = ({
             basicColorFormatters,
             col,
           }),
-        cellClass: p =>
+        cellClass: (p: CellClassParams) =>
           getCellClass({
             ...p,
             col,
@@ -315,7 +320,7 @@ export const useColDefs = ({
         isMain,
         ...(!isMain &&
           originalLabel && {
-            columnGroupShow: 'open',
+            columnGroupShow: 'open' as const,
           }),
         ...(originalLabel && {
           timeComparisonKey: originalLabel,

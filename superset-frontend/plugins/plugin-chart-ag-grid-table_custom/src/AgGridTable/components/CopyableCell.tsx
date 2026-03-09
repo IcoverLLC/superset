@@ -46,10 +46,10 @@ const CopyButton = styled.button`
   ${({ theme }) => `
     background: transparent;
     border: none;
-    padding: 0 ${theme.gridUnit}px;
-    width: ${theme.gridUnit * 6}px;
-    height: ${theme.gridUnit * 6}px;
-    flex: 0 0 ${theme.gridUnit * 6}px;
+    padding: 0 ${theme.sizeUnit}px;
+    width: ${theme.sizeUnit * 6}px;
+    height: ${theme.sizeUnit * 6}px;
+    flex: 0 0 ${theme.sizeUnit * 6}px;
     color: ${theme.colorText};
     cursor: pointer;
     display: inline-flex;

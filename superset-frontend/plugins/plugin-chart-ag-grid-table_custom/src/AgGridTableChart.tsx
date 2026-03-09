@@ -297,7 +297,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         drillToDetail: drillToDetailFilters,
         crossFilter,
         drillBy,
-        copyValue: getCopyValue(event.valueFormatted, cellValue),
+        copyValue: getCopyValue(event.value, cellValue),
       } as unknown as ContextMenuFilters;
       requestAnimationFrame(() => onContextMenu?.(clientX, clientY, payload));
     },
