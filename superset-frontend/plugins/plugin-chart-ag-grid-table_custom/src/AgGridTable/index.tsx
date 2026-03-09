@@ -36,13 +36,17 @@ import {
   ModuleRegistry,
   GridReadyEvent,
   GridState,
-  CellClickedEvent,
   IMenuActionParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
 import type {
   CellContextMenuEvent,
-  ColumnApi,
   ColumnState,
+  GridApi,
+  ColumnResizedEvent,
+  ColumnMovedEvent,
+  ColumnVisibleEvent,
+  ColumnPinnedEvent,
+  CellClickedEvent as AgCellClickedEvent,
 } from 'ag-grid-community';
 import type { FunctionComponent, MouseEvent as ReactMouseEvent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
@@ -80,7 +84,7 @@ export interface AgGridTableProps {
   percentMetrics: string[];
   serverPageLength: number;
   hasServerPageLengthChanged: boolean;
-  handleCrossFilter: (event: CellClickedEvent | IMenuActionParams) => void;
+  handleCrossFilter: (event: AgCellClickedEvent | IMenuActionParams) => void;
   isActiveFilterValue: (key: string, val: DataRecordValue) => boolean;
   renderTimeComparisonDropdown: () => JSX.Element | null;
   cleanedTotals: DataRecord;
@@ -277,7 +281,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     }, [width]);
 
     const applyStoredColumnState = useCallback(
-      (columnApi: ColumnApi) => {
+      (api: GridApi) => {
         if (!storageKey) {
           return false;
         }
@@ -290,7 +294,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           if (!Array.isArray(parsedState)) {
             return false;
           }
-          columnApi.applyColumnState({
+          api.applyColumnState({
             state: parsedState as ColumnState[],
             applyOrder: true,
           });
@@ -303,12 +307,12 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     const persistColumnState = useCallback(
-      (columnApi: ColumnApi) => {
+      (api: GridApi) => {
         if (!storageKey) {
           return;
         }
         try {
-          const state = columnApi.getColumnState();
+          const state = api.getColumnState();
           localStorage.setItem(storageKey, JSON.stringify(state));
           hasStoredColumnState.current = true;
         } catch (error) {
@@ -319,7 +323,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     const onGridReady = (params: GridReadyEvent) => {
-      const restoredState = applyStoredColumnState(params.columnApi);
+      const restoredState = applyStoredColumnState(params.api);
       hasStoredColumnState.current = restoredState;
       if (!restoredState) {
         // This will make columns fill the grid width
@@ -328,16 +332,16 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     };
 
     const handleColumnStateChange = useCallback(
-      event => {
-        persistColumnState(event.columnApi);
+      (event: ColumnVisibleEvent | ColumnPinnedEvent | ColumnMovedEvent) => {
+        persistColumnState(event.api);
       },
       [persistColumnState],
     );
 
     const handleColumnResized = useCallback(
-      event => {
+      (event: ColumnResizedEvent) => {
         if (event.finished) {
-          persistColumnState(event.columnApi);
+          persistColumnState(event.api);
         }
       },
       [persistColumnState],
@@ -407,7 +411,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           columnDefs={colDefsFromProps}
           defaultColDef={defaultColDef}
           components={gridComponents}
-          frameworkComponents={gridComponents}
           onColumnGroupOpened={params => params.api.sizeColumnsToFit()}
           rowSelection="multiple"
           animateRows

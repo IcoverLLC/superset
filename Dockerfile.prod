@@ -1,0 +1,15 @@
+FROM superset:prod-base
+
+USER root
+WORKDIR /app
+
+COPY docker/requirements-local.txt /app/docker/requirements-local.txt
+
+RUN /app/docker/apt-install.sh build-essential python3-dev \
+ && if command -v uv > /dev/null 2>&1; then \
+      uv pip install --no-cache-dir -r /app/docker/requirements-local.txt; \
+    else \
+      pip install --no-cache-dir -r /app/docker/requirements-local.txt; \
+    fi
+
+USER superset
