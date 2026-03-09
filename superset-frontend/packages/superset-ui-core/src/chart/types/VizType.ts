@@ -56,6 +56,7 @@ export enum VizType {
   Sunburst = 'sunburst_v2',
   Table = 'table',
   TableAgGrid = 'ag-grid-table',
+  TableAgGridCustom = 'ag-grid-table-custom', // #icover
   TimePivot = 'time_pivot',
   TimeTable = 'time_table',
   Timeseries = 'echarts_timeseries',
