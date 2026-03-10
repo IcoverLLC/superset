@@ -311,10 +311,30 @@ const getComparisonColConfig = (
   label: string,
   parentColKey: string,
   columnConfig: Record<string, TableColumnConfig>,
+  fallbackLabels: string[] = [],
 ) => {
-  const comparisonKey = `${label} ${parentColKey}`;
-  const comparisonColConfig = columnConfig[comparisonKey] || {};
-  return comparisonColConfig;
+  const comparisonKeys = [label, ...fallbackLabels].map(
+    currentLabel => `${currentLabel} ${parentColKey}`,
+  );
+  const matchedConfigKey = comparisonKeys.find(key => columnConfig[key]);
+  if (matchedConfigKey) {
+    return columnConfig[matchedConfigKey];
+  }
+
+  if (label === MAIN_COMPARISON_PREFIX) {
+    const fallbackMainConfig = Object.entries(columnConfig).find(
+      ([key]) =>
+        key.endsWith(` ${parentColKey}`) &&
+        !key.startsWith('# ') &&
+        !key.startsWith('△ ') &&
+        !key.startsWith('% '),
+    );
+    if (fallbackMainConfig) {
+      return fallbackMainConfig[1];
+    }
+  }
+
+  return {};
 };
 
 const getComparisonColFormatter = (
@@ -323,11 +343,13 @@ const getComparisonColFormatter = (
   columnConfig: Record<string, TableColumnConfig>,
   savedFormat: string | undefined,
   savedCurrency: Currency | undefined,
+  fallbackLabels: string[] = [],
 ) => {
   const currentColConfig = getComparisonColConfig(
     label,
     parentCol.key,
     columnConfig,
+    fallbackLabels,
   );
   const hasCurrency = currentColConfig.currencyFormat?.symbol;
   const currentColNumberFormat =
@@ -385,6 +407,7 @@ const processComparisonColumns = (
               columnConfig,
               savedFormat,
               savedCurrency,
+              [t('Main')],
             ),
           },
           {
