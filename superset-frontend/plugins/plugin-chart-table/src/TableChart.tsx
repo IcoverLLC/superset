@@ -105,6 +105,22 @@ const ACTION_KEYS = {
   space: ' ',
 };
 
+const getComparisonKeyPortion = (columnKey: string) => {
+  if (columnKey.startsWith('Main ')) {
+    return columnKey.substring('Main'.length);
+  }
+  if (columnKey.startsWith('# ')) {
+    return columnKey.substring('#'.length);
+  }
+  if (columnKey.startsWith('△ ')) {
+    return columnKey.substring('△'.length);
+  }
+  if (columnKey.startsWith('% ')) {
+    return columnKey.substring('%'.length);
+  }
+  return columnKey;
+};
+
 /**
  * Return sortType based on data type
  */
@@ -504,7 +520,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
     return columnsMeta.filter(({ label, key }) => {
       // Extract the key portion after the space, assuming the format is always "label key"
-      const keyPortion = key.substring(label.length);
+      const keyPortion = getComparisonKeyPortion(key);
       const isKeyHidded = hideComparisonKeys.includes(keyPortion);
       const isLableMain = label === main;
 
@@ -591,7 +607,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         // Check if element's label is one of the comparison labels
         if (comparisonLabels.includes(element.label)) {
           // Extract the key portion after the space, assuming the format is always "label key"
-          const keyPortion = element.key.substring(element.label.length);
+          const keyPortion = getComparisonKeyPortion(element.key);
 
           // If the key portion is not in the map, initialize it with the current index
           if (!resultMap[keyPortion]) {
@@ -806,12 +822,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       const label = config.customColumnName || originalLabel;
       let displayLabel = label;
 
-      const isComparisonColumn = ['#', '△', '%', t('Main')].includes(
-        column.label,
-      );
+      const isMainComparisonColumn = column.key.startsWith('Main ');
+      const isComparisonColumn =
+        isMainComparisonColumn || ['#', '△', '%'].includes(column.label);
 
       if (isComparisonColumn) {
-        if (column.label === t('Main')) {
+        if (isMainComparisonColumn) {
           displayLabel = config.customColumnName || column.originalLabel || '';
         } else if (config.customColumnName) {
           displayLabel =
@@ -867,7 +883,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       if (!isMetric && !isPercentMetric) {
         className += ' right-border-only';
       } else if (comparisonLabels.includes(label)) {
-        const groupinHeader = key.substring(label.length);
+        const groupinHeader = getComparisonKeyPortion(key);
         const columnsUnderHeader = groupHeaderColumns[groupinHeader] || [];
         if (i === columnsUnderHeader[columnsUnderHeader.length - 1]) {
           className += ' right-border-only';
@@ -890,7 +906,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
           let backgroundColor;
           let arrow = '';
-          const originKey = column.key.substring(column.label.length).trim();
+          const originKey = getComparisonKeyPortion(column.key).trim();
           if (!hasColumnColorFormatters && hasBasicColorFormatters) {
             backgroundColor =
               basicColorFormatters[row.index][originKey]?.backgroundColor;
