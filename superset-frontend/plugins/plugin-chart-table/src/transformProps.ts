@@ -400,7 +400,6 @@ const processComparisonColumns = (
               MAIN_COMPARISON_PREFIX,
               col.key,
               columnConfig,
-              [t('Main')],
             ),
             formatter: getComparisonColFormatter(
               MAIN_COMPARISON_PREFIX,
