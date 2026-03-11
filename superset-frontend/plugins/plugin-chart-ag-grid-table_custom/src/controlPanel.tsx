@@ -132,15 +132,25 @@ const hideByDefaultControl: ColumnConfigFormItem = {
   },
 };
 
+const pinByDefaultEnabledControl: ColumnConfigFormItem = {
+  name: 'pinByDefaultEnabled',
+  config: {
+    controlType: 'Checkbox',
+    label: t('Apply pin by default'),
+    description: t('Enable pinning for this column when the table first renders'),
+    defaultValue: false,
+    debounceDelay: 200,
+  },
+};
+
 const pinnedByDefaultControl: ColumnConfigFormItem = {
   name: 'pinnedByDefault',
   config: {
     controlType: 'Select',
     label: t('Pin by default'),
-    description: t('Pin the column when the table first renders'),
-    defaultValue: null,
+    description: t('Pin side used when "Apply pin by default" is enabled'),
+    defaultValue: 'left',
     options: [
-      { value: null, label: t('None') },
       { value: 'left', label: t('Left') },
       { value: 'right', label: t('Right') },
     ],
@@ -176,7 +186,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.String
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
+    [hideByDefaultControl, pinByDefaultEnabledControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Temporal]: [
@@ -184,7 +194,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.Temporal
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
+    [hideByDefaultControl, pinByDefaultEnabledControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Boolean]: [
@@ -192,7 +202,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.Boolean
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
+    [hideByDefaultControl, pinByDefaultEnabledControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Numeric]: (
@@ -206,7 +216,7 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
           children: [
             ...item.children,
             [headerBgColorControl],
-            [hideByDefaultControl, pinnedByDefaultControl],
+            [hideByDefaultControl, pinByDefaultEnabledControl, pinnedByDefaultControl],
             [hideSummaryControl],
           ],
         }
