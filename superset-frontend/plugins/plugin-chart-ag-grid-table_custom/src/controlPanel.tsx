@@ -138,9 +138,9 @@ const pinnedByDefaultControl: ColumnConfigFormItem = {
     controlType: 'Select',
     label: t('Pin by default'),
     description: t('Pin the column when the table first renders'),
-    defaultValue: null,
+    defaultValue: undefined,
     options: [
-      { value: null, label: t('None') },
+      { value: null as unknown as string, label: t('None') },
       { value: 'left', label: t('Left') },
       { value: 'right', label: t('Right') },
     ],
