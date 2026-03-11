@@ -140,9 +140,10 @@ export default styled.div`
     }
 
     .dt-truncate-cell:hover {
-      overflow: visible;
+      text-overflow: clip;
       white-space: normal;
-      height: auto;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     /* Pagination styling */
