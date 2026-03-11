@@ -323,11 +323,10 @@ export const useColDefs = ({
         ...(originalLabel && {
           timeComparisonKey: originalLabel,
         }),
-        // Fixed row height is significantly more performant for large tables,
-        // because AG Grid can virtualize rows without recalculating each row's
-        // dynamic height while scrolling.
-        wrapText: false,
-        autoHeight: false,
+        // Keep auto-height enabled so hovered truncated cells can expand to multiple lines
+        // and show full text instead of staying clipped to a fixed row height.
+        wrapText: true,
+        autoHeight: true,
       };
 
       if (headerStyle) {
