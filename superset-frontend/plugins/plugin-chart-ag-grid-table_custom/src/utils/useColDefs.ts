@@ -323,8 +323,10 @@ export const useColDefs = ({
         ...(originalLabel && {
           timeComparisonKey: originalLabel,
         }),
-        wrapText: !config?.truncateLongCells,
-        autoHeight: !config?.truncateLongCells,
+        // Keep auto-height enabled so hovered truncated cells can expand to multiple lines
+        // and show full text instead of staying clipped to a fixed row height.
+        wrapText: true,
+        autoHeight: true,
       };
 
       if (headerStyle) {
