@@ -121,6 +121,8 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
     })
     .flat();
 
+const NO_PIN_VALUE = '__none__';
+
 const hideByDefaultControl: ColumnConfigFormItem = {
   name: 'hideByDefault',
   config: {
@@ -148,9 +150,10 @@ const pinnedByDefaultControl: ColumnConfigFormItem = {
   config: {
     controlType: 'Select',
     label: t('Pin by default'),
-    description: t('Pin side used when "Apply pin by default" is enabled'),
-    defaultValue: 'left',
+    description: t('Pin the column when the table first renders'),
+    defaultValue: undefined,
     options: [
+      { value: undefined, label: t('None') },
       { value: 'left', label: t('Left') },
       { value: 'right', label: t('Right') },
     ],
