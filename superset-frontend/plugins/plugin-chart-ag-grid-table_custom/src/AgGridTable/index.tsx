@@ -331,8 +331,28 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     };
 
+    const handleColumnVisible = useCallback(
+      (event: ColumnVisibleEvent) => {
+        if (event.visible && event.column) {
+          const colDef = event.column.getColDef();
+          const minWidth =
+            colDef.minWidth ??
+            (typeof defaultColDef.minWidth === 'number'
+              ? defaultColDef.minWidth
+              : 100);
+
+          event.api.applyColumnState({
+            state: [{ colId: event.column.getColId(), width: minWidth }],
+          });
+        }
+
+        persistColumnState(event.api);
+      },
+      [defaultColDef.minWidth, persistColumnState],
+    );
+
     const handleColumnStateChange = useCallback(
-      (event: ColumnVisibleEvent | ColumnPinnedEvent | ColumnMovedEvent) => {
+      (event: ColumnPinnedEvent | ColumnMovedEvent) => {
         persistColumnState(event.api);
       },
       [persistColumnState],
@@ -415,7 +435,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           rowSelection="multiple"
           animateRows
           onCellClicked={handleCrossFilter}
-          onColumnVisible={handleColumnStateChange}
+          onColumnVisible={handleColumnVisible}
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
           onColumnResized={handleColumnResized}
