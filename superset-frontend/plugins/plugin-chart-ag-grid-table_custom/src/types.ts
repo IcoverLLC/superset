@@ -60,8 +60,6 @@ export type TableColumnConfig = {
   visible?: boolean;
   customColumnName?: string;
   displayTypeIcon?: boolean;
-  hideByDefault?: boolean;
-  pinnedByDefault?: 'left' | 'right' | null;
   showCopyButton?: boolean;
   hideSummary?: boolean;
   headerBgColor?: string;

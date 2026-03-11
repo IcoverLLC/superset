@@ -269,12 +269,6 @@ export const useColDefs = ({
         cellDataType: getCellDataType(col),
         defaultAggFunc: getAggFunc(col),
         initialAggFunc: getAggFunc(col),
-        ...(config?.hideByDefault && {
-          hide: true,
-        }),
-        ...(config?.pinnedByDefault && {
-          pinned: config.pinnedByDefault,
-        }),
         ...(!(isMetric || isPercentMetric) && {
           allowedAggFuncs: [
             'sum',

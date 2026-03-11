@@ -121,33 +121,6 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
     })
     .flat();
 
-const hideByDefaultControl: ColumnConfigFormItem = {
-  name: 'hideByDefault',
-  config: {
-    controlType: 'Checkbox',
-    label: t('Hide by default'),
-    description: t('Hide the column when the table first renders'),
-    defaultValue: false,
-    debounceDelay: 200,
-  },
-};
-
-const pinnedByDefaultControl: ColumnConfigFormItem = {
-  name: 'pinnedByDefault',
-  config: {
-    controlType: 'Select',
-    label: t('Pin by default'),
-    description: t('Pin the column when the table first renders'),
-    defaultValue: null,
-    options: [
-      { value: null, label: t('None') },
-      { value: 'left', label: t('Left') },
-      { value: 'right', label: t('Right') },
-    ],
-    debounceDelay: 200,
-  },
-};
-
 const hideSummaryControl: ColumnConfigFormItem = {
   name: 'hideSummary',
   config: {
@@ -176,7 +149,6 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.String
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Temporal]: [
@@ -184,7 +156,6 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.Temporal
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Boolean]: [
@@ -192,7 +163,6 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
       GenericDataType.Boolean
     ] as ColumnConfigFormItem[][]),
     [headerBgColorControl],
-    [hideByDefaultControl, pinnedByDefaultControl],
     [hideSummaryControl],
   ],
   [GenericDataType.Numeric]: (
@@ -206,7 +176,6 @@ const columnConfigFormLayout: ColumnConfigFormLayout = {
           children: [
             ...item.children,
             [headerBgColorControl],
-            [hideByDefaultControl, pinnedByDefaultControl],
             [hideSummaryControl],
           ],
         }
