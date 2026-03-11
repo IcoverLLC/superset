@@ -304,9 +304,10 @@ export const StyledChartContainer = styled.div<{
       white-space: nowrap;
     }
     .dt-truncate-cell:hover {
-      overflow: visible;
+      text-overflow: clip;
       white-space: normal;
-      height: auto;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .ag-container {
