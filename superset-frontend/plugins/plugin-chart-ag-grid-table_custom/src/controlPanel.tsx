@@ -121,6 +121,8 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
     })
     .flat();
 
+const NO_PIN_VALUE = '__none__';
+
 const hideByDefaultControl: ColumnConfigFormItem = {
   name: 'hideByDefault',
   config: {

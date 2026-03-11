@@ -272,7 +272,10 @@ export const useColDefs = ({
         ...(config?.hideByDefault && {
           hide: true,
         }),
-        pinned: config?.pinnedByDefault ?? null,
+        pinned:
+          config?.pinnedByDefault === '__none__' || config?.pinnedByDefault == null
+            ? null
+            : config.pinnedByDefault,
         ...(!(isMetric || isPercentMetric) && {
           allowedAggFuncs: [
             'sum',

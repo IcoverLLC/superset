@@ -61,7 +61,7 @@ export type TableColumnConfig = {
   customColumnName?: string;
   displayTypeIcon?: boolean;
   hideByDefault?: boolean;
-  pinnedByDefault?: 'left' | 'right' | null;
+  pinnedByDefault?: 'left' | 'right' | null | '__none__';
   showCopyButton?: boolean;
   hideSummary?: boolean;
   headerBgColor?: string;
