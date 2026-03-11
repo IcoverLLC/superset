@@ -134,10 +134,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const hasStoredColumnState = useRef(false);
 
     const searchId = `search-${id}`;
-    const storageKey = useMemo(
-      () => `aggrid_cols_state_custom:${id}`,
-      [id],
-    );
+    const storageKey = useMemo(() => `aggrid_cols_state_custom:${id}`, [id]);
     const gridInitialState: GridState = {
       ...(serverPagination && {
         sort: {
@@ -177,6 +174,10 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [quickFilterText, setQuickFilterText] = useState<string>();
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
+    );
+    const rowBuffer = useMemo(
+      () => (pagination ? Math.min(Math.max(pageSize, 50), 200) : 80),
+      [pagination, pageSize],
     );
 
     const debouncedSearch = useMemo(
@@ -367,15 +368,12 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [persistColumnState],
     );
 
-    const suppressBrowserContextMenu = useCallback(
-      (event: ReactMouseEvent) => {
-        if (event.button === 2) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      },
-      [],
-    );
+    const suppressBrowserContextMenu = useCallback((event: ReactMouseEvent) => {
+      if (event.button === 2) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, []);
 
     return (
       <div
@@ -433,7 +431,10 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           components={gridComponents}
           onColumnGroupOpened={params => params.api.sizeColumnsToFit()}
           rowSelection="multiple"
-          animateRows
+          animateRows={false}
+          rowBuffer={rowBuffer}
+          suppressAnimationFrame
+          debounceVerticalScrollbar
           onCellClicked={handleCrossFilter}
           onColumnVisible={handleColumnVisible}
           onColumnPinned={handleColumnStateChange}
