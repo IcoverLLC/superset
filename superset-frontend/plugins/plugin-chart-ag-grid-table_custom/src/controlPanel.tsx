@@ -142,7 +142,7 @@ const pinnedByDefaultControl: ColumnConfigFormItem = {
     description: t('Pin the column when the table first renders'),
     defaultValue: undefined,
     options: [
-      { value: NO_PIN_VALUE, label: t('None') },
+      { value: undefined, label: t('None') },
       { value: 'left', label: t('Left') },
       { value: 'right', label: t('Right') },
     ],
