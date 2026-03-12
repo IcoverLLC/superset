@@ -208,6 +208,31 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         mouseEvent.preventDefault();
         mouseEvent.stopPropagation();
       }
+
+      const copyCellValue = (value: unknown) => {
+        const textToCopy = value == null ? '' : String(value);
+
+        if (navigator?.clipboard?.writeText) {
+          navigator.clipboard.writeText(textToCopy).catch(() => {
+            // ignore clipboard errors so context menu continues to work
+          });
+          return;
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+        } catch {
+          // ignore clipboard errors so context menu continues to work
+        }
+        document.body.removeChild(textarea);
+      };
+
       if (!onContextMenu || !event.column) {
         return;
       }
@@ -218,6 +243,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         colDef.context?.isMetric || colDef.context?.isPercentMetric;
       const rowData = (event.data || {}) as DataRecord;
       const cellValue = event.value ?? rowData?.[colId];
+      copyCellValue(cellValue);
       const drillToDetailFilters: BinaryQueryObjectFilterClause[] = columns
         .filter(col => !col.isMetric && !col.isPercentMetric)
         .map(col => {
