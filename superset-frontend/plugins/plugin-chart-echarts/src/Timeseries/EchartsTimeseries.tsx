@@ -74,15 +74,7 @@ export default function EchartsTimeseries({
     }
 
     const updateHeight = () => {
-      const styles = window.getComputedStyle(element);
-      const marginTop = Number.parseFloat(styles.marginTop) || 0;
-      const marginBottom = Number.parseFloat(styles.marginBottom) || 0;
-      const totalHeight =
-        Math.ceil(element.getBoundingClientRect().height) ||
-        element.offsetHeight ||
-        0;
-
-      setExtraControlHeight(totalHeight + marginTop + marginBottom);
+      setExtraControlHeight(element.offsetHeight || 0);
     };
 
     updateHeight();
