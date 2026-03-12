@@ -32,7 +32,6 @@ import ParallelCoordinatesChartPlugin from '@superset-ui/legacy-plugin-chart-par
 import PartitionChartPlugin from '@superset-ui/legacy-plugin-chart-partition';
 import RoseChartPlugin from '@superset-ui/legacy-plugin-chart-rose';
 import TableChartPlugin from '@superset-ui/plugin-chart-table';
-import TableChartPluginCustom from '@superset-ui/plugin-chart-table-custom'; // #icover
 import { WordCloudChartPlugin } from '@superset-ui/plugin-chart-word-cloud';
 import WorldMapChartPlugin from '@superset-ui/legacy-plugin-chart-world-map';
 import {
@@ -101,17 +100,15 @@ export default class MainPreset extends Preset {
       ? [
           new AgGridTableChartPlugin().configure({
             key: VizType.TableAgGrid,
-          }),
+          })
         ]
       : [];
 
-    const agGridTablePluginCustom = isFeatureEnabled(
-      FeatureFlag.AgGridTableEnabled,
-    ) // #icover
+    const agGridTablePluginCustom = isFeatureEnabled(FeatureFlag.AgGridTableEnabled) // #icover
       ? [
           new AgGridTableChartPluginCustom().configure({
             key: VizType.TableAgGridCustom,
-          }),
+          })
         ]
       : [];
 
@@ -151,7 +148,6 @@ export default class MainPreset extends Preset {
         new PivotTableChartPluginV2().configure({ key: VizType.PivotTable }),
         new RoseChartPlugin().configure({ key: VizType.Rose }),
         new TableChartPlugin().configure({ key: VizType.Table }),
-        new TableChartPluginCustom().configure({ key: VizType.TableCustom }), // #icover
         new TimePivotChartPlugin().configure({ key: VizType.TimePivot }),
         new TimeTableChartPlugin().configure({ key: VizType.TimeTable }),
         new WordCloudChartPlugin().configure({ key: VizType.WordCloud }),
