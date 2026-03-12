@@ -48,7 +48,7 @@ import type {
   ColumnPinnedEvent,
   CellClickedEvent as AgCellClickedEvent,
 } from 'ag-grid-community';
-import type { FunctionComponent, MouseEvent as ReactMouseEvent } from 'react';
+import type { FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord, t } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
 import { debounce, isEqual } from 'lodash';
@@ -367,19 +367,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [persistColumnState],
     );
 
-    const suppressBrowserContextMenu = useCallback((event: ReactMouseEvent) => {
-      if (event.button === 2) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    }, []);
-
     return (
-      <div
-        style={containerStyles}
-        ref={containerRef}
-        onContextMenuCapture={suppressBrowserContextMenu}
-      >
+      <div style={containerStyles} ref={containerRef}>
         <div className="dropdown-controls-container">
           {renderTimeComparisonDropdown && (
             <div className="time-comparison-dropdown">
