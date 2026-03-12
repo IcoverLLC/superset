@@ -39,7 +39,6 @@ import { getAggFunc } from './getAggFunc';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
-import { CopyableCell } from '../AgGridTable/components/CopyableCell';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
 
@@ -66,17 +65,6 @@ type UseColDefsProps = {
 };
 
 type ValueRange = [number, number];
-
-const getCopyValue = (valueFormatted: unknown, value: unknown) => {
-  const displayValue = valueFormatted ?? value;
-  if (displayValue === null || displayValue === undefined) {
-    return '';
-  }
-  if (typeof displayValue === 'number' && Number.isNaN(displayValue)) {
-    return '';
-  }
-  return String(displayValue);
-};
 
 function getValueRange(
   key: string,
@@ -223,19 +211,6 @@ export const useColDefs = ({
 
       const filter = getFilterType(col);
 
-      const baseCellRenderer = (p: CellRendererProps) => {
-        const renderedContent = isTextColumn
-          ? TextCellRenderer(p)
-          : NumericCellRenderer(p);
-        if (!config?.showCopyButton) {
-          return renderedContent;
-        }
-        return CopyableCell({
-          displayNode: renderedContent,
-          textToCopy: getCopyValue(p.valueFormatted, p.value),
-        });
-      };
-
       const colDef: ColDef & { isMain: boolean } = {
         field: colId,
         headerName: getHeaderLabel(col),
@@ -273,7 +248,9 @@ export const useColDefs = ({
           hide: true,
         }),
         pinned:
-          config?.pinnedByDefault === 'none' ? null : config?.pinnedByDefault ?? null,
+          config?.pinnedByDefault === 'none'
+            ? null
+            : (config?.pinnedByDefault ?? null),
         ...(!(isMetric || isPercentMetric) && {
           allowedAggFuncs: [
             'sum',
@@ -289,7 +266,7 @@ export const useColDefs = ({
           if (p.node?.rowPinned === 'bottom' && config?.hideSummary) {
             return '';
           }
-          return baseCellRenderer(p);
+          return isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p);
         },
         cellRendererParams: {
           allowRenderHtml: true,

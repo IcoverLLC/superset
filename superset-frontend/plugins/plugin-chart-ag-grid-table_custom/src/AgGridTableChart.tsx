@@ -55,37 +55,6 @@ const getGridHeight = (height: number, includeSearch: boolean | undefined) => {
   return calculatedGridHeight - 80;
 };
 
-const getSerializableValue = (value: unknown): string => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  if (typeof value === 'number' && Number.isNaN(value)) {
-    return '';
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    return String(value);
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false';
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  try {
-    return JSON.stringify(value);
-  } catch (error) {
-    return String(value);
-  }
-};
-
-const getCopyValue = (valueFormatted: unknown, value: unknown): string => {
-  const candidate =
-    valueFormatted !== undefined && valueFormatted !== null
-      ? valueFormatted
-      : value;
-  return getSerializableValue(candidate);
-};
-
 export default function TableChart<D extends DataRecord = DataRecord>(
   props: AgGridTableChartTransformedProps<D> & {},
 ) {
@@ -297,7 +266,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         drillToDetail: drillToDetailFilters,
         crossFilter,
         drillBy,
-        copyValue: getCopyValue(event.value, cellValue),
       } as unknown as ContextMenuFilters;
       requestAnimationFrame(() => onContextMenu?.(clientX, clientY, payload));
     },
