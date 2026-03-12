@@ -28,8 +28,6 @@ const { RadioButtonControl } = sharedControlComponents;
 
 const ExtraControlsWrapper = styled.div`
   text-align: center;
-  display: flow-root;
-  padding-top: 2px;
 `;
 
 export function useExtraControl<
