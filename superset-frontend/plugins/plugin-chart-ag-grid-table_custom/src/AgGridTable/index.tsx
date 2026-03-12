@@ -175,14 +175,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
     );
-    const clientRowBuffer = useMemo(() => {
-      const visibleRows = Math.max(20, Math.ceil((gridHeight || 600) / 30));
-      return Math.min(rowData.length, visibleRows * 4);
-    }, [gridHeight, rowData.length]);
-
     const rowBuffer = serverPagination
       ? Math.max(pageSize, PAGE_SIZE_OPTIONS[PAGE_SIZE_OPTIONS.length - 1])
-      : clientRowBuffer;
+      : undefined;
 
     const debouncedSearch = useMemo(
       () =>
