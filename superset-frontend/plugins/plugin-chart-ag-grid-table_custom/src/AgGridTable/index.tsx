@@ -175,10 +175,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
     );
-    const rowBuffer = useMemo(
-      () => (pagination ? Math.min(Math.max(pageSize, 50), 200) : 80),
-      [pagination, pageSize],
-    );
+    const rowBuffer = serverPagination
+      ? Math.max(pageSize, PAGE_SIZE_OPTIONS[PAGE_SIZE_OPTIONS.length - 1])
+      : undefined;
 
     const debouncedSearch = useMemo(
       () =>
@@ -431,10 +430,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           components={gridComponents}
           onColumnGroupOpened={params => params.api.sizeColumnsToFit()}
           rowSelection="multiple"
-          animateRows={false}
+          animateRows
           rowBuffer={rowBuffer}
-          suppressAnimationFrame
-          debounceVerticalScrollbar
           onCellClicked={handleCrossFilter}
           onColumnVisible={handleColumnVisible}
           onColumnPinned={handleColumnStateChange}
@@ -449,6 +446,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           pagination={pagination}
           paginationPageSize={pageSize}
           paginationPageSizeSelector={PAGE_SIZE_OPTIONS}
+          suppressRowVirtualisation={!!serverPagination}
           suppressDragLeaveHidesColumns
           pinnedBottomRowData={showTotals ? [cleanedTotals] : undefined}
           localeText={{
