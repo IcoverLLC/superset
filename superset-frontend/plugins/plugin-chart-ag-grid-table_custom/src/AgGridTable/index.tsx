@@ -46,6 +46,7 @@ import type {
   ColumnMovedEvent,
   ColumnVisibleEvent,
   ColumnPinnedEvent,
+  BodyScrollEndEvent,
   CellClickedEvent as AgCellClickedEvent,
 } from 'ag-grid-community';
 import type { FunctionComponent, MouseEvent as ReactMouseEvent } from 'react';
@@ -128,6 +129,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     onCellContextMenu,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
+    const gridApiRef = useRef<GridApi | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const rowData = useMemo(() => data, [data]);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,14 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         },
       }),
     };
+
+    const handleGridReady = useCallback(
+      (params: GridReadyEvent) => {
+        gridApiRef.current = params.api;
+        onGridReady?.(params);
+      },
+      [onGridReady],
+    );
 
     const defaultColDef = useMemo<ColDef>(
       () => ({
@@ -175,9 +185,44 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
     );
+    const [clientRowBuffer, setClientRowBuffer] = useState<number | undefined>();
+    const shouldUseIncrementalClientBuffer = !serverPagination && !pagination;
+
+    useEffect(() => {
+      if (!shouldUseIncrementalClientBuffer) {
+        setClientRowBuffer(undefined);
+        return;
+      }
+
+      setClientRowBuffer(undefined);
+    }, [id, rowData.length, shouldUseIncrementalClientBuffer]);
+
     const rowBuffer = serverPagination
       ? Math.max(pageSize, PAGE_SIZE_OPTIONS[PAGE_SIZE_OPTIONS.length - 1])
-      : undefined;
+      : shouldUseIncrementalClientBuffer
+        ? clientRowBuffer
+        : undefined;
+
+    useEffect(() => {
+      if (!shouldUseIncrementalClientBuffer || rowBuffer == null) {
+        return;
+      }
+
+      const api = gridApiRef.current as unknown as {
+        setGridOption?: (key: string, value: number) => void;
+        updateGridOptions?: (opts: Record<string, number>) => void;
+      } | null;
+
+      if (!api) {
+        return;
+      }
+
+      if (api.setGridOption) {
+        api.setGridOption('rowBuffer', rowBuffer);
+      } else if (api.updateGridOptions) {
+        api.updateGridOptions({ rowBuffer });
+      }
+    }, [rowBuffer, shouldUseIncrementalClientBuffer]);
 
     const debouncedSearch = useMemo(
       () =>
@@ -224,6 +269,41 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         }
       },
       [serverPagination, debouncedSearch, searchId],
+    );
+
+    const handleBodyScrollEnd = useCallback(
+      (event: BodyScrollEndEvent) => {
+        if (
+          !shouldUseIncrementalClientBuffer ||
+          serverPagination ||
+          rowData.length === 0
+        ) {
+          return;
+        }
+
+        const lastDisplayedRowIndex = event.api.getLastDisplayedRowIndex();
+        if (lastDisplayedRowIndex < 0) {
+          return;
+        }
+
+        const visibleRows = Math.max(20, Math.ceil((gridHeight || 600) / 30));
+        const nextBuffer = Math.min(
+          rowData.length,
+          Math.max(visibleRows, lastDisplayedRowIndex + visibleRows),
+        );
+
+        setClientRowBuffer(prev => {
+          const updatedBuffer =
+            prev === undefined ? nextBuffer : Math.max(prev, nextBuffer);
+          return updatedBuffer === prev ? prev : updatedBuffer;
+        });
+      },
+      [
+        gridHeight,
+        rowData.length,
+        serverPagination,
+        shouldUseIncrementalClientBuffer,
+      ],
     );
 
     const handleColSort = (colId: string, sortDir: string) => {
@@ -421,7 +501,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
         <ThemedAgGridReact
           ref={gridRef}
-          onGridReady={onGridReady}
+          onGridReady={handleGridReady}
           className="ag-container"
           rowData={rowData}
           rowHeight={30}
@@ -433,6 +513,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           animateRows
           rowBuffer={rowBuffer}
           onCellClicked={handleCrossFilter}
+          onBodyScrollEnd={handleBodyScrollEnd}
           onColumnVisible={handleColumnVisible}
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
