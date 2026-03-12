@@ -46,7 +46,6 @@ import type {
   ColumnMovedEvent,
   ColumnVisibleEvent,
   ColumnPinnedEvent,
-  BodyScrollEndEvent,
   CellClickedEvent as AgCellClickedEvent,
 } from 'ag-grid-community';
 import type { FunctionComponent, MouseEvent as ReactMouseEvent } from 'react';
@@ -176,15 +175,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     const [searchValue, setSearchValue] = useState(
       serverPaginationData?.searchText || '',
     );
-    const [clientRowBuffer, setClientRowBuffer] = useState<number | undefined>();
-
-    useEffect(() => {
-      setClientRowBuffer(undefined);
-    }, [id, rowData.length]);
-
     const rowBuffer = serverPagination
       ? Math.max(pageSize, PAGE_SIZE_OPTIONS[PAGE_SIZE_OPTIONS.length - 1])
-      : clientRowBuffer;
+      : undefined;
 
     const debouncedSearch = useMemo(
       () =>
@@ -231,30 +224,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         }
       },
       [serverPagination, debouncedSearch, searchId],
-    );
-
-    const handleBodyScrollEnd = useCallback(
-      (event: BodyScrollEndEvent) => {
-        if (serverPagination || rowData.length === 0) {
-          return;
-        }
-
-        const lastDisplayedRowIndex = event.api.getLastDisplayedRowIndex();
-        if (lastDisplayedRowIndex < 0) {
-          return;
-        }
-
-        const visibleRows = Math.max(20, Math.ceil((gridHeight || 600) / 30));
-        const nextBuffer = Math.min(
-          rowData.length,
-          Math.max(visibleRows, lastDisplayedRowIndex + visibleRows),
-        );
-
-        setClientRowBuffer(prev =>
-          prev === undefined ? nextBuffer : Math.max(prev, nextBuffer),
-        );
-      },
-      [gridHeight, rowData.length, serverPagination],
     );
 
     const handleColSort = (colId: string, sortDir: string) => {
@@ -464,7 +433,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           animateRows
           rowBuffer={rowBuffer}
           onCellClicked={handleCrossFilter}
-          onBodyScrollEnd={handleBodyScrollEnd}
           onColumnVisible={handleColumnVisible}
           onColumnPinned={handleColumnStateChange}
           onColumnMoved={handleColumnStateChange}
