@@ -177,7 +177,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
     const rowBuffer = serverPagination
       ? Math.max(pageSize, PAGE_SIZE_OPTIONS[PAGE_SIZE_OPTIONS.length - 1])
-      : undefined;
+      : rowData.length;
 
     const debouncedSearch = useMemo(
       () =>
@@ -446,7 +446,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           pagination={pagination}
           paginationPageSize={pageSize}
           paginationPageSizeSelector={PAGE_SIZE_OPTIONS}
-          suppressRowVirtualisation={!!serverPagination}
+          suppressRowVirtualisation={!serverPagination}
+          suppressAnimationFrame={!serverPagination}
           suppressDragLeaveHidesColumns
           pinnedBottomRowData={showTotals ? [cleanedTotals] : undefined}
           localeText={{
