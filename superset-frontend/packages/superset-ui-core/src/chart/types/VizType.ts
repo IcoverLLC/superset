@@ -55,6 +55,7 @@ export enum VizType {
   Step = 'echarts_timeseries_step',
   Sunburst = 'sunburst_v2',
   Table = 'table',
+  TableCustom = 'table-custom', // #icover
   TableAgGrid = 'ag-grid-table',
   TableAgGridCustom = 'ag-grid-table-custom', // #icover
   TimePivot = 'time_pivot',
