@@ -44,7 +44,7 @@ const getCellStyle = (params: CellStyleParams) => {
     node,
   } = params;
   let backgroundColor;
-  if (hasColumnColorFormatters) {
+  if (hasColumnColorFormatters && node?.rowPinned !== 'bottom') {
     columnColorFormatters!
       .filter(formatter => {
         const colTitle = formatter?.column?.includes('Main')
