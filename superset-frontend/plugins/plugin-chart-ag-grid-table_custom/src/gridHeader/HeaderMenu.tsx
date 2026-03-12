@@ -70,6 +70,12 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         label: <b>{t('All %s hidden columns', invisibleColumns.length)}</b>,
         onClick: () => {
           api.setColumnsVisible(invisibleColumns, true);
+          api.applyColumnState({
+            state: invisibleColumns.map(column => ({
+              colId: column.getColId(),
+              width: column.getColDef().minWidth ?? 100,
+            })),
+          });
         },
       },
       ...invisibleColumns.map(c => ({
