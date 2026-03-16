@@ -368,7 +368,7 @@ export const StyledChartContainer = styled.div<{
     }
 
     .ag-row-pinned {
-      font-size: calc(${theme.fontSizeSM}px * 1.1);
+      font-size: calc(${theme.fontSizeSM}px * 1.2);
     }
 
     .ag-spanned-row {

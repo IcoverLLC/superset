@@ -72,9 +72,10 @@ const HeaderCellSort = styled.span`
   align-items: center;
   line-height: 1;
   color: ${({ theme }) => theme.colorPrimary};
+  font-size: ${({ theme }) => theme.fontSizeXS * 2}px;
   svg {
-    width: ${({ theme }) => theme.fontSizeXS}px;
-    height: ${({ theme }) => theme.fontSizeXS}px;
+    width: ${({ theme }) => theme.fontSizeXS * 2}px;
+    height: ${({ theme }) => theme.fontSizeXS * 2}px;
   }
 `;
 
@@ -84,14 +85,14 @@ const FilterIndicator = styled.span`
   color: ${({ theme }) => theme.colorPrimary};
   margin-right: ${({ theme }) => theme.sizeUnit / 2}px;
   svg {
-    width: ${({ theme }) => theme.fontSizeXS}px;
-    height: ${({ theme }) => theme.fontSizeXS}px;
+    width: ${({ theme }) => theme.fontSizeXS * 2}px;
+    height: ${({ theme }) => theme.fontSizeXS * 2}px;
   }
 `;
 
 const SortSeqLabel = styled.span`
   margin-left: ${({ theme }) => theme.sizeUnit / 2}px;
-  font-size: ${({ theme }) => theme.fontSizeXS}px;
+  font-size: ${({ theme }) => theme.fontSizeXS * 2}px;
   line-height: 1;
 `;
 
