@@ -243,7 +243,14 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         colDef.context?.isMetric || colDef.context?.isPercentMetric;
       const rowData = (event.data || {}) as DataRecord;
       const cellValue = event.value ?? rowData?.[colId];
-      copyCellValue(cellValue);
+      const columnMeta = columns.find(col => col.key === colId);
+      const formattedCellValue =
+        event.valueFormatted ??
+        (columnMeta
+          ? formatColumnValue(columnMeta, cellValue as DataRecordValue)[1]
+          : undefined) ??
+        cellValue;
+      copyCellValue(formattedCellValue);
       const drillToDetailFilters: BinaryQueryObjectFilterClause[] = columns
         .filter(col => !col.isMetric && !col.isPercentMetric)
         .map(col => {
