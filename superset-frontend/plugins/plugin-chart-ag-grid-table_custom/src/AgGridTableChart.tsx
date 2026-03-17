@@ -245,7 +245,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       const cellValue = event.value ?? rowData?.[colId];
       const columnMeta = columns.find(col => col.key === colId);
       const formattedCellValue =
-        event.valueFormatted ??
+        (event as { valueFormatted?: string }).valueFormatted ??
         (columnMeta
           ? formatColumnValue(columnMeta, cellValue as DataRecordValue)[1]
           : undefined) ??
