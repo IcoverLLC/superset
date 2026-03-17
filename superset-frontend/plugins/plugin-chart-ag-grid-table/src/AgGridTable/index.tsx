@@ -300,22 +300,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           )}
         </div>
 
-        {serverPagination && (
-          <Pagination
-            currentPage={serverPaginationData?.currentPage || 0}
-            pageSize={
-              hasServerPageLengthChanged
-                ? serverPageLength
-                : serverPaginationData?.pageSize || 10
-            }
-            totalRows={rowCount || 0}
-            pageSizeOptions={[10, 20, 50, 100, 200]}
-            onServerPaginationChange={onServerPaginationChange}
-            onServerPageSizeChange={onServerPageSizeChange}
-            sliceId={id}
-          />
-        )}
-
         <ThemedAgGridReact
           ref={gridRef}
           onGridReady={onGridReady}
@@ -420,6 +404,21 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             isActiveFilterValue,
           }}
         />
+        {serverPagination && (
+          <Pagination
+            currentPage={serverPaginationData?.currentPage || 0}
+            pageSize={
+              hasServerPageLengthChanged
+                ? serverPageLength
+                : serverPaginationData?.pageSize || 10
+            }
+            totalRows={rowCount || 0}
+            pageSizeOptions={[10, 20, 50, 100, 200]}
+            onServerPaginationChange={onServerPaginationChange}
+            onServerPageSizeChange={onServerPageSizeChange}
+            sliceId={id}
+          />
+        )}
       </div>
     );
   },
