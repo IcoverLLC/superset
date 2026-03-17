@@ -54,8 +54,10 @@ const Pagination: React.FC<PaginationProps> = ({
   sliceId,
 }) => {
   const totalPages = Math.ceil(totalRows / pageSize);
-  const startRow = currentPage * pageSize + 1;
-  const endRow = Math.min((currentPage + 1) * pageSize, totalRows);
+  const startRow = totalRows === 0 ? 0 : currentPage * pageSize + 1;
+  const endRow =
+    totalRows === 0 ? 0 : Math.min((currentPage + 1) * pageSize, totalRows);
+  const currentPageLabel = totalRows === 0 ? 0 : currentPage + 1;
 
   const handleNextPage = (disabled: boolean) => () => {
     if (disabled) return;
@@ -87,6 +89,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <span>{t('Page Size:')}</span>
       <SelectWrapper>
         <Select
+          size="small"
           value={`${pageSize}`}
           options={selectOptions}
           onChange={(value: string) => {
@@ -116,7 +119,7 @@ const Pagination: React.FC<PaginationProps> = ({
           <LeftOutlined />
         </PageButton>
         <PageCount>
-          {t('Page')} <span>{currentPage + 1}</span> {t('of')}{' '}
+          {t('Page')} <span>{currentPageLabel}</span> {t('of')}{' '}
           <span>{totalPages}</span>
         </PageCount>
         <PageButton
