@@ -165,13 +165,16 @@ export const PopoverContainer = styled.div`
 
 export const PaginationContainer = styled.div`
   ${({ theme }) => `
+    border: 1px solid ${theme.colorBorderSecondary};
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: ${theme.sizeUnit * 3}px;
+    justify-content: flex-end;
+    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
+    border-top: 1px solid ${theme.colorBorderSecondary};
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
+    transform: translateY(-${theme.sizeUnit}px);
+    background: ${theme.colorBgBase};
   `}
 `;
 
@@ -325,22 +328,12 @@ export const StyledChartContainer = styled.div<{
     .search-container {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: 0;
-    }
-
-    .top-controls-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: ${theme.sizeUnit * 4}px;
       margin-bottom: ${theme.sizeUnit * 4}px;
-      flex-wrap: wrap;
     }
 
     .dropdown-controls-container {
       display: flex;
       justify-content: flex-end;
-      margin-left: auto;
     }
 
     .time-comparison-dropdown {
