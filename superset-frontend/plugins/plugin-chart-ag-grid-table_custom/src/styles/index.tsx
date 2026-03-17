@@ -165,16 +165,15 @@ export const PopoverContainer = styled.div`
 
 export const PaginationContainer = styled.div`
   ${({ theme }) => `
+    border: 1px solid ${theme.colorBorderSecondary};
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: ${theme.sizeUnit * 2}px;
-    padding: ${theme.sizeUnit * 1.5}px ${theme.sizeUnit * 3}px;
+    justify-content: flex-end;
+    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
     border-top: 1px solid ${theme.colorBorderSecondary};
-    margin-top: -1px;
-    font-size: ${theme.fontSizeSM}px;
+    font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
+    transform: translateY(-${theme.sizeUnit}px);
     background: ${theme.colorBgBase};
   `}
 `;
@@ -182,22 +181,16 @@ export const PaginationContainer = styled.div`
 export const SelectWrapper = styled.div`
   ${({ theme }) => `
     position: relative;
-    margin-left: ${theme.sizeUnit}px;
+    margin-left: ${theme.sizeUnit * 2}px;
     display: inline-block;
-    min-width: ${theme.sizeUnit * 14}px;
+    min-width: ${theme.sizeUnit * 17}px;
     overflow: hidden;
-
-    .ant-select {
-      font-size: ${theme.fontSizeSM}px;
-    }
   `}
 `;
 
 export const PageInfo = styled.span`
   ${({ theme }) => `
-    margin: 0 ${theme.sizeUnit * 4}px 0 ${theme.sizeUnit * 3}px;
-    white-space: nowrap;
-    line-height: 1.4;
+    margin: 0 ${theme.sizeUnit * 6}px;
     span {
       font-weight: ${theme.fontWeightStrong};
     }
@@ -206,8 +199,6 @@ export const PageInfo = styled.span`
 
 export const PageCount = styled.span`
   ${({ theme }) => `
-    white-space: nowrap;
-    line-height: 1.4;
     span {
       font-weight: ${theme.fontWeightStrong};
     }
@@ -217,9 +208,7 @@ export const PageCount = styled.span`
 export const ButtonGroup = styled.div`
   ${({ theme }) => `
     display: flex;
-    align-items: center;
-    gap: ${theme.sizeUnit * 2}px;
-    margin-left: auto;
+    gap: ${theme.sizeUnit * 3}px;
   `}
 `;
 
@@ -229,12 +218,10 @@ export const PageButton = styled.div<{ disabled?: boolean }>`
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: ${theme.sizeUnit * 4}px;
-    min-height: ${theme.sizeUnit * 4}px;
 
     svg {
-      height: ${theme.sizeUnit * 2.5}px;
-      width: ${theme.sizeUnit * 2.5}px;
+      height: ${theme.sizeUnit * 3}px;
+      width: ${theme.sizeUnit * 3}px;
       fill: ${disabled ? theme.colorTextQuaternary : theme.colorTextSecondary};
     }
   `}
