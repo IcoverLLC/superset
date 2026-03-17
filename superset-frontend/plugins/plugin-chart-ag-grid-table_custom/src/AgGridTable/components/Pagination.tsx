@@ -84,7 +84,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <PaginationContainer>
-      <span>{t('Page Size:')}</span>
+      <span>{t('Page Size')}</span>
       <SelectWrapper>
         <Select
           value={`${pageSize}`}
