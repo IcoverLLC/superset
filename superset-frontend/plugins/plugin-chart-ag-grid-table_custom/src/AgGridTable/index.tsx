@@ -375,55 +375,37 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               {renderTimeComparisonDropdown()}
             </div>
           )}
-          <div className="top-controls-right">
-            {includeSearch && (
-              <div className="search-container">
-                {serverPagination && (
-                  <div className="search-by-text-container">
-                    <span className="search-by-text"> Search by :</span>
-                    <SearchSelectDropdown
-                      onChange={onSearchColChange}
-                      searchOptions={searchOptions}
-                      value={serverPaginationData?.searchColumn || ''}
-                    />
-                  </div>
-                )}
-                <div className="input-wrapper">
-                  <div className="input-container">
-                    <SearchOutlined />
-                    <input
-                      ref={inputRef}
-                      value={
-                        serverPagination ? searchValue : quickFilterText || ''
-                      }
-                      type="text"
-                      id="filter-text-box"
-                      placeholder="Search"
-                      onInput={onFilterTextBoxChanged}
-                      onFocus={handleSearchFocus}
-                      onBlur={handleSearchBlur}
-                    />
-                  </div>
+          {includeSearch && (
+            <div className="search-container">
+              {serverPagination && (
+                <div className="search-by-text-container">
+                  <span className="search-by-text"> Search by :</span>
+                  <SearchSelectDropdown
+                    onChange={onSearchColChange}
+                    searchOptions={searchOptions}
+                    value={serverPaginationData?.searchColumn || ''}
+                  />
+                </div>
+              )}
+              <div className="input-wrapper">
+                <div className="input-container">
+                  <SearchOutlined />
+                  <input
+                    ref={inputRef}
+                    value={
+                      serverPagination ? searchValue : quickFilterText || ''
+                    }
+                    type="text"
+                    id="filter-text-box"
+                    placeholder="Search"
+                    onInput={onFilterTextBoxChanged}
+                    onFocus={handleSearchFocus}
+                    onBlur={handleSearchBlur}
+                  />
                 </div>
               </div>
-            )}
-            {serverPagination && (
-              <Pagination
-                currentPage={serverPaginationData?.currentPage || 0}
-                pageSize={
-                  hasServerPageLengthChanged
-                    ? serverPageLength
-                    : serverPaginationData?.pageSize || 10
-                }
-                totalRows={rowCount || 0}
-                pageSizeOptions={[10, 20, 50, 100, 200]}
-                onServerPaginationChange={onServerPaginationChange}
-                onServerPageSizeChange={onServerPageSizeChange}
-                sliceId={id}
-                isHeader
-              />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <ThemedAgGridReact
@@ -537,6 +519,21 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             isActiveFilterValue,
           }}
         />
+        {serverPagination && (
+          <Pagination
+            currentPage={serverPaginationData?.currentPage || 0}
+            pageSize={
+              hasServerPageLengthChanged
+                ? serverPageLength
+                : serverPaginationData?.pageSize || 10
+            }
+            totalRows={rowCount || 0}
+            pageSizeOptions={[10, 20, 50, 100, 200]}
+            onServerPaginationChange={onServerPaginationChange}
+            onServerPageSizeChange={onServerPageSizeChange}
+            sliceId={id}
+          />
+        )}
       </div>
     );
   },
