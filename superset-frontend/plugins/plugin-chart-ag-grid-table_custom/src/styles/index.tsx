@@ -350,6 +350,11 @@ export const StyledChartContainer = styled.div<{
 
     .ag-header-cell {
       overflow: hidden;
+      border-right: 1px solid ${theme.colorBorderSecondary};
+    }
+
+    .ag-header-cell:last-child {
+      border-right: none;
     }
 
     .ag-header-cell:hover .customHeaderAction {
@@ -365,6 +370,14 @@ export const StyledChartContainer = styled.div<{
 
     .ag-row {
       font-size: ${theme.fontSizeSM}px;
+    }
+
+    .ag-cell {
+      border-right: 1px solid ${theme.colorBorderSecondary};
+    }
+
+    .ag-cell:last-child {
+      border-right: none;
     }
 
     .ag-row-pinned {
