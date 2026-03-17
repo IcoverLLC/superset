@@ -170,10 +170,9 @@ export const PaginationContainer = styled.div`
     align-items: center;
     justify-content: flex-end;
     padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
-    border-top: 1px solid ${theme.colorBorderSecondary};
+    margin-bottom: ${theme.sizeUnit * 2}px;
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
-    transform: translateY(-${theme.sizeUnit}px);
     background: ${theme.colorBgBase};
   `}
 `;
