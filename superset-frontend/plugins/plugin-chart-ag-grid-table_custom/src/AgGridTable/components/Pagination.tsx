@@ -42,6 +42,7 @@ interface PaginationProps {
   onServerPaginationChange: (pageNumber: number, pageSize: number) => void;
   onServerPageSizeChange: (pageSize: number) => void;
   sliceId: number;
+  isHeader?: boolean;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
@@ -52,6 +53,7 @@ const Pagination: React.FC<PaginationProps> = ({
   onServerPaginationChange = () => {},
   onServerPageSizeChange = () => {},
   sliceId,
+  isHeader = false,
 }) => {
   const totalPages = Math.ceil(totalRows / pageSize);
   const startRow = currentPage * pageSize + 1;
@@ -83,7 +85,7 @@ const Pagination: React.FC<PaginationProps> = ({
   }));
 
   return (
-    <PaginationContainer>
+    <PaginationContainer isHeader={isHeader}>
       <span>{t('Page Size:')}</span>
       <SelectWrapper>
         <Select
