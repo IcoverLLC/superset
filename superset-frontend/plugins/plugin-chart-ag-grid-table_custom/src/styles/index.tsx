@@ -163,18 +163,28 @@ export const PopoverContainer = styled.div`
     `}
 `;
 
-export const PaginationContainer = styled.div`
-  ${({ theme }) => `
+export const PaginationContainer = styled.div<{ isHeader?: boolean }>`
+  ${({ theme, isHeader }) => `
     border: 1px solid ${theme.colorBorderSecondary};
     display: flex;
     align-items: center;
     justify-content: flex-end;
     padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
-    border-top: 1px solid ${theme.colorBorderSecondary};
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
-    transform: translateY(-${theme.sizeUnit}px);
     background: ${theme.colorBgBase};
+    ${
+      isHeader
+        ? `
+      border-top: 1px solid ${theme.colorBorderSecondary};
+      border-radius: ${theme.borderRadius}px;
+      transform: none;
+    `
+        : `
+      border-top: 1px solid ${theme.colorBorderSecondary};
+      transform: translateY(-${theme.sizeUnit}px);
+    `
+    }
   `}
 `;
 
@@ -328,12 +338,24 @@ export const StyledChartContainer = styled.div<{
     .search-container {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: ${theme.sizeUnit * 4}px;
+      margin-bottom: 0;
     }
 
     .dropdown-controls-container {
       display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: ${theme.sizeUnit * 3}px;
+      margin-bottom: ${theme.sizeUnit * 3}px;
+      flex-wrap: wrap;
+    }
+
+    .top-controls-right {
+      display: flex;
+      align-items: center;
       justify-content: flex-end;
+      gap: ${theme.sizeUnit * 3}px;
+      flex-wrap: wrap;
     }
 
     .time-comparison-dropdown {
