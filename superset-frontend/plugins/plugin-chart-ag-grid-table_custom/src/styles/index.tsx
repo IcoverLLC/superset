@@ -365,6 +365,7 @@ export const StyledChartContainer = styled.div<{
 
     .ag-header-cell:hover .filter-trigger {
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
     }
 

@@ -40,7 +40,8 @@ const SORT_DIRECTION = [null, 'asc', 'desc'];
 const HeaderCell = styled.div`
   display: flex;
   flex: 1;
-  align-items: flex-start;
+  min-width: 0;
+  align-items: center;
   min-height: 100%;
   .ag-header-cell-text {
     white-space: normal;
@@ -56,14 +57,17 @@ const HeaderRoot = styled.div`
   position: relative;
   height: 100%;
   width: 100%;
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: ${({ theme }) => theme.sizeUnit}px;
 `;
 
 const HeaderLabel = styled.div`
   display: inline-flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  min-width: 0;
+  align-items: center;
   column-gap: ${({ theme }) => theme.sizeUnit / 2}px;
 `;
 
@@ -98,10 +102,13 @@ const SortSeqLabel = styled.span`
 
 const HeaderActionGroup = styled.div`
   display: inline-flex;
-  position: absolute;
-  right: 0;
+  position: relative;
   z-index: 2;
   align-items: center;
+  justify-self: end;
+  align-self: center;
+  flex-shrink: 0;
+  min-height: 100%;
   column-gap: ${({ theme }) => theme.sizeUnit}px;
 `;
 
@@ -143,6 +150,7 @@ const FilterTrigger = styled.button`
   justify-content: center;
   outline: none;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   font-size: ${({ theme }) => theme.fontSizeXS}px;
   .ag-icon,
@@ -155,8 +163,10 @@ const FilterTrigger = styled.button`
     color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
   }
-  &.is-visible {
+  &.is-visible,
+  &.active {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
   }
 `;
