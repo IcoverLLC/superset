@@ -495,12 +495,45 @@ function BigNumberVis({
 
 const StyledBigNumberVis = styled(BigNumberVis)`
   ${({ theme }) => `
+    --scrollbar-track-color: ${theme.colorFillQuaternary};
+    --scrollbar-thumb-color: ${theme.colorFillSecondary};
+    --scrollbar-thumb-hover-color: ${theme.colorFillTertiary};
+
     font-family: ${theme.fontFamily};
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+
+    &::-webkit-scrollbar,
+    .text-container::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    &::-webkit-scrollbar-track,
+    .text-container::-webkit-scrollbar-track {
+      background: var(--scrollbar-track-color);
+    }
+
+    &::-webkit-scrollbar-thumb,
+    .text-container::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb-color);
+      border-radius: ${theme.borderRadiusSM}px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover,
+    .text-container::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover-color);
+    }
+
+    &::-webkit-scrollbar-corner,
+    .text-container::-webkit-scrollbar-corner {
+      background: var(--scrollbar-track-color);
+    }
 
     &.no-trendline .subheader-line {
       padding-bottom: 0.3em;
@@ -511,6 +544,8 @@ const StyledBigNumberVis = styled(BigNumberVis)`
       flex-direction: column;
       justify-content: center;
       align-items: flex-start;
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
       .alert {
         font-size: ${theme.fontSizeSM};
         margin: -0.5em 0 0.4em;
