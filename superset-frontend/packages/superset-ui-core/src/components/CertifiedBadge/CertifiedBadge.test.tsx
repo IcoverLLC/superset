@@ -48,7 +48,6 @@ test('renders with details', async () => {
   expect(await screen.findByRole('tooltip')).toHaveTextContent(details);
 });
 
-
 test('renders headline instead of certified by when provided', async () => {
   await asyncRender({
     certifiedBy: 'Trusted Authority',
@@ -69,6 +68,17 @@ test('preserves line breaks in details', async () => {
   expect(tooltip).toHaveTextContent('Вторая строка');
 });
 
+test('applies a wider tooltip width for certification details', async () => {
+  await asyncRender({
+    details: 'Длинное описание для проверки ширины тултипа',
+  });
+  await userEvent.hover(screen.getByRole('img'));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip.closest('.ant-tooltip')).toHaveStyle({
+    minWidth: '320px',
+    maxWidth: '420px',
+  });
+});
 test('renders markdown and html line breaks in details', async () => {
   await asyncRender({ details: 'Первая строка<br />**жирный**' });
   await userEvent.hover(screen.getByRole('img'));
