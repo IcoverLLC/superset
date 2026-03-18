@@ -16,10 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { t, useTheme } from '@superset-ui/core';
+import { styled, t, useTheme } from '@superset-ui/core';
 import { Icons } from '@superset-ui/core/components/Icons';
+import { SafeMarkdown } from '../SafeMarkdown/SafeMarkdown';
 import { Tooltip } from '../Tooltip';
 import type { CertifiedBadgeProps } from './types';
+
+const TooltipContent = styled.div`
+  white-space: normal;
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const normalizeDetails = (details: string) =>
+  details.replace(/<br\s*\/?>(\r)?/gi, '\n').replace(/\n/g, '  \n');
 
 export function CertifiedBadge({
   certifiedBy,
@@ -34,7 +46,7 @@ export function CertifiedBadge({
     <Tooltip
       id="certified-details-tooltip"
       title={
-        <>
+        <TooltipContent>
           {headline && (
             <div>
               <strong>{headline}</strong>
@@ -45,8 +57,8 @@ export function CertifiedBadge({
               <strong>{t('Certified by %s', certifiedBy)}</strong>
             </div>
           )}
-          {details && <div style={{ whiteSpace: 'pre-line' }}>{details}</div>}
-        </>
+          {details && <SafeMarkdown source={normalizeDetails(details)} />}
+        </TooltipContent>
       }
     >
       <Icons.Certified iconColor={theme.colorPrimary} iconSize={size} />

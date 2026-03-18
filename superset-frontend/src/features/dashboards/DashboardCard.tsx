@@ -29,6 +29,7 @@ import { CardStyles } from 'src/views/CRUD/utils';
 import {
   Dropdown,
   Button,
+  CertifiedBadge,
   FaveStar,
   PublishedLabel,
   ListViewCard,
@@ -180,9 +181,6 @@ function DashboardCard({
       <ListViewCard
         loading={dashboard.loading || false}
         title={dashboard.dashboard_title}
-        certifiedBy={dashboard.certified_by}
-        certificationDetails={dashboard.certification_details}
-        certificationHeadline={dashboard.dashboard_title}
         titleRight={<PublishedLabel isPublished={dashboard.published} />}
         cover={
           !isFeatureEnabled(FeatureFlag.Thumbnails) || !showThumbnails ? (
@@ -209,6 +207,14 @@ function DashboardCard({
                 itemId={dashboard.id}
                 saveFaveStar={saveFavoriteStatus}
                 isStarred={favoriteStatus}
+              />
+            )}
+            {dashboard.certified_by && (
+              <CertifiedBadge
+                certifiedBy={dashboard.certified_by}
+                details={dashboard.certification_details}
+                headline={dashboard.dashboard_title}
+                showCertifiedBy={false}
               />
             )}
             <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
