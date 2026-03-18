@@ -18,6 +18,7 @@
  */
 import { RefObject, useEffect, useRef, KeyboardEvent } from 'react';
 
+import { ClassNames } from '@emotion/react';
 import { useSelector } from 'react-redux';
 import { t, useTheme } from '@superset-ui/core';
 import { List, Popover } from '@superset-ui/core/components';
@@ -179,17 +180,35 @@ const DetailsPanelPopover = ({
   );
 
   return (
-    <Popover
-      color={`${theme.colorBgElevated}cc`}
-      content={content}
-      open={popoverVisible}
-      onOpenChange={handleVisibility}
-      placement="bottomRight"
-      trigger={['hover']}
-      data-test="filter-status-popover"
-    >
-      {children}
-    </Popover>
+    <ClassNames>
+      {({ css }) => (
+        <Popover
+          color={`${theme.colorBgElevated}cc`}
+          content={content}
+          open={popoverVisible}
+          onOpenChange={handleVisibility}
+          placement="bottomRight"
+          trigger={['hover']}
+          data-test="filter-status-popover"
+          overlayClassName={css`
+            .ant-popover-inner {
+              background: ${theme.colorBgElevated};
+            }
+
+            .ant-popover-inner-content {
+              color: ${theme.colorText};
+            }
+
+            .ant-popover-arrow::before,
+            .ant-popover-arrow::after {
+              background: ${theme.colorBgElevated};
+            }
+          `}
+        >
+          {children}
+        </Popover>
+      )}
+    </ClassNames>
   );
 };
 

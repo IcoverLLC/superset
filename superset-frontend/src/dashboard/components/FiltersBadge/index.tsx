@@ -33,6 +33,7 @@ import {
   DataMaskStateWithId,
   Filters,
   JsonObject,
+  css,
   styled,
   t,
   usePrevious,
@@ -85,7 +86,23 @@ const StyledFilterCount = styled.div`
 
 const StyledBadge = styled(Badge)`
   ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
     margin-left: ${theme.sizeUnit * 2}px;
+
+    .ant-badge-count {
+      position: static;
+      inset: auto;
+      transform: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: ${theme.sizeUnit * 4}px;
+      height: ${theme.sizeUnit * 4}px;
+      padding: 0 ${theme.sizeUnit}px;
+      line-height: ${theme.sizeUnit * 4}px;
+      border-radius: ${theme.sizeUnit * 2}px;
+    }
   `}
 `;
 
@@ -306,6 +323,11 @@ export const FiltersBadge = ({ chartId }: FiltersBadgeProps) => {
           count={filterCount}
           size="small"
           showZero
+          css={css`
+            .ant-scroll-number-only-unit {
+              position: static;
+            }
+          `}
         />
       </StyledFilterCount>
     </DetailsPanelPopover>
