@@ -42,7 +42,7 @@ import { FacePile } from 'src/components';
 
 const DashboardCardStyles = styled(CardStyles)`
   && .ant-card.ant-card-bordered {
-    border: 1px solid ${({ theme }) => theme.colorPrimaryBorderHover};
+    border: 1px solid ${({ theme }) => theme.colorTextLabel};
     background-color: ${({ theme }) => theme.colorBgContainer};
     box-shadow: 0 1px 2px ${({ theme }) => theme.colorBorderSecondary};
     transition:
