@@ -89,7 +89,7 @@ it('Renders the dashboard title', () => {
   expect(titleElement).toBeInTheDocument();
 });
 
-it('Renders the certification details', () => {
+it('Renders the certification badge', () => {
   const certificationDetailsElement = screen.getByLabelText(/certified/i);
   expect(certificationDetailsElement).toBeInTheDocument();
 });

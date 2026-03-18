@@ -21,5 +21,7 @@ import type { IconType } from '@superset-ui/core/components/Icons/types';
 export interface CertifiedBadgeProps {
   certifiedBy?: string;
   details?: string;
+  headline?: string;
+  showCertifiedBy?: boolean;
   size?: IconType['iconSize'];
 }

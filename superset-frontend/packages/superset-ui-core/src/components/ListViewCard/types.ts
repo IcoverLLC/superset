@@ -42,4 +42,5 @@ export interface ListViewCardProps {
   cover?: ReactNode | null;
   certifiedBy?: string;
   certificationDetails?: string;
+  certificationHeadline?: string;
 }
