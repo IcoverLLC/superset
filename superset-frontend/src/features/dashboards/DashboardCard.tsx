@@ -21,6 +21,7 @@ import { Link, useHistory } from 'react-router-dom';
 import {
   isFeatureEnabled,
   FeatureFlag,
+  styled,
   t,
   SupersetClient,
 } from '@superset-ui/core';
@@ -37,6 +38,22 @@ import { Icons } from '@superset-ui/core/components/Icons';
 import { Dashboard } from 'src/views/CRUD/types';
 import { assetUrl } from 'src/utils/assetUrl';
 import { FacePile } from 'src/components';
+
+const DashboardCardStyles = styled(CardStyles)`
+  .ant-card {
+    border: 1px solid ${({ theme }) => theme.colorBorder};
+    background-color: ${({ theme }) => theme.colorBgContainer};
+    box-shadow: 0 1px 2px ${({ theme }) => theme.colorBorderSecondary};
+    transition:
+      border-color ${({ theme }) => theme.motionDurationMid} ease,
+      box-shadow ${({ theme }) => theme.motionDurationMid} ease;
+  }
+
+  &:hover .ant-card {
+    border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
+    box-shadow: ${({ theme }) => theme.boxShadowSecondary};
+  }
+`;
 
 interface DashboardCardProps {
   isChart?: boolean;
@@ -151,7 +168,7 @@ function DashboardCard({
   }
 
   return (
-    <CardStyles
+    <DashboardCardStyles
       onClick={() => {
         if (!bulkSelectEnabled) {
           history.push(dashboard.url);
@@ -199,7 +216,7 @@ function DashboardCard({
           </ListViewCard.Actions>
         }
       />
-    </CardStyles>
+    </DashboardCardStyles>
   );
 }
 
