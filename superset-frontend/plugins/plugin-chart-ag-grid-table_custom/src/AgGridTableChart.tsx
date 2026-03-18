@@ -47,14 +47,6 @@ import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
 import { formatColumnValue } from './utils/formatValue';
 import { StyledChartContainer } from './styles';
 
-const getGridHeight = (height: number, includeSearch: boolean | undefined) => {
-  let calculatedGridHeight = height;
-  if (includeSearch) {
-    calculatedGridHeight -= 16;
-  }
-  return calculatedGridHeight - 80;
-};
-
 export default function TableChart<D extends DataRecord = DataRecord>(
   props: AgGridTableChartTransformedProps<D> & {},
 ) {
@@ -157,7 +149,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     slice_id,
   });
 
-  const gridHeight = getGridHeight(height, includeSearch);
+  const gridHeight = height;
 
   const isActiveFilterValue = useCallback(
     function isActiveFilterValue(key: string, val: DataRecordValue) {
