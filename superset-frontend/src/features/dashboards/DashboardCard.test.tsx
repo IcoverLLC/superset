@@ -117,6 +117,16 @@ it('Renders the modified date', () => {
   expect(modifiedDateElement).toBeInTheDocument();
 });
 
+it('keeps the highlighted border for bordered dashboard cards', () => {
+  expect(screen.getByTestId('styled-card').parentElement).toHaveStyleRule(
+    'border',
+    '1px solid #6ebccc',
+    {
+      target: '.ant-card.ant-card-bordered',
+    },
+  );
+});
+
 it('should fetch thumbnail when dashboard has no thumbnail URL and feature flag is enabled', async () => {
   const mockGet = jest.spyOn(SupersetClient, 'get').mockResolvedValue({
     json: { result: { thumbnail_url: '/new-thumbnail.png' } },
