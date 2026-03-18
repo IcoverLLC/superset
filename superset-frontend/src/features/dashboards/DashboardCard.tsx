@@ -41,7 +41,7 @@ import { assetUrl } from 'src/utils/assetUrl';
 import { FacePile } from 'src/components';
 
 const DashboardCardStyles = styled(CardStyles)`
-  .ant-card {
+  && .ant-card.ant-card-bordered {
     border: 1px solid ${({ theme }) => theme.colorPrimaryBorderHover};
     background-color: ${({ theme }) => theme.colorBgContainer};
     box-shadow: 0 1px 2px ${({ theme }) => theme.colorBorderSecondary};
@@ -50,7 +50,7 @@ const DashboardCardStyles = styled(CardStyles)`
       box-shadow ${({ theme }) => theme.motionDurationMid} ease;
   }
 
-  &:hover .ant-card {
+  &:hover .ant-card.ant-card-bordered {
     border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
     box-shadow:
       0 0 0 1px ${({ theme }) => theme.colorPrimaryBorderHover},
