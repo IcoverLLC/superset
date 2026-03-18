@@ -51,6 +51,7 @@ export function CertifiedBadge({
   return (
     <Tooltip
       id="certified-details-tooltip"
+      overlayStyle={{ minWidth: '320px', maxWidth: '420px' }}
       title={
         <TooltipContent>
           {headline && (
