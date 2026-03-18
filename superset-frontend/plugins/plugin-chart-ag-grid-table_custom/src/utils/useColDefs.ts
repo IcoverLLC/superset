@@ -24,7 +24,7 @@ import {
   CellClassParams,
 } from '@superset-ui/core/components/ThemedAgGridReact';
 import { useCallback, useMemo } from 'react';
-import { DataRecord, GenericDataType } from '@superset-ui/core';
+import { GenericDataType, useTheme } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import {
@@ -41,6 +41,8 @@ import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
+import { useIsDark } from './useTableTheme';
+import { getAdaptiveHeaderStyle } from './headerColors';
 
 interface InputData {
   [key: string]: any;
@@ -54,7 +56,6 @@ type UseColDefsProps = {
   defaultAlignPN: boolean;
   showCellBars: boolean;
   colorPositiveNegative: boolean;
-  totals: DataRecord | undefined;
   columnColorFormatters: ColorFormatters;
   allowRearrangeColumns?: boolean;
   basicColorFormatters?: { [Key: string]: BasicColorFormatterType }[];
@@ -141,7 +142,6 @@ export const useColDefs = ({
   defaultAlignPN,
   showCellBars,
   colorPositiveNegative,
-  totals,
   columnColorFormatters,
   allowRearrangeColumns,
   basicColorFormatters,
@@ -150,6 +150,9 @@ export const useColDefs = ({
   alignPositiveNegative,
   slice_id,
 }: UseColDefsProps) => {
+  const theme = useTheme();
+  const isDarkTheme = useIsDark();
+
   const getCommonColProps = useCallback(
     (
       col: InputColumn,
@@ -195,11 +198,14 @@ export const useColDefs = ({
         typeof CSS !== 'undefined' &&
         typeof CSS.supports === 'function' &&
         CSS.supports('background-color', headerBgColor);
-      const headerStyle = isValidHeaderBgColor
-        ? {
-            backgroundColor: headerBgColor,
-          }
-        : undefined;
+      const headerStyle =
+        isValidHeaderBgColor && theme?.colorBgContainer
+          ? getAdaptiveHeaderStyle({
+              backgroundColor: headerBgColor,
+              isDarkTheme,
+              themeBackgroundColor: theme.colorBgContainer,
+            })
+          : undefined;
 
       const valueRange =
         !hasBasicColorFormatters &&
@@ -330,10 +336,11 @@ export const useColDefs = ({
       allowRearrangeColumns,
       serverPagination,
       alignPositiveNegative,
+      isDarkTheme,
+      slice_id,
+      theme,
     ],
   );
-
-  const stringifiedCols = JSON.stringify(columns);
 
   const colDefs = useMemo(() => {
     const groupIndexMap = new Map<string, number>();
@@ -361,7 +368,7 @@ export const useColDefs = ({
 
       return acc;
     }, []);
-  }, [stringifiedCols, getCommonColProps]);
+  }, [columns, getCommonColProps]);
 
   return colDefs;
 };
