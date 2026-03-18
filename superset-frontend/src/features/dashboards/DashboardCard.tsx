@@ -41,7 +41,7 @@ import { FacePile } from 'src/components';
 
 const DashboardCardStyles = styled(CardStyles)`
   .ant-card {
-    border: 1px solid ${({ theme }) => theme.colorBorder};
+    border: 1px solid ${({ theme }) => theme.colorPrimaryBorderHover};
     background-color: ${({ theme }) => theme.colorBgContainer};
     box-shadow: 0 1px 2px ${({ theme }) => theme.colorBorderSecondary};
     transition:
@@ -51,7 +51,9 @@ const DashboardCardStyles = styled(CardStyles)`
 
   &:hover .ant-card {
     border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
-    box-shadow: ${({ theme }) => theme.boxShadowSecondary};
+    box-shadow:
+      0 0 0 1px ${({ theme }) => theme.colorPrimaryBorderHover},
+      0 8px 24px -8px ${({ theme }) => theme.colorPrimaryBgHover};
   }
 `;
 
