@@ -23,6 +23,7 @@ import {
   styled,
   SupersetClient,
   SupersetClientResponse,
+  SupersetTheme,
   getClientErrorObject,
   t,
   lruCache,
@@ -379,19 +380,19 @@ export const CardContainer = styled.div<{
   `}
 `;
 
-export const listViewCardBorderStyles = css`
+export const listViewCardBorderStyles = (theme: SupersetTheme) => css`
   .ant-card.ant-card-bordered {
-    border: 1px solid ${({ theme }) => theme.colorTextLabel};
+    border: 1px solid ${theme.colorTextLabel};
     transition:
-      border-color ${({ theme }) => theme.motionDurationMid} ease,
-      box-shadow ${({ theme }) => theme.motionDurationMid} ease;
+      border-color ${theme.motionDurationMid} ease,
+      box-shadow ${theme.motionDurationMid} ease;
   }
 
   &:hover .ant-card.ant-card-bordered {
-    border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
+    border-color: ${theme.colorPrimaryBorderHover};
     box-shadow:
-      0 0 0 1px ${({ theme }) => theme.colorPrimaryBorderHover},
-      0 8px 24px -8px ${({ theme }) => theme.colorPrimaryBgHover};
+      0 0 0 1px ${theme.colorPrimaryBorderHover},
+      0 8px 24px -8px ${theme.colorPrimaryBgHover};
   }
 `;
 
@@ -407,7 +408,7 @@ export const CardStyles = styled.div`
     height: 168px;
   }
 
-  ${listViewCardBorderStyles}
+  ${({ theme }) => listViewCardBorderStyles(theme)}
 `;
 
 export /* eslint-disable no-underscore-dangle */
