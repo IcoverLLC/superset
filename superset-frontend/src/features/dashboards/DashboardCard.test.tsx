@@ -24,7 +24,7 @@ import {
   isFeatureEnabled,
 } from '@superset-ui/core';
 
-import { render, screen, waitFor } from 'spec/helpers/testing-library';
+import { render, screen, waitFor, within } from 'spec/helpers/testing-library';
 
 import DashboardCard from './DashboardCard';
 
@@ -77,6 +77,7 @@ beforeEach(() => {
         openDashboardEditModal={mockOpenDashboardEditModal}
         saveFavoriteStatus={mockSaveFavoriteStatus}
         favoriteStatus={false}
+        userId={1}
         handleBulkDashboardExport={mockHandleBulkDashboardExport}
         onDelete={mockOnDelete}
       />
@@ -92,6 +93,18 @@ it('Renders the dashboard title', () => {
 it('Renders the certification badge', () => {
   const certificationDetailsElement = screen.getByLabelText(/certified/i);
   expect(certificationDetailsElement).toBeInTheDocument();
+});
+
+it('renders the certification badge with the action controls', () => {
+  const actions = screen.getByTestId('card-actions');
+  const favorite = within(actions).getByTestId('fave-unfave-icon');
+  const certified = within(actions).getByLabelText(/certified/i);
+
+  expect(favorite).toBeInTheDocument();
+  expect(certified).toBeInTheDocument();
+  expect(favorite.compareDocumentPosition(certified)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
 });
 
 it('Renders the published status', () => {
