@@ -26,7 +26,6 @@ const BadgeTrigger = styled.span`
   display: inline-flex;
   align-items: center;
   line-height: 0;
-  cursor: help;
 `;
 
 const TooltipContent = styled.div`
@@ -69,7 +68,10 @@ export function CertifiedBadge({
       }
     >
       <BadgeTrigger>
-        <Icons.InfoCircleFilled iconColor={theme.colorPrimary} iconSize={size} />
+        <Icons.InfoCircleFilled
+          iconColor={theme.colorPrimary}
+          iconSize={size}
+        />
       </BadgeTrigger>
     </Tooltip>
   );
