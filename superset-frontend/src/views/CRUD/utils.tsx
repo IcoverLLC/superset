@@ -18,6 +18,7 @@
  */
 
 import {
+  css,
   logging,
   styled,
   SupersetClient,
@@ -378,15 +379,35 @@ export const CardContainer = styled.div<{
   `}
 `;
 
+export const listViewCardBorderStyles = css`
+  .ant-card.ant-card-bordered {
+    border: 1px solid ${({ theme }) => theme.colorTextLabel};
+    transition:
+      border-color ${({ theme }) => theme.motionDurationMid} ease,
+      box-shadow ${({ theme }) => theme.motionDurationMid} ease;
+  }
+
+  &:hover .ant-card.ant-card-bordered {
+    border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
+    box-shadow:
+      0 0 0 1px ${({ theme }) => theme.colorPrimaryBorderHover},
+      0 8px 24px -8px ${({ theme }) => theme.colorPrimaryBgHover};
+  }
+`;
+
 export const CardStyles = styled.div`
   cursor: pointer;
+
   a {
     text-decoration: none;
   }
+
   .ant-card-cover > div {
     /* Height is calculated based on 300px width, to keep the same aspect ratio as the 800*450 thumbnails */
     height: 168px;
   }
+
+  ${listViewCardBorderStyles}
 `;
 
 export /* eslint-disable no-underscore-dangle */
