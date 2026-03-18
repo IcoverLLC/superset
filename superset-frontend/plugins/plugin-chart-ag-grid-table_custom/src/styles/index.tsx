@@ -169,11 +169,12 @@ export const PaginationContainer = styled.div`
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
+    flex-shrink: 0;
+    padding: ${theme.sizeUnit}px ${theme.sizeUnit * 4}px;
     border-top: 1px solid ${theme.colorBorderSecondary};
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
-    transform: translateY(-${theme.sizeUnit}px);
+    margin-top: ${theme.sizeUnit}px;
     background: ${theme.colorBgBase};
   `}
 `;
@@ -310,9 +311,15 @@ export const StyledChartContainer = styled.div<{
       word-break: break-word;
     }
 
+    .ag-grid-wrapper {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
     .ag-container {
       border-radius: 0px;
       border: var(--ag-wrapper-border);
+      height: 100%;
     }
 
     .ag-input-wrapper {
@@ -334,6 +341,7 @@ export const StyledChartContainer = styled.div<{
     .dropdown-controls-container {
       display: flex;
       justify-content: flex-end;
+      flex-shrink: 0;
     }
 
     .time-comparison-dropdown {
