@@ -277,7 +277,10 @@ export const StyledChartContainer = styled.div<{
   height: number;
 }>`
   ${({ theme, height }) => css`
+    display: flex;
+    flex-direction: column;
     height: ${height}px;
+    min-height: 0;
 
     --ag-background-color: ${theme.colorBgBase};
     --ag-foreground-color: ${theme.colorText};
@@ -310,7 +313,22 @@ export const StyledChartContainer = styled.div<{
       word-break: break-word;
     }
 
+    .table-layout-container {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .ag-grid-wrapper {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
     .ag-container {
+      flex: 1;
+      min-height: 0;
       border-radius: 0px;
       border: var(--ag-wrapper-border);
     }
@@ -333,14 +351,20 @@ export const StyledChartContainer = styled.div<{
 
     .dropdown-controls-container {
       display: flex;
+      flex-shrink: 0;
       justify-content: flex-end;
     }
 
     .time-comparison-dropdown {
       display: flex;
+      flex-shrink: 0;
       padding-right: ${theme.sizeUnit * 4}px;
       padding-top: ${theme.sizeUnit * 1.75}px;
       height: fit-content;
+    }
+
+    .pagination-container {
+      flex-shrink: 0;
     }
 
     .ag-header {
