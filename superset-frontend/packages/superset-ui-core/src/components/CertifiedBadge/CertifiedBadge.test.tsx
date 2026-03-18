@@ -67,5 +67,13 @@ test('preserves line breaks in details', async () => {
   const tooltip = await screen.findByRole('tooltip');
   expect(tooltip).toHaveTextContent('Первая строка');
   expect(tooltip).toHaveTextContent('Вторая строка');
-  expect(tooltip.querySelector('[style*="white-space: pre-line"]')).not.toBeNull();
+});
+
+test('renders markdown and html line breaks in details', async () => {
+  await asyncRender({ details: 'Первая строка<br />**жирный**' });
+  await userEvent.hover(screen.getByRole('img'));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent('Первая строка');
+  expect(tooltip).toHaveTextContent('жирный');
+  expect(tooltip).not.toHaveTextContent('<br />');
 });

@@ -708,10 +708,10 @@ const PropertiesModal = ({
               label={t('Certification details')}
               name="certificationDetails"
               extra={t(
-                'Any additional detail to show in the certification tooltip.',
+                'Shown in the certification tooltip. Supports line breaks, <br>, and Markdown such as **bold**.',
               )}
             >
-              <Input type="text" disabled={isLoading} />
+              <Input.TextArea rows={3} disabled={isLoading} />
             </FormItem>
           </Col>
         </Row>
