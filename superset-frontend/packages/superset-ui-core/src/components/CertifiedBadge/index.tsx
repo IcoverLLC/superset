@@ -23,8 +23,10 @@ import { Tooltip } from '../Tooltip';
 import type { CertifiedBadgeProps } from './types';
 
 const CERTIFIED_BADGE_TOOLTIP_MAX_WIDTH = '560px';
+const CERTIFIED_BADGE_TOOLTIP_VIEWPORT_MARGIN = '32px';
 
 const TooltipContent = styled.div`
+  max-width: 100%;
   white-space: normal;
 
   p:last-child {
@@ -49,7 +51,7 @@ export function CertifiedBadge({
       id="certified-details-tooltip"
       overlayStyle={{
         width: 'max-content',
-        maxWidth: CERTIFIED_BADGE_TOOLTIP_MAX_WIDTH,
+        maxWidth: `min(${CERTIFIED_BADGE_TOOLTIP_MAX_WIDTH}, calc(100vw - ${CERTIFIED_BADGE_TOOLTIP_VIEWPORT_MARGIN}))`,
       }}
       title={
         <TooltipContent>

@@ -52,9 +52,9 @@ test('uses a wider tooltip container for certification details', async () => {
   await asyncRender({ details: 'Long certification details' });
   await userEvent.hover(screen.getByRole('img'));
   const tooltip = await screen.findByRole('tooltip');
-  expect(tooltip.parentElement).toHaveStyle({
+  expect(tooltip.closest('.ant-tooltip')).toHaveStyle({
     width: 'max-content',
-    maxWidth: '560px',
+    maxWidth: 'min(560px, calc(100vw - 32px))',
   });
 });
 
