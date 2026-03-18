@@ -22,6 +22,8 @@ import { SafeMarkdown } from '../SafeMarkdown/SafeMarkdown';
 import { Tooltip } from '../Tooltip';
 import type { CertifiedBadgeProps } from './types';
 
+const CERTIFIED_BADGE_TOOLTIP_MAX_WIDTH = '560px';
+
 const TooltipContent = styled.div`
   white-space: normal;
 
@@ -45,6 +47,10 @@ export function CertifiedBadge({
   return (
     <Tooltip
       id="certified-details-tooltip"
+      overlayStyle={{
+        width: 'max-content',
+        maxWidth: CERTIFIED_BADGE_TOOLTIP_MAX_WIDTH,
+      }}
       title={
         <TooltipContent>
           {headline && (

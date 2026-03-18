@@ -48,6 +48,15 @@ test('renders with details', async () => {
   expect(await screen.findByRole('tooltip')).toHaveTextContent(details);
 });
 
+test('uses a wider tooltip container for certification details', async () => {
+  await asyncRender({ details: 'Long certification details' });
+  await userEvent.hover(screen.getByRole('img'));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip.parentElement).toHaveStyle({
+    width: 'max-content',
+    maxWidth: '560px',
+  });
+});
 
 test('renders headline instead of certified by when provided', async () => {
   await asyncRender({
