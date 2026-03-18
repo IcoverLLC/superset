@@ -22,6 +22,13 @@ import { SafeMarkdown } from '../SafeMarkdown/SafeMarkdown';
 import { Tooltip } from '../Tooltip';
 import type { CertifiedBadgeProps } from './types';
 
+const BadgeTrigger = styled.span`
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  cursor: help;
+`;
+
 const TooltipContent = styled.div`
   white-space: normal;
 
@@ -61,7 +68,9 @@ export function CertifiedBadge({
         </TooltipContent>
       }
     >
-      <Icons.Certified iconColor={theme.colorPrimary} iconSize={size} />
+      <BadgeTrigger>
+        <Icons.InfoCircleFilled iconColor={theme.colorPrimary} iconSize={size} />
+      </BadgeTrigger>
     </Tooltip>
   );
 }
