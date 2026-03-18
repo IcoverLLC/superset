@@ -24,6 +24,8 @@ import type { CertifiedBadgeProps } from './types';
 export function CertifiedBadge({
   certifiedBy,
   details,
+  headline,
+  showCertifiedBy = true,
   size = 'l',
 }: CertifiedBadgeProps) {
   const theme = useTheme();
@@ -33,12 +35,17 @@ export function CertifiedBadge({
       id="certified-details-tooltip"
       title={
         <>
-          {certifiedBy && (
+          {headline && (
+            <div>
+              <strong>{headline}</strong>
+            </div>
+          )}
+          {!headline && showCertifiedBy && certifiedBy && (
             <div>
               <strong>{t('Certified by %s', certifiedBy)}</strong>
             </div>
           )}
-          <div>{details}</div>
+          {details && <div style={{ whiteSpace: 'pre-line' }}>{details}</div>}
         </>
       }
     >

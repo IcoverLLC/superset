@@ -47,3 +47,25 @@ test('renders with details', async () => {
   await userEvent.hover(screen.getByRole('img'));
   expect(await screen.findByRole('tooltip')).toHaveTextContent(details);
 });
+
+
+test('renders headline instead of certified by when provided', async () => {
+  await asyncRender({
+    certifiedBy: 'Trusted Authority',
+    headline: 'Запасы. Отчет по запасам',
+    showCertifiedBy: false,
+  });
+  await userEvent.hover(screen.getByRole('img'));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent('Запасы. Отчет по запасам');
+  expect(tooltip).not.toHaveTextContent('Trusted Authority');
+});
+
+test('preserves line breaks in details', async () => {
+  await asyncRender({ details: 'Первая строка\nВторая строка' });
+  await userEvent.hover(screen.getByRole('img'));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent('Первая строка');
+  expect(tooltip).toHaveTextContent('Вторая строка');
+  expect(tooltip.querySelector('[style*="white-space: pre-line"]')).not.toBeNull();
+});
