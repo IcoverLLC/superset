@@ -156,6 +156,7 @@ function ListViewCard({
   cover,
   certifiedBy,
   certificationDetails,
+  certificationHeadline,
 }: ListViewCardProps) {
   const Link = url && linkComponent ? linkComponent : AnchorLink;
   const theme = useTheme();
@@ -236,6 +237,8 @@ function ListViewCard({
                         <CertifiedBadge
                           certifiedBy={certifiedBy}
                           details={certificationDetails}
+                          headline={certificationHeadline}
+                          showCertifiedBy={!certificationHeadline}
                         />{' '}
                       </>
                     )}
