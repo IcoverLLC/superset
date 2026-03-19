@@ -33,6 +33,8 @@ const IconEmpty = styled.span`
   width: 14px;
 `;
 
+const RESET_FILTERS_LABEL = 'Сбросить фильтры';
+
 export type HeaderMenuProps = {
   colId: string;
   column?: Column;
@@ -59,6 +61,10 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     },
     [api, colId],
   );
+
+  const resetAllFilters = useCallback(() => {
+    api.setFilterModel(null);
+  }, [api]);
 
   const unHideAction: MenuItem = {
     label: t('Unhide'),
@@ -137,6 +143,12 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       onClick: () => {
         api.autoSizeAllColumns();
       },
+    },
+    {
+      key: 'resetFilters',
+      label: RESET_FILTERS_LABEL,
+      icon: <Icons.FilterOutlined iconSize="m" />,
+      onClick: resetAllFilters,
     },
   ];
 
@@ -221,6 +233,12 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   menuItems.push(
     {
       type: 'divider',
+    },
+    {
+      key: 'resetFilters',
+      label: RESET_FILTERS_LABEL,
+      icon: <Icons.FilterOutlined iconSize="m" />,
+      onClick: resetAllFilters,
     },
     {
       key: 'autosize',
