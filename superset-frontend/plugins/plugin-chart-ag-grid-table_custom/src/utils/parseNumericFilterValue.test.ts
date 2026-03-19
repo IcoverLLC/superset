@@ -38,6 +38,11 @@ describe('parseNumericFilterValue', () => {
     expect(parseNumericFilterValue('12,5%')).toBe(0.125);
   });
 
+  it('parses formatted numeric strings with grouping and currency symbols', () => {
+    expect(parseNumericFilterValue('$1,234.5')).toBe(1234.5);
+    expect(parseNumericFilterValue('€ 1 234,5')).toBe(1234.5);
+  });
+
   it('returns null for empty or invalid inputs', () => {
     expect(parseNumericFilterValue('')).toBeNull();
     expect(parseNumericFilterValue('   ')).toBeNull();
