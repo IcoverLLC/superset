@@ -175,7 +175,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
             className="header-filter"
             data-test="header-filter-trigger"
             onClick={handleFilterClick}
-            hasMenu={hasMenu}
             isFilterActive={isFilterActive}
           >
             <FilterIcon />
