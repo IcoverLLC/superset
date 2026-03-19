@@ -54,12 +54,17 @@ export const HeaderContainer = styled.div`
 export const HeaderLabel = styled.span`
   ${() => `
     flex: 1 1 auto;
+    width: 100%;
     font-weight: inherit;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
     display: block;
     min-width: 0;
+    max-width: none;
   `}
 `;
 
@@ -92,11 +97,9 @@ export const SortIconWrapper = styled.div`
   `}
 `;
 
-export const FilterIconWrapper = styled.div<{
-  isFilterActive?: boolean;
-  hasMenu?: boolean;
-}>`
+export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
   cursor: pointer;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
