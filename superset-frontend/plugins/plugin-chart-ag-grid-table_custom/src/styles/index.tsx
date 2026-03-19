@@ -27,12 +27,12 @@ export const Container = styled.div`
     width: 100%;
 
     .three-dots-menu {
-      align-self: center;
-      margin-left: ${theme.sizeUnit}px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
       padding: ${theme.sizeUnit / 2}px;
       border-radius: ${theme.borderRadius}px;
-      margin-top: ${theme.sizeUnit * 0.75}px;
     }
   `}
 `;
@@ -48,18 +48,19 @@ export const HeaderContainer = styled.div`
   `}
 `;
 
-export const HeaderLabel = styled.span`
+export const HeaderLabel = styled.div`
   ${({ theme }) => `
     font-weight: ${theme.fontWeightStrong};
-    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
     max-width: 100%;
   `}
 `;
 
-export const SortIconWrapper = styled.div`
+export const SortIconWrapper = styled.span`
   ${({ theme }) => `
     display: flex;
     align-items: center;
@@ -68,10 +69,10 @@ export const SortIconWrapper = styled.div`
 `;
 
 export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
-  align-self: flex-end;
-  margin-left: auto;
-  cursor: pointer;
-
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 4px;
   overflow: hidden;
   cursor: pointer;
@@ -143,7 +144,7 @@ export const MenuContainer = styled.div`
 `;
 
 export const PopoverWrapper = styled.div`
-  position: relative;
+  position: static;
   display: inline-block;
 `;
 
@@ -372,6 +373,33 @@ export const StyledChartContainer = styled.div<{
       font-weight: ${theme.fontWeightStrong};
     }
 
+    .ag-header-cell .ag-header-cell-comp-wrapper > div {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .ag-header-cell .ag-header-cell-comp-wrapper > div > .ag-header-cell-label {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    .ag-header-cell
+      .ag-header-cell-comp-wrapper
+      > div
+      > .ag-header-cell-label
+      > div {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+
+    .ag-header-cell .ag-header-cell-text {
+      max-width: none !important;
+      width: 100% !important;
+    }
+
     .ag-header-cell {
       overflow: hidden;
       border-right: 1px solid ${theme.colorBorderSecondary};
@@ -381,13 +409,38 @@ export const StyledChartContainer = styled.div<{
       border-right: none;
     }
 
-    .ag-header-cell:hover .customHeaderAction {
+    .ag-header-cell .filter-trigger,
+    .ag-header-cell .customHeaderAction {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute !important;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ag-header-cell .filter-trigger {
+      right: 28px;
+    }
+
+    .ag-header-cell .customHeaderAction {
+      right: 6px;
+    }
+
+    .ag-header-cell:hover .customHeaderAction,
+    .ag-header-cell .customHeaderAction.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
     }
 
-    .ag-header-cell:hover .filter-trigger {
+    .ag-header-cell:hover .filter-trigger,
+    .ag-header-cell .filter-trigger.is-visible,
+    .ag-header-cell .filter-trigger.active {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;

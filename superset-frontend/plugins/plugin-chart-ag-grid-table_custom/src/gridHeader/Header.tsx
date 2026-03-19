@@ -102,8 +102,7 @@ const SortSeqLabel = styled.span`
 
 const HeaderActionGroup = styled.div`
   display: inline-flex;
-  position: relative;
-  z-index: 2;
+  position: static;
   align-items: center;
   justify-self: end;
   align-self: center;

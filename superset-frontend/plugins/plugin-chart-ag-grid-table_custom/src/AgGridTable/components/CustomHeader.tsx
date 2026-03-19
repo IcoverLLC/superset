@@ -76,6 +76,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const isMain = userColDef?.isMain;
   const isTimeComparison = !isMain && userColDef?.timeComparisonKey;
   const sortKey = isMain ? colId.replace('Main', '').trim() : colId;
+  const sortIcon = getSortIcon(initialSortState, colId);
 
   // Sorting logic
   const clearSort = () => {
@@ -148,11 +149,14 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
   return (
     <Container>
-      <HeaderContainer onClick={toggleSort} className="custom-header">
-        <HeaderLabel>{displayName}</HeaderLabel>
-        <SortIconWrapper>
-          {getSortIcon(initialSortState, colId)}
-        </SortIconWrapper>
+      <HeaderContainer
+        onClick={toggleSort}
+        className="custom-header ag-header-cell-label"
+      >
+        <HeaderLabel>
+          <div className="ag-header-cell-text">{displayName}</div>
+          {sortIcon && <SortIconWrapper>{sortIcon}</SortIconWrapper>}
+        </HeaderLabel>
       </HeaderContainer>
 
       <CustomPopover
@@ -161,7 +165,9 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         onClose={() => setFilterVisible(false)}
       >
         <FilterIconWrapper
-          className="header-filter"
+          className={`filter-trigger header-filter${
+            isFilterActive || isFilterVisible ? ' is-visible' : ''
+          }${isFilterActive ? ' active' : ''}`}
           onClick={handleFilterClick}
           isFilterActive={isFilterActive}
         >
@@ -175,7 +181,12 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
           isOpen={isMenuVisible}
           onClose={() => setMenuVisible(false)}
         >
-          <div className="three-dots-menu" onClick={handleMenuClick}>
+          <div
+            className={`three-dots-menu customHeaderAction${
+              isMenuVisible ? ' is-visible' : ''
+            }`}
+            onClick={handleMenuClick}
+          >
             <KebabMenu />
           </div>
         </CustomPopover>
