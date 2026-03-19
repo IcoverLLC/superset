@@ -22,21 +22,18 @@ import { Select } from '@superset-ui/core/components';
 /* Components for AgGridTable */
 // Header Styles
 export const Container = styled.div`
-  ${({ theme }) => `
+  ${() => `
     position: relative;
     width: 100%;
     height: 100%;
     min-width: 0;
 
-    .three-dots-menu {
-      position: absolute;
-      top: 50%;
-      right: ${theme.sizeUnit / 2}px;
-      transform: translateY(-50%);
-      cursor: pointer;
-      padding: ${theme.sizeUnit / 2}px;
-      border-radius: ${theme.borderRadius}px;
-      z-index: 1;
+    &:hover .custom-header-actions,
+    &:focus-within .custom-header-actions,
+    .custom-header-actions.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
   `}
 `;
@@ -55,14 +52,34 @@ export const HeaderContainer = styled.div`
 `;
 
 export const HeaderLabel = styled.span`
-  ${({ theme }) => `
+  ${() => `
     flex: 1 1 auto;
-    font-weight: ${theme.fontWeightStrong};
+    font-weight: inherit;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
     min-width: 0;
+  `}
+`;
+
+export const HeaderActions = styled.div`
+  ${({ theme }) => `
+    position: absolute;
+    top: 50%;
+    right: ${theme.sizeUnit / 2}px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: ${theme.sizeUnit / 2}px;
+    z-index: 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    & > * {
+      pointer-events: auto;
+    }
   `}
 `;
 
@@ -79,14 +96,10 @@ export const FilterIconWrapper = styled.div<{
   isFilterActive?: boolean;
   hasMenu?: boolean;
 }>`
-  position: absolute;
-  top: 50%;
-  right: ${({ hasMenu, theme }) =>
-    hasMenu ? theme.sizeUnit * 5 : theme.sizeUnit / 2}px;
-  transform: translateY(-50%);
   cursor: pointer;
-  z-index: 1;
-
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 4px;
   overflow: hidden;
   border-radius: 4px;
@@ -129,6 +142,17 @@ export const FilterIconWrapper = styled.div<{
         `}
     }
   }
+`;
+
+export const MenuTrigger = styled.div`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: ${theme.sizeUnit / 2}px;
+    border-radius: ${theme.borderRadius}px;
+  `}
 `;
 
 export const MenuContainer = styled.div`
