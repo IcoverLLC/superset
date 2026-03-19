@@ -467,7 +467,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               // Set Filter
               selectAll: t('Select All'),
               searchOoo: t('Search...'),
-              blanks: t('Blanks'),
+              blanks: t('N/A'),
               // Filter operations
               filterOoo: t('Filter'),
               applyFilter: t('Apply Filter'),
@@ -482,6 +482,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               notContains: t('Not Contains'),
               startsWith: t('Starts With'),
               endsWith: t('Ends With'),
+              blank: t('N/A'),
+              notBlank: t('Not N/A'),
               // Logical conditions
               andCondition: t('AND'),
               orCondition: t('OR'),
