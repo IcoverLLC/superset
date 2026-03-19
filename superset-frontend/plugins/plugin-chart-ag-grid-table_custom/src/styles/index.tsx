@@ -35,7 +35,7 @@ export const Container = styled.div`
       cursor: pointer;
       padding: ${theme.sizeUnit / 2}px;
       border-radius: ${theme.borderRadius}px;
-      margin-top: ${theme.sizeUnit * 0.75}px;
+      z-index: 1;
     }
   `}
 `;
@@ -78,6 +78,7 @@ export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
   margin-left: auto;
   flex-shrink: 0;
   cursor: pointer;
+  z-index: 1;
 
   padding: 3px 4px;
   overflow: hidden;

@@ -121,6 +121,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
   const isCurrentColSorted = currentSort?.colId === colId;
   const currentDirection = isCurrentColSorted ? currentSort?.sort : null;
+  const hasMenu = !isPercentMetric && !isTimeComparison;
   const shouldShowAsc =
     !isTimeComparison && (!currentDirection || currentDirection === 'desc');
   const shouldShowDesc =
@@ -163,13 +164,14 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         <FilterIconWrapper
           className="header-filter"
           onClick={handleFilterClick}
+          hasMenu={hasMenu}
           isFilterActive={isFilterActive}
         >
           <FilterIcon />
         </FilterIconWrapper>
       </CustomPopover>
 
-      {!isPercentMetric && !isTimeComparison && (
+      {hasMenu && (
         <CustomPopover
           content={menuContent}
           isOpen={isMenuVisible}
