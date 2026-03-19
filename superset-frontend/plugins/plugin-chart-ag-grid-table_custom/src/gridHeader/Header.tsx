@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import type { MouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { styled, t } from '@superset-ui/core';
 import type { Column, GridApi } from 'ag-grid-community';
@@ -210,14 +210,35 @@ export const Header: React.FC<Params> = ({
   const [sortIndex, setSortIndex] = useState<number | null>();
   const [isFilterActive, setIsFilterActive] = useState(false);
   const isSortActive = currentSort === 'asc' || currentSort === 'desc';
-  const onSort = useCallback(
-    event => {
+  const hideColumn = useCallback(() => {
+    const visibleColumns = api.getColumns()?.filter(c => c.isVisible()) || [];
+    const canHideColumn =
+      colId !== PIVOT_COL_ID &&
+      visibleColumns.some(c => c.getColId() === colId);
+
+    if (!canHideColumn || visibleColumns.length <= 1) {
+      return;
+    }
+
+    api.setColumnsVisible([colId], false);
+  }, [api, colId]);
+  const onHeaderClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (event.altKey) {
+        hideColumn();
+        return;
+      }
+
+      if (!enableSorting) {
+        return;
+      }
+
       sortOption.current = (sortOption.current + 1) % SORT_DIRECTION.length;
       const sort = SORT_DIRECTION[sortOption.current];
       setSort(sort, event.shiftKey);
       setCurrentSort(sort);
     },
-    [setSort],
+    [enableSorting, hideColumn, setSort],
   );
   const onVisibleChange = useCallback(
     (isVisible: boolean) => {
@@ -240,7 +261,7 @@ export const Header: React.FC<Params> = ({
   }, [api, column]);
 
   const onFilterMenuMouseDown = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
+    (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
       (
@@ -253,7 +274,7 @@ export const Header: React.FC<Params> = ({
   );
 
   const onFilterMenuClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
+    (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
       const target = event.currentTarget as HTMLElement;
@@ -317,13 +338,15 @@ export const Header: React.FC<Params> = ({
         <HeaderCell
           tabIndex={0}
           className="ag-header-cell-label"
-          {...(enableSorting && {
-            role: 'button',
-            onClick: onSort,
-            title: t(
-              'To enable multiple column sorting, hold down the ⇧ Shift key while clicking the column header.',
-            ),
-          })}
+          role="button"
+          onClick={onHeaderClick}
+          title={
+            enableSorting
+              ? t(
+                  'Click to sort. Hold ⇧ Shift for multi-sort or Alt + click to hide the column.',
+                )
+              : t('Hold Alt + click to hide the column.')
+          }
         >
           <HeaderLabel>
             <div className="ag-header-cell-text">{displayName}</div>
