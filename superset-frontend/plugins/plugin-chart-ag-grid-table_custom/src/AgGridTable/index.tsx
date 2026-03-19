@@ -467,10 +467,12 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               // Set Filter
               selectAll: t('Select All'),
               searchOoo: t('Search...'),
-              blanks: t('Blanks'),
+              blanks: t('Пусто'),
               // Filter operations
               filterOoo: t('Filter'),
               applyFilter: t('Apply Filter'),
+              blank: t('Пусто'),
+              notBlank: t('Не пусто'),
               equals: t('Equals'),
               notEqual: t('Not Equal'),
               lessThan: t('Less Than'),
