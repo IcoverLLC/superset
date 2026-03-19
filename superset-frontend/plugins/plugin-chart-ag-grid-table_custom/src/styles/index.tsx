@@ -23,16 +23,19 @@ import { Select } from '@superset-ui/core/components';
 // Header Styles
 export const Container = styled.div`
   ${({ theme }) => `
-    display: flex;
+    position: relative;
     width: 100%;
+    height: 100%;
 
     .three-dots-menu {
-      align-self: center;
-      margin-left: ${theme.sizeUnit}px;
+      position: absolute;
+      top: 50%;
+      right: ${theme.sizeUnit / 2}px;
+      transform: translateY(-50%);
       cursor: pointer;
       padding: ${theme.sizeUnit / 2}px;
       border-radius: ${theme.borderRadius}px;
-      margin-top: ${theme.sizeUnit * 0.75}px;
+      z-index: 1;
     }
   `}
 `;
@@ -45,6 +48,7 @@ export const HeaderContainer = styled.div`
     cursor: pointer;
     padding: 0 ${theme.sizeUnit * 2}px;
     overflow: hidden;
+    height: 100%;
   `}
 `;
 
@@ -67,10 +71,17 @@ export const SortIconWrapper = styled.div`
   `}
 `;
 
-export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
-  align-self: flex-end;
-  margin-left: auto;
+export const FilterIconWrapper = styled.div<{
+  isFilterActive?: boolean;
+  hasMenu?: boolean;
+}>`
+  position: absolute;
+  top: 50%;
+  right: ${({ hasMenu, theme }) =>
+    hasMenu ? theme.sizeUnit * 5 : theme.sizeUnit / 2}px;
+  transform: translateY(-50%);
   cursor: pointer;
+  z-index: 1;
 
   padding: 3px 4px;
   overflow: hidden;
