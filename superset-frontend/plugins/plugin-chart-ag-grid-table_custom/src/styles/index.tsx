@@ -439,8 +439,7 @@ export const StyledChartContainer = styled.div<{
     }
 
     .ag-header-cell:hover .filter-trigger,
-    .ag-header-cell .filter-trigger.is-visible,
-    .ag-header-cell .filter-trigger.active {
+    .ag-header-cell .filter-trigger.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;

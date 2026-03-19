@@ -162,8 +162,7 @@ const FilterTrigger = styled.button`
     color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
   }
-  &.is-visible,
-  &.active {
+  &.is-visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -207,6 +206,7 @@ export const Header: React.FC<Params> = ({
   const [currentSort, setCurrentSort] = useState<string | null>(null);
   const [sortIndex, setSortIndex] = useState<number | null>();
   const [isFilterActive, setIsFilterActive] = useState(false);
+  const [isFilterMenuVisible, setIsFilterMenuVisible] = useState(false);
   const isSortActive = currentSort === 'asc' || currentSort === 'desc';
   const hideColumn = useCallback(() => {
     const visibleColumns = api.getColumns()?.filter(c => c.isVisible()) || [];
@@ -275,6 +275,7 @@ export const Header: React.FC<Params> = ({
     (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      setIsFilterMenuVisible(true);
       const target = event.currentTarget as HTMLElement;
       const apiWithMenus = api as GridApi & {
         showFilterMenuAfterButtonClick?: (col: Column, el: HTMLElement) => void;
@@ -304,6 +305,25 @@ export const Header: React.FC<Params> = ({
     [api, colId, column, showFilter],
   );
 
+  const onFilterMenuVisibilityChanged = useCallback(
+    (event: {
+      visible?: boolean;
+      column?: Column | null;
+    }) => {
+      const eventColId = event.column?.getColId?.();
+
+      if (event.visible === true && eventColId === colId) {
+        setIsFilterMenuVisible(true);
+        return;
+      }
+
+      if (event.visible === false && (!eventColId || eventColId === colId)) {
+        setIsFilterMenuVisible(false);
+      }
+    },
+    [colId],
+  );
+
   const syncFilterState = useCallback(() => {
     const filterModel = api?.getFilterModel?.();
     const columnFilter = colId ? filterModel?.[colId] : null;
@@ -329,6 +349,21 @@ export const Header: React.FC<Params> = ({
       api.removeEventListener('filterChanged', syncFilterState);
     };
   }, [api, syncFilterState]);
+
+  useEffect(() => {
+    api.addEventListener(
+      'columnMenuVisibleChanged',
+      onFilterMenuVisibilityChanged,
+    );
+
+    return () => {
+      if (api.isDestroyed()) return;
+      api.removeEventListener(
+        'columnMenuVisibleChanged',
+        onFilterMenuVisibilityChanged,
+      );
+    };
+  }, [api, onFilterMenuVisibilityChanged]);
 
   return (
     <HeaderRoot>
@@ -373,7 +408,9 @@ export const Header: React.FC<Params> = ({
               onMouseDown={onFilterMenuMouseDown}
               onClick={onFilterMenuClick}
               aria-label={t('Open filter menu')}
-              className={`filter-trigger${isFilterActive ? ' active' : ''}`}
+              className={`filter-trigger${
+                isFilterMenuVisible ? ' is-visible' : ''
+              }`}
             >
               <span className="ag-icon ag-icon-filter" aria-hidden="true" />
             </FilterTrigger>

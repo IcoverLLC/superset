@@ -166,8 +166,8 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
       >
         <FilterIconWrapper
           className={`filter-trigger header-filter${
-            isFilterActive || isFilterVisible ? ' is-visible' : ''
-          }${isFilterActive ? ' active' : ''}`}
+            isFilterVisible ? ' is-visible' : ''
+          }`}
           onClick={handleFilterClick}
           isFilterActive={isFilterActive}
         >

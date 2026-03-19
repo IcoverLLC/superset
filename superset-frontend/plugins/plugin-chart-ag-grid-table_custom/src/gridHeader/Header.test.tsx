@@ -30,9 +30,14 @@ class MockApi extends EventTarget {
   setColumnsVisible = jest.fn();
 
   private columns: Column[] = [];
+  private filterModel: Record<string, unknown> = {};
 
   setColumns(columns: Column[]) {
     this.columns = columns;
+  }
+
+  setFilterModel(filterModel: Record<string, unknown>) {
+    this.filterModel = filterModel;
   }
 
   getColumns() {
@@ -41,6 +46,10 @@ class MockApi extends EventTarget {
 
   getAllDisplayedColumns() {
     return this.columns.filter(column => column.isVisible());
+  }
+
+  getFilterModel() {
+    return this.filterModel;
   }
 
   isDestroyed() {
@@ -138,6 +147,51 @@ test('synchronizes the current sort when sortChanged event occured', async () =>
   expect(
     await findByTitle(/Alt \+ click to hide the column/i),
   ).toBeInTheDocument();
+});
+
+test('keeps the filter trigger hidden after filter is applied', () => {
+  const { api, props } = setup();
+  const { getByLabelText, getByTitle } = render(<Header {...props} />);
+
+  act(() => {
+    api.setFilterModel({
+      '123': {
+        filter: 'dfg',
+        type: 'contains',
+      },
+    });
+    api.dispatchEvent(new Event('filterChanged'));
+  });
+
+  expect(getByLabelText(/open filter menu/i)).not.toHaveClass('is-visible');
+  expect(getByTitle(/Alt \+ click to hide the column/i)).toHaveTextContent(
+    'test column',
+  );
+});
+
+test('shows the filter trigger only while the filter menu is open', () => {
+  const { api, props } = setup();
+  const { getByLabelText } = render(<Header {...props} />);
+  const trigger = getByLabelText(/open filter menu/i);
+
+  const menuOpenedEvent = Object.assign(new Event('columnMenuVisibleChanged'), {
+    visible: true,
+    column: props.column,
+  });
+  const menuClosedEvent = Object.assign(new Event('columnMenuVisibleChanged'), {
+    visible: false,
+    column: props.column,
+  });
+
+  act(() => {
+    api.dispatchEvent(menuOpenedEvent);
+  });
+  expect(trigger).toHaveClass('is-visible');
+
+  act(() => {
+    api.dispatchEvent(menuClosedEvent);
+  });
+  expect(trigger).not.toHaveClass('is-visible');
 });
 
 test('hide display name for PIVOT_COL_ID', () => {
