@@ -43,6 +43,9 @@ import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
 import { useIsDark } from './useTableTheme';
 import { getAdaptiveHeaderStyle } from './headerColors';
+import parseNumericFilterValue, {
+  NUMERIC_FILTER_ALLOWED_CHAR_PATTERN,
+} from './parseNumericFilterValue';
 
 interface InputData {
   [key: string]: any;
@@ -249,6 +252,12 @@ export const useColDefs = ({
         ...(dataType === GenericDataType.Temporal && {
           filterParams: {
             comparator: dateFilterComparator,
+          },
+        }),
+        ...(dataType === GenericDataType.Numeric && {
+          filterParams: {
+            allowedCharPattern: NUMERIC_FILTER_ALLOWED_CHAR_PATTERN,
+            numberParser: parseNumericFilterValue,
           },
         }),
         cellDataType: getCellDataType(col),
