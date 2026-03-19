@@ -60,17 +60,6 @@ export const HeaderLabel = styled.div`
   ${() => `
     flex: 1 1 auto;
     width: 100%;
-    min-width: 0;
-    overflow: hidden;
-    padding-right: 0;
-  `}
-`;
-
-export const HeaderText = styled.div`
-  ${() => `
-    width: 100%;
-    min-width: 0;
-    max-width: none;
     font-weight: inherit;
     white-space: nowrap;
     overflow: hidden;
@@ -78,6 +67,9 @@ export const HeaderText = styled.div`
     overflow-wrap: normal;
     word-break: normal;
     hyphens: manual;
+    display: block;
+    min-width: 0;
+    max-width: none;
   `}
 `;
 

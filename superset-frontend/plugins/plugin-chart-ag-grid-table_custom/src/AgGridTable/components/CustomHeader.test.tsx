@@ -103,11 +103,3 @@ test('renders the title inside the ag-grid label/text structure', () => {
     ),
   ).toHaveTextContent('global_sales');
 });
-
-test('keeps the title wrapper min-width at least as wide as the longest word', () => {
-  const { getByTestId } = render(<CustomHeader {...createProps()} />);
-
-  expect(getByTestId('header-title-wrapper')).toHaveStyle({
-    minWidth: '12ch',
-  });
-});

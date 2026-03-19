@@ -168,10 +168,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         onClick={toggleSort}
         className="custom-header ag-header-cell-label"
       >
-        <HeaderLabel
-          data-test="header-title-wrapper"
-          style={{ minWidth: longestWordMinWidth }}
-        >
+        <HeaderLabel>
           <HeaderText className="ag-header-cell-text">{displayName}</HeaderText>
         </HeaderLabel>
         {sortIcon && (
