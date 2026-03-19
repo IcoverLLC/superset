@@ -23,15 +23,16 @@ import { Select } from '@superset-ui/core/components';
 // Header Styles
 export const Container = styled.div`
   ${({ theme }) => `
-    display: flex;
-    align-items: center;
+    position: relative;
     width: 100%;
+    height: 100%;
     min-width: 0;
 
     .three-dots-menu {
-      flex-shrink: 0;
-      align-self: center;
-      margin-left: ${theme.sizeUnit}px;
+      position: absolute;
+      top: 50%;
+      right: ${theme.sizeUnit / 2}px;
+      transform: translateY(-50%);
       cursor: pointer;
       padding: ${theme.sizeUnit / 2}px;
       border-radius: ${theme.borderRadius}px;
@@ -43,10 +44,11 @@ export const Container = styled.div`
 export const HeaderContainer = styled.div`
   ${({ theme }) => `
     display: flex;
-    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
     align-items: center;
     cursor: pointer;
-    padding: 0 ${theme.sizeUnit * 2}px;
+    padding: 0 ${theme.sizeUnit * 1.5}px;
     overflow: hidden;
     min-width: 0;
   `}
@@ -69,20 +71,24 @@ export const SortIconWrapper = styled.div`
     display: flex;
     flex-shrink: 0;
     align-items: center;
-    margin-left: ${theme.sizeUnit * 2}px;
+    margin-left: ${theme.sizeUnit}px;
   `}
 `;
 
-export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
-  align-self: flex-end;
-  margin-left: auto;
-  flex-shrink: 0;
+export const FilterIconWrapper = styled.div<{
+  isFilterActive?: boolean;
+  hasMenu?: boolean;
+}>`
+  position: absolute;
+  top: 50%;
+  right: ${({ hasMenu, theme }) =>
+    hasMenu ? theme.sizeUnit * 5 : theme.sizeUnit / 2}px;
+  transform: translateY(-50%);
   cursor: pointer;
   z-index: 1;
 
   padding: 3px 4px;
   overflow: hidden;
-  cursor: pointer;
   border-radius: 4px;
 
   ${({ isFilterActive }) =>
