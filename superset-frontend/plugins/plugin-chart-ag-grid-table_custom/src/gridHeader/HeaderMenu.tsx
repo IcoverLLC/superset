@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -146,6 +145,14 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   mainMenuItems.push(
     {
       type: 'divider',
+    },
+    {
+      key: 'resetFilters',
+      label: t('Сброс фильтров'),
+      icon: <Icons.ClearOutlined iconSize="m" />,
+      onClick: () => {
+        api.setFilterModel(null);
+      },
     },
     {
       key: 'resetColumns',

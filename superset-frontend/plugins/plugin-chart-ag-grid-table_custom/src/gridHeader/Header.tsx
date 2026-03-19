@@ -164,7 +164,8 @@ const FilterTrigger = styled.button`
     color: ${({ theme }) => theme.colorPrimary};
     box-shadow: 0 0 4px ${({ theme }) => theme.colorBorderSecondary};
   }
-  &.is-visible {
+  &.is-visible,
+  &.active {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;

@@ -143,7 +143,6 @@ export interface ServerPaginationData {
   sortBy?: SortByItem[];
   searchText?: string;
   searchColumn?: string;
-  resetFiltersKey?: number;
 }
 
 export interface AgGridTableChartTransformedProps<
