@@ -147,6 +147,14 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       type: 'divider',
     },
     {
+      key: 'resetFilters',
+      label: t('Reset filters'),
+      icon: <Icons.ClearOutlined iconSize="m" />,
+      onClick: () => {
+        api.setFilterModel(null);
+      },
+    },
+    {
       key: 'resetColumns',
       label: t('Reset columns'),
       icon: <IconEmpty className="anticon" />,
