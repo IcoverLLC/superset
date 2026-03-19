@@ -306,6 +306,15 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [storageKey],
     );
 
+    useEffect(() => {
+      const api = gridRef.current?.api;
+      if (!api || !hasStoredColumnState.current) {
+        return;
+      }
+
+      applyStoredColumnState(api);
+    }, [applyStoredColumnState, colDefsFromProps]);
+
     const persistColumnState = useCallback(
       (api: GridApi) => {
         if (!storageKey) {
@@ -433,6 +442,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             onColumnResized={handleColumnResized}
             onCellContextMenu={onCellContextMenu}
             initialState={gridInitialState}
+            maintainColumnOrder
             suppressAggFuncInHeader
             enableCellTextSelection
             quickFilterText={serverPagination ? '' : quickFilterText}
