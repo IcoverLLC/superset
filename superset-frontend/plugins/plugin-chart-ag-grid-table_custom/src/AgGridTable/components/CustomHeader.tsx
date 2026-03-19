@@ -33,10 +33,12 @@ import {
 import CustomPopover from './CustomPopover';
 import {
   Container,
-  HeaderActions,
+  FilterTriggerContainer,
   FilterIconWrapper,
   HeaderContainer,
   HeaderLabel,
+  HeaderText,
+  MenuTriggerContainer,
   MenuTrigger,
   MenuContainer,
   SortIconWrapper,
@@ -153,8 +155,13 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
   return (
     <Container>
-      <HeaderContainer onClick={toggleSort} className="custom-header">
-        <HeaderLabel>{displayName}</HeaderLabel>
+      <HeaderContainer
+        onClick={toggleSort}
+        className="custom-header ag-header-cell-label"
+      >
+        <HeaderLabel>
+          <HeaderText className="ag-header-cell-text">{displayName}</HeaderText>
+        </HeaderLabel>
         {sortIcon && (
           <SortIconWrapper data-test="sort-icon-wrapper">
             {sortIcon}
@@ -162,14 +169,17 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         )}
       </HeaderContainer>
 
-      <HeaderActions
-        className={`custom-header-actions${areActionsVisible ? ' is-visible' : ''}`}
-        data-test="custom-header-actions"
+      <CustomPopover
+        content={<div ref={filterRef} />}
+        isOpen={isFilterVisible}
+        onClose={() => setFilterVisible(false)}
       >
-        <CustomPopover
-          content={<div ref={filterRef} />}
-          isOpen={isFilterVisible}
-          onClose={() => setFilterVisible(false)}
+        <FilterTriggerContainer
+          className={`filter-trigger${areActionsVisible ? ' is-visible' : ''}${
+            isFilterActive ? ' active' : ''
+          }`}
+          data-test="header-filter-trigger-container"
+          hasMenu={hasMenu}
         >
           <FilterIconWrapper
             className="header-filter"
@@ -179,13 +189,18 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
           >
             <FilterIcon />
           </FilterIconWrapper>
-        </CustomPopover>
+        </FilterTriggerContainer>
+      </CustomPopover>
 
-        {hasMenu && (
-          <CustomPopover
-            content={menuContent}
-            isOpen={isMenuVisible}
-            onClose={() => setMenuVisible(false)}
+      {hasMenu && (
+        <CustomPopover
+          content={menuContent}
+          isOpen={isMenuVisible}
+          onClose={() => setMenuVisible(false)}
+        >
+          <MenuTriggerContainer
+            className={`customHeaderAction${areActionsVisible ? ' is-visible' : ''}`}
+            data-test="header-menu-trigger-container"
           >
             <MenuTrigger
               className="three-dots-menu"
@@ -194,9 +209,9 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
             >
               <KebabMenu />
             </MenuTrigger>
-          </CustomPopover>
-        )}
-      </HeaderActions>
+          </MenuTriggerContainer>
+        </CustomPopover>
+      )}
     </Container>
   );
 };

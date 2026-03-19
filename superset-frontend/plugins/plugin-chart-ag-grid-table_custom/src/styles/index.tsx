@@ -28,9 +28,13 @@ export const Container = styled.div`
     height: 100%;
     min-width: 0;
 
-    &:hover .custom-header-actions,
-    &:focus-within .custom-header-actions,
-    .custom-header-actions.is-visible {
+    &:hover .filter-trigger,
+    &:hover .customHeaderAction,
+    &:focus-within .filter-trigger,
+    &:focus-within .customHeaderAction,
+    .filter-trigger.is-visible,
+    .filter-trigger.active,
+    .customHeaderAction.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
@@ -45,13 +49,14 @@ export const HeaderContainer = styled.div`
     height: 100%;
     align-items: center;
     cursor: pointer;
-    padding: 0 ${theme.sizeUnit * 1.5}px;
+    padding-left: ${theme.sizeUnit * 1.5}px;
+    padding-right: 0;
     overflow: hidden;
     min-width: 0;
   `}
 `;
 
-export const HeaderLabel = styled.span`
+export const HeaderLabel = styled.div`
   ${() => `
     flex: 1 1 auto;
     width: 100%;
@@ -68,24 +73,34 @@ export const HeaderLabel = styled.span`
   `}
 `;
 
-export const HeaderActions = styled.div`
-  ${({ theme }) => `
-    position: absolute;
-    top: 50%;
-    right: ${theme.sizeUnit / 2}px;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    gap: ${theme.sizeUnit / 2}px;
-    z-index: 1;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
+const headerActionVisibilityCss = css`
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+`;
 
-    & > * {
-      pointer-events: auto;
-    }
+const headerActionPositionCss = css`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+`;
+
+export const FilterTriggerContainer = styled.div<{ hasMenu?: boolean }>`
+  ${({ theme }) => `
+    right: ${theme.sizeUnit * 1.5}px;
   `}
+
+  ${({ hasMenu, theme }) =>
+    hasMenu &&
+    css`
+      right: ${theme.sizeUnit * 7}px;
+    `}
+
+  ${headerActionPositionCss};
+  ${headerActionVisibilityCss};
 `;
 
 export const SortIconWrapper = styled.div`
@@ -145,6 +160,15 @@ export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
         `}
     }
   }
+`;
+
+export const MenuTriggerContainer = styled.div`
+  ${({ theme }) => `
+    right: ${theme.sizeUnit * 1.5}px;
+  `}
+
+  ${headerActionPositionCss};
+  ${headerActionVisibilityCss};
 `;
 
 export const MenuTrigger = styled.div`

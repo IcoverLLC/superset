@@ -73,7 +73,15 @@ test('keeps header actions visible when the filter is active', () => {
 
   const { getByTestId } = render(<CustomHeader {...props} />);
 
-  expect(getByTestId('custom-header-actions')).toHaveClass('is-visible');
+  expect(getByTestId('header-filter-trigger-container')).toHaveClass(
+    'filter-trigger',
+    'active',
+    'is-visible',
+  );
+  expect(getByTestId('header-menu-trigger-container')).toHaveClass(
+    'customHeaderAction',
+    'is-visible',
+  );
 });
 
 test('does not render the three-dots menu for percent metrics', () => {
@@ -84,4 +92,14 @@ test('does not render the three-dots menu for percent metrics', () => {
 
   expect(queryByTestId('header-menu-trigger')).not.toBeInTheDocument();
   expect(queryByTestId('header-filter-trigger')).toBeInTheDocument();
+});
+
+test('renders the title inside the ag-grid label/text structure', () => {
+  const { container } = render(<CustomHeader {...createProps()} />);
+
+  expect(
+    container.querySelector(
+      '.ag-header-cell-label > div > .ag-header-cell-text',
+    ),
+  ).toHaveTextContent('global_sales');
 });
