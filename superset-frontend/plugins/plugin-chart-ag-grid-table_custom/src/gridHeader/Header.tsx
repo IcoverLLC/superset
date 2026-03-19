@@ -45,8 +45,9 @@ const HeaderCell = styled.div`
   min-height: 100%;
   .ag-header-cell-text {
     white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: manual;
   }
   &[role='button'] {
     cursor: pointer;
