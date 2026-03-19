@@ -19,7 +19,7 @@
  * under the License.
  */
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { t } from '@superset-ui/core';
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import FilterIcon from './Filter';
@@ -33,10 +33,12 @@ import {
 import CustomPopover from './CustomPopover';
 import {
   Container,
-  HeaderActions,
+  FilterTriggerContainer,
   FilterIconWrapper,
   HeaderContainer,
   HeaderLabel,
+  HeaderText,
+  MenuTriggerContainer,
   MenuTrigger,
   MenuContainer,
   SortIconWrapper,
@@ -78,6 +80,15 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const isMain = userColDef?.isMain;
   const isTimeComparison = !isMain && userColDef?.timeComparisonKey;
   const sortKey = isMain ? colId.replace('Main', '').trim() : colId;
+  const longestWordMinWidth = useMemo(() => {
+    const longestWordLength = displayName
+      ?.trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .reduce((max, word) => Math.max(max, word.length), 0);
+
+    return longestWordLength ? `${longestWordLength}ch` : undefined;
+  }, [displayName]);
 
   // Sorting logic
   const clearSort = () => {
@@ -153,8 +164,16 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
   return (
     <Container>
-      <HeaderContainer onClick={toggleSort} className="custom-header">
-        <HeaderLabel>{displayName}</HeaderLabel>
+      <HeaderContainer
+        onClick={toggleSort}
+        className="custom-header ag-header-cell-label"
+      >
+        <HeaderLabel
+          data-test="header-title-wrapper"
+          style={{ minWidth: longestWordMinWidth }}
+        >
+          <HeaderText className="ag-header-cell-text">{displayName}</HeaderText>
+        </HeaderLabel>
         {sortIcon && (
           <SortIconWrapper data-test="sort-icon-wrapper">
             {sortIcon}
@@ -162,31 +181,38 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         )}
       </HeaderContainer>
 
-      <HeaderActions
-        className={`custom-header-actions${areActionsVisible ? ' is-visible' : ''}`}
-        data-test="custom-header-actions"
+      <CustomPopover
+        content={<div ref={filterRef} />}
+        isOpen={isFilterVisible}
+        onClose={() => setFilterVisible(false)}
       >
-        <CustomPopover
-          content={<div ref={filterRef} />}
-          isOpen={isFilterVisible}
-          onClose={() => setFilterVisible(false)}
+        <FilterTriggerContainer
+          className={`filter-trigger${areActionsVisible ? ' is-visible' : ''}${
+            isFilterActive ? ' active' : ''
+          }`}
+          data-test="header-filter-trigger-container"
+          hasMenu={hasMenu}
         >
           <FilterIconWrapper
             className="header-filter"
             data-test="header-filter-trigger"
             onClick={handleFilterClick}
-            hasMenu={hasMenu}
             isFilterActive={isFilterActive}
           >
             <FilterIcon />
           </FilterIconWrapper>
-        </CustomPopover>
+        </FilterTriggerContainer>
+      </CustomPopover>
 
-        {hasMenu && (
-          <CustomPopover
-            content={menuContent}
-            isOpen={isMenuVisible}
-            onClose={() => setMenuVisible(false)}
+      {hasMenu && (
+        <CustomPopover
+          content={menuContent}
+          isOpen={isMenuVisible}
+          onClose={() => setMenuVisible(false)}
+        >
+          <MenuTriggerContainer
+            className={`customHeaderAction${areActionsVisible ? ' is-visible' : ''}`}
+            data-test="header-menu-trigger-container"
           >
             <MenuTrigger
               className="three-dots-menu"
@@ -195,9 +221,9 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
             >
               <KebabMenu />
             </MenuTrigger>
-          </CustomPopover>
-        )}
-      </HeaderActions>
+          </MenuTriggerContainer>
+        </CustomPopover>
+      )}
     </Container>
   );
 };
