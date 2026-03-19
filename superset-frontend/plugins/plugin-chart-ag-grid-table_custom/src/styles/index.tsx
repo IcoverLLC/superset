@@ -310,8 +310,7 @@ export const StyledChartContainer = styled.div<{
       overflow: visible;
       text-overflow: clip;
       white-space: normal;
-      height: auto;
-      overflow-wrap: break-word;
+      overflow-wrap: normal;
       word-break: normal;
       hyphens: manual;
     }
