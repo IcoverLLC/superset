@@ -24,9 +24,12 @@ import { Select } from '@superset-ui/core/components';
 export const Container = styled.div`
   ${({ theme }) => `
     display: flex;
+    align-items: center;
     width: 100%;
+    min-width: 0;
 
     .three-dots-menu {
+      flex-shrink: 0;
       align-self: center;
       margin-left: ${theme.sizeUnit}px;
       cursor: pointer;
@@ -39,29 +42,32 @@ export const Container = styled.div`
 
 export const HeaderContainer = styled.div`
   ${({ theme }) => `
-    width: 100%;
     display: flex;
+    flex: 1 1 auto;
     align-items: center;
     cursor: pointer;
     padding: 0 ${theme.sizeUnit * 2}px;
     overflow: hidden;
+    min-width: 0;
   `}
 `;
 
 export const HeaderLabel = styled.span`
   ${({ theme }) => `
+    flex: 1 1 auto;
     font-weight: ${theme.fontWeightStrong};
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
-    max-width: 100%;
+    min-width: 0;
   `}
 `;
 
 export const SortIconWrapper = styled.div`
   ${({ theme }) => `
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     margin-left: ${theme.sizeUnit * 2}px;
   `}
@@ -70,6 +76,7 @@ export const SortIconWrapper = styled.div`
 export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
   align-self: flex-end;
   margin-left: auto;
+  flex-shrink: 0;
   cursor: pointer;
 
   padding: 3px 4px;
