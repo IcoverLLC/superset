@@ -17,25 +17,11 @@
  * under the License.
  */
 
-import {
-  render,
-  screen,
-  userEvent,
-  waitFor,
-} from 'spec/helpers/testing-library';
+import { render, screen, userEvent } from 'spec/helpers/testing-library';
 import { FeatureFlag, VizType } from '@superset-ui/core';
 import mockState from 'spec/fixtures/mockState';
-import { updateDataMask } from 'src/dataMask/actions';
 import { cachedSupersetGet } from 'src/utils/cachedSupersetGet';
 import SliceHeaderControls, { SliceHeaderControlsProps } from '.';
-
-jest.mock('src/dataMask/actions', () => ({
-  updateDataMask: jest.fn((filterId, dataMask) => ({
-    type: 'UPDATE_DATA_MASK',
-    filterId,
-    dataMask,
-  })),
-}));
 
 jest.mock('src/utils/cachedSupersetGet');
 
@@ -592,33 +578,4 @@ test('Dataset drill info API call is not made when user lacks drill permissions'
   await new Promise(resolve => setTimeout(resolve, 0));
 
   expect(mockCachedSupersetGet).not.toHaveBeenCalled();
-});
-
-test('Should show reset filters only for ag-grid custom table and dispatch reset ownState', async () => {
-  const props = createProps(VizType.TableAgGridCustom);
-  renderWrapper(props);
-  openMenu();
-
-  const resetItem = screen.getByText('Сброс фильтров');
-  expect(resetItem).toBeInTheDocument();
-
-  userEvent.click(resetItem);
-
-  await waitFor(() => {
-    expect(updateDataMask).toHaveBeenCalledWith(
-      371,
-      expect.objectContaining({
-        ownState: expect.objectContaining({
-          resetFiltersKey: expect.any(Number),
-        }),
-      }),
-    );
-  });
-  expect(props.addSuccessToast).toHaveBeenCalledWith('Filters reset');
-});
-
-test('Should not show reset filters for non ag-grid custom charts', () => {
-  renderWrapper(createProps(VizType.Table));
-  openMenu();
-  expect(screen.queryByText('Сброс фильтров')).not.toBeInTheDocument();
 });

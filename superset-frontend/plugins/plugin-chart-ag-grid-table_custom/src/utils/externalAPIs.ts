@@ -27,8 +27,6 @@ interface TableOwnState {
   sortOrder?: 'asc' | 'desc';
   searchText?: string;
   sortBy?: SortByItem[];
-  searchColumn?: string;
-  resetFiltersKey?: number;
 }
 
 export const updateTableOwnState = (
