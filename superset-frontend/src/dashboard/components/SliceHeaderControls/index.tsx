@@ -40,7 +40,7 @@ import {
   BinaryQueryObjectFilterClause,
   QueryFormData,
 } from '@superset-ui/core';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Menu, MenuItem } from '@superset-ui/core/components/Menu';
 import {
   NoAnimationDropdown,
@@ -59,8 +59,10 @@ import { LOG_ACTIONS_CHART_DOWNLOAD_AS_IMAGE } from 'src/logger/LogUtils';
 import { MenuKeys, RootState } from 'src/dashboard/types';
 import DrillDetailModal from 'src/components/Chart/DrillDetail/DrillDetailModal';
 import { usePermissions } from 'src/hooks/usePermissions';
-import { useDatasetDrillInfo } from 'src/hooks/apiResources/datasets';
+import { updateDataMask } from 'src/dataMask/actions';
 import { ResourceStatus } from 'src/hooks/apiResources/apiResources';
+import { useDatasetDrillInfo } from 'src/hooks/apiResources/datasets';
+import { getResetFiltersOwnState } from 'src/visualizations/ResetChartFilters/utils';
 import { useCrossFiltersScopingModal } from '../nativeFilters/FilterBar/CrossFilters/ScopingModal/useCrossFiltersScopingModal';
 import { ViewResultsModalTrigger } from './ViewResultsModalTrigger';
 
@@ -161,6 +163,7 @@ const SliceHeaderControls = (
     props.slice.slice_id,
   );
   const history = useHistory();
+  const dispatch = useDispatch();
 
   const queryMenuRef: RefObject<any> = useRef(null);
   const resultsMenuRef: RefObject<any> = useRef(null);
@@ -177,6 +180,10 @@ const SliceHeaderControls = (
     getChartMetadataRegistry()
       .get(props.slice.viz_type)
       ?.behaviors?.includes(Behavior.InteractiveChart);
+  const chartOwnState = useSelector<
+    RootState,
+    RootState['dataMask'][number]['ownState']
+  >(({ dataMask }) => dataMask[props.slice.slice_id]?.ownState || {});
   const canExplore = props.supersetCanExplore;
   const { canDrillToDetail, canViewQuery, canViewTable } = usePermissions();
 
@@ -234,6 +241,14 @@ const SliceHeaderControls = (
         break;
       case MenuKeys.Fullscreen:
         props.handleToggleFullSize();
+        break;
+      case MenuKeys.ResetChartFilters:
+        dispatch(
+          updateDataMask(props.slice.slice_id, {
+            ownState: getResetFiltersOwnState(chartOwnState),
+          }),
+        );
+        props.addSuccessToast(t('Filters reset'));
         break;
       case MenuKeys.ExportFullCsv:
         // eslint-disable-next-line no-unused-expressions
@@ -318,6 +333,7 @@ const SliceHeaderControls = (
     isCached = [],
   } = props;
   const isTable = slice.viz_type === VizType.Table;
+  const isAgGridCustomTable = slice.viz_type === VizType.TableAgGridCustom;
   const isPivotTable = slice.viz_type === VizType.PivotTable;
   const cachedWhen = (cachedDttm || []).map(itemCachedDttm =>
     extendedDayjs.utc(itemCachedDttm).fromNow(),
@@ -383,6 +399,14 @@ const SliceHeaderControls = (
       label: props.isDescriptionExpanded
         ? t('Hide chart description')
         : t('Show chart description'),
+    });
+  }
+
+  if (isAgGridCustomTable) {
+    newMenuItems.push({
+      key: MenuKeys.ResetChartFilters,
+      label: t('Сброс фильтров'),
+      icon: <Icons.ClearOutlined css={dropdownIconsStyles} />,
     });
   }
 

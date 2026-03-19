@@ -405,6 +405,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         showTotals={showTotals}
         width={width}
         onCellContextMenu={handleCellContextMenu}
+        resetFiltersKey={serverPaginationData?.resetFiltersKey}
       />
     </StyledChartContainer>
   );
