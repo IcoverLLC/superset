@@ -18,17 +18,26 @@
  * under the License.
  */
 import { ValueGetterParams } from '@superset-ui/core/components/ThemedAgGridReact';
+import parseNumericFilterValue from './parseNumericFilterValue';
 
 const filterValueGetter = (params: ValueGetterParams) => {
   const raw = params.data[params.colDef.field as string];
   const formatter = params.colDef.valueFormatter as Function;
-  if (!raw || !formatter) return null;
+  if (raw == null) return null;
+  if (!formatter) {
+    return typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
+  }
+
   const formatted = formatter({
     value: raw,
   });
+  const numeric = parseNumericFilterValue(String(formatted));
 
-  const numeric = parseFloat(String(formatted).replace('%', '').trim());
-  return Number.isNaN(numeric) ? null : numeric;
+  if (numeric !== null) {
+    return numeric;
+  }
+
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
 };
 
 export default filterValueGetter;
