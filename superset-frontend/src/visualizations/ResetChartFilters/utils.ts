@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,24 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { SetDataMaskHook } from '@superset-ui/core';
-import { SortByItem } from '../types';
+import { JsonObject } from '@superset-ui/core';
 
-interface TableOwnState {
-  currentPage?: number;
-  pageSize?: number;
-  sortColumn?: string;
-  sortOrder?: 'asc' | 'desc';
-  searchText?: string;
-  sortBy?: SortByItem[];
-  searchColumn?: string;
-  resetFiltersKey?: number;
-}
-
-export const updateTableOwnState = (
-  setDataMask: SetDataMaskHook = () => {},
-  modifiedOwnState: TableOwnState,
-) =>
-  setDataMask({
-    ownState: modifiedOwnState,
-  });
+export const getResetFiltersOwnState = (ownState: JsonObject = {}) => ({
+  ...ownState,
+  resetFiltersKey: Date.now(),
+});

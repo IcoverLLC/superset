@@ -91,6 +91,7 @@ export interface AgGridTableProps {
   showTotals: boolean;
   width: number;
   onCellContextMenu?: (event: CellContextMenuEvent) => void;
+  resetFiltersKey?: number;
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
@@ -126,6 +127,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     showTotals,
     width,
     onCellContextMenu,
+    resetFiltersKey,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +281,20 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
         gridRef.current.api.sizeColumnsToFit();
       }
     }, [width]);
+
+    useEffect(() => {
+      if (!resetFiltersKey) {
+        return;
+      }
+
+      const api = gridRef.current?.api;
+      if (!api) {
+        return;
+      }
+
+      api.setFilterModel(null);
+      api.onFilterChanged();
+    }, [resetFiltersKey]);
 
     const applyStoredColumnState = useCallback(
       (api: GridApi) => {

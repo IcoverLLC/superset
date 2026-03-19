@@ -31,6 +31,8 @@ class MockApi extends EventTarget {
 
   private columns: Column[] = [];
 
+  getFilterModel = jest.fn(() => ({}));
+
   setColumns(columns: Column[]) {
     this.columns = columns;
   }
@@ -138,6 +140,33 @@ test('synchronizes the current sort when sortChanged event occured', async () =>
   expect(
     await findByTitle(/Alt \+ click to hide the column/i),
   ).toBeInTheDocument();
+});
+
+test('keeps filter trigger hidden when filter is active and shows active indicator instead', async () => {
+  const { api, props } = setup();
+  api.getFilterModel = jest.fn(() => ({
+    '123': {
+      filter: 'abc',
+      type: 'contains',
+    },
+  }));
+
+  const { container, findByTitle } = render(<Header {...props} />);
+
+  act(() => {
+    api.dispatchEvent(new Event('filterChanged'));
+  });
+
+  expect(
+    await findByTitle(/Alt \+ click to hide the column/i),
+  ).toBeInTheDocument();
+  expect(container.querySelector('.filter-trigger.active')).toBeInTheDocument();
+  expect(
+    container.querySelector('.filter-trigger.is-visible'),
+  ).not.toBeInTheDocument();
+  expect(container.querySelector('.filter-trigger.active')).toHaveStyle({
+    visibility: 'hidden',
+  });
 });
 
 test('hide display name for PIVOT_COL_ID', () => {
