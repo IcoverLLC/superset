@@ -122,7 +122,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const isCurrentColSorted = currentSort?.colId === colId;
   const currentDirection = isCurrentColSorted ? currentSort?.sort : null;
   const hasMenu = !isPercentMetric && !isTimeComparison;
-  const sortIcon = getSortIcon(initialSortState, colId);
   const shouldShowAsc =
     !isTimeComparison && (!currentDirection || currentDirection === 'desc');
   const shouldShowDesc =
@@ -152,11 +151,9 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     <Container>
       <HeaderContainer onClick={toggleSort} className="custom-header">
         <HeaderLabel>{displayName}</HeaderLabel>
-        {sortIcon && (
-          <SortIconWrapper data-test="sort-icon-wrapper">
-            {sortIcon}
-          </SortIconWrapper>
-        )}
+        <SortIconWrapper>
+          {getSortIcon(initialSortState, colId)}
+        </SortIconWrapper>
       </HeaderContainer>
 
       <CustomPopover
