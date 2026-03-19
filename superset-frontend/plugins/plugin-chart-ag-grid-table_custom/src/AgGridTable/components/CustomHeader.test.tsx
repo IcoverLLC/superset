@@ -66,3 +66,22 @@ test('renders sort icon wrapper only for the sorted column', () => {
 
   expect(getByTestId('sort-icon-wrapper')).toBeInTheDocument();
 });
+
+test('keeps header actions visible when the filter is active', () => {
+  const props = createProps();
+  props.column.isFilterActive = () => true;
+
+  const { getByTestId } = render(<CustomHeader {...props} />);
+
+  expect(getByTestId('custom-header-actions')).toHaveClass('is-visible');
+});
+
+test('does not render the three-dots menu for percent metrics', () => {
+  const props = createProps();
+  props.column.getColDef = () => ({ context: { isPercentMetric: true } });
+
+  const { queryByTestId } = render(<CustomHeader {...props} />);
+
+  expect(queryByTestId('header-menu-trigger')).not.toBeInTheDocument();
+  expect(queryByTestId('header-filter-trigger')).toBeInTheDocument();
+});

@@ -33,9 +33,11 @@ import {
 import CustomPopover from './CustomPopover';
 import {
   Container,
+  HeaderActions,
   FilterIconWrapper,
   HeaderContainer,
   HeaderLabel,
+  MenuTrigger,
   MenuContainer,
   SortIconWrapper,
 } from '../../styles';
@@ -127,6 +129,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     !isTimeComparison && (!currentDirection || currentDirection === 'desc');
   const shouldShowDesc =
     !isTimeComparison && (!currentDirection || currentDirection === 'asc');
+  const areActionsVisible = isFilterActive || isFilterVisible || isMenuVisible;
 
   const menuContent = (
     <MenuContainer>
@@ -159,32 +162,42 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         )}
       </HeaderContainer>
 
-      <CustomPopover
-        content={<div ref={filterRef} />}
-        isOpen={isFilterVisible}
-        onClose={() => setFilterVisible(false)}
+      <HeaderActions
+        className={`custom-header-actions${areActionsVisible ? ' is-visible' : ''}`}
+        data-test="custom-header-actions"
       >
-        <FilterIconWrapper
-          className="header-filter"
-          onClick={handleFilterClick}
-          hasMenu={hasMenu}
-          isFilterActive={isFilterActive}
-        >
-          <FilterIcon />
-        </FilterIconWrapper>
-      </CustomPopover>
-
-      {hasMenu && (
         <CustomPopover
-          content={menuContent}
-          isOpen={isMenuVisible}
-          onClose={() => setMenuVisible(false)}
+          content={<div ref={filterRef} />}
+          isOpen={isFilterVisible}
+          onClose={() => setFilterVisible(false)}
         >
-          <div className="three-dots-menu" onClick={handleMenuClick}>
-            <KebabMenu />
-          </div>
+          <FilterIconWrapper
+            className="header-filter"
+            data-test="header-filter-trigger"
+            onClick={handleFilterClick}
+            hasMenu={hasMenu}
+            isFilterActive={isFilterActive}
+          >
+            <FilterIcon />
+          </FilterIconWrapper>
         </CustomPopover>
-      )}
+
+        {hasMenu && (
+          <CustomPopover
+            content={menuContent}
+            isOpen={isMenuVisible}
+            onClose={() => setMenuVisible(false)}
+          >
+            <MenuTrigger
+              className="three-dots-menu"
+              data-test="header-menu-trigger"
+              onClick={handleMenuClick}
+            >
+              <KebabMenu />
+            </MenuTrigger>
+          </CustomPopover>
+        )}
+      </HeaderActions>
     </Container>
   );
 };
