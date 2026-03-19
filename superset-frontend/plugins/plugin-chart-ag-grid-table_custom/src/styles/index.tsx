@@ -309,8 +309,9 @@ export const StyledChartContainer = styled.div<{
     .dt-truncate-cell:hover {
       text-overflow: clip;
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: normal;
+      word-break: normal;
+      hyphens: manual;
     }
 
     .table-layout-container {
