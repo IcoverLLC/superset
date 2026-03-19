@@ -46,7 +46,7 @@ export const HeaderContainer = styled.div`
     flex: 1 1 auto;
     align-items: center;
     cursor: pointer;
-    padding: 0 ${theme.sizeUnit}px 0 ${theme.sizeUnit * 1.5}px;
+    padding: 0 ${theme.sizeUnit * 2}px;
     overflow: hidden;
     min-width: 0;
   `}
@@ -69,7 +69,7 @@ export const SortIconWrapper = styled.div`
     display: flex;
     flex-shrink: 0;
     align-items: center;
-    margin-left: ${theme.sizeUnit}px;
+    margin-left: ${theme.sizeUnit * 2}px;
   `}
 `;
 
