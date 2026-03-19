@@ -148,7 +148,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     },
     {
       key: 'resetFilters',
-      label: t('Reset filters'),
+      label: t('Сброс фильтров'),
       icon: <Icons.ClearOutlined iconSize="m" />,
       onClick: () => {
         api.setFilterModel(null);
