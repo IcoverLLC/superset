@@ -20,6 +20,74 @@
 export const NUMERIC_FILTER_ALLOWED_CHAR_PATTERN = '\\d\\-\\+\\.,%\\s';
 
 const PERCENT_SUFFIX = '%';
+const NON_NUMERIC_FILTER_CHARS = /[^\d+\-.,%\s]/g;
+
+function normalizeNumericString(value: string): {
+  hasPercentSuffix: boolean;
+  normalizedValue: string | null;
+} {
+  const sanitizedValue = value.replace(NON_NUMERIC_FILTER_CHARS, '').trim();
+
+  if (!sanitizedValue) {
+    return {
+      hasPercentSuffix: false,
+      normalizedValue: null,
+    };
+  }
+
+  const hasPercentSuffix = sanitizedValue.endsWith(PERCENT_SUFFIX);
+  const compactValue = (
+    hasPercentSuffix
+      ? sanitizedValue.slice(0, -1).trim()
+      : sanitizedValue
+  ).replace(/\s+/g, '');
+
+  if (!compactValue) {
+    return {
+      hasPercentSuffix,
+      normalizedValue: null,
+    };
+  }
+
+  const hasDot = compactValue.includes('.');
+  const hasComma = compactValue.includes(',');
+
+  if (hasDot && hasComma) {
+    const lastDotIndex = compactValue.lastIndexOf('.');
+    const lastCommaIndex = compactValue.lastIndexOf(',');
+    const decimalSeparator = lastDotIndex > lastCommaIndex ? '.' : ',';
+    const thousandsSeparator = decimalSeparator === '.' ? ',' : '.';
+
+    return {
+      hasPercentSuffix,
+      normalizedValue: compactValue
+        .split(thousandsSeparator)
+        .join('')
+        .replace(decimalSeparator, '.'),
+    };
+  }
+
+  if (hasComma) {
+    const parts = compactValue.split(',');
+
+    if (parts.length === 2 && parts[1].length === 3 && !hasPercentSuffix) {
+      return {
+        hasPercentSuffix,
+        normalizedValue: parts.join(''),
+      };
+    }
+
+    return {
+      hasPercentSuffix,
+      normalizedValue: `${parts.slice(0, -1).join('')}.${parts.at(-1)}`,
+    };
+  }
+
+  return {
+    hasPercentSuffix,
+    normalizedValue: compactValue,
+  };
+}
 
 export default function parseNumericFilterValue(
   value: number | string | null | undefined,
@@ -32,22 +100,13 @@ export default function parseNumericFilterValue(
     return Number.isFinite(value) ? value : null;
   }
 
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return null;
-  }
-
-  const hasPercentSuffix = trimmedValue.endsWith(PERCENT_SUFFIX);
-  const normalizedValue = hasPercentSuffix
-    ? trimmedValue.slice(0, -1).trim()
-    : trimmedValue;
+  const { hasPercentSuffix, normalizedValue } = normalizeNumericString(value);
 
   if (!normalizedValue) {
     return null;
   }
 
-  const parsedValue = Number(normalizedValue.replace(',', '.'));
+  const parsedValue = Number(normalizedValue);
 
   if (!Number.isFinite(parsedValue)) {
     return null;

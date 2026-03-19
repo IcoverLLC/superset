@@ -246,15 +246,13 @@ export const useColDefs = ({
           }),
         minWidth: config?.columnWidth ?? 100,
         filter,
-        ...(isPercentMetric && {
-          filterValueGetter,
-        }),
         ...(dataType === GenericDataType.Temporal && {
           filterParams: {
             comparator: dateFilterComparator,
           },
         }),
         ...(dataType === GenericDataType.Numeric && {
+          filterValueGetter,
           filterParams: {
             allowedCharPattern: NUMERIC_FILTER_ALLOWED_CHAR_PATTERN,
             numberParser: parseNumericFilterValue,
