@@ -17,7 +17,7 @@
 # pylint: disable=too-many-lines
 import functools
 import logging
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from io import BytesIO
 from typing import Any, Callable, cast
 from zipfile import is_zipfile, ZipFile
@@ -28,6 +28,8 @@ from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import gettext, ngettext
 from marshmallow import ValidationError
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload, selectinload
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
 
@@ -102,7 +104,8 @@ from superset.dashboards.schemas import (
     thumbnail_query_schema,
 )
 from superset.exceptions import ScreenshotImageNotAvailableException
-from superset.extensions import event_logger
+from superset.extensions import cache_manager, event_logger
+from superset.models.core import Log
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
 from superset.security.guest_token import GuestUser
@@ -112,7 +115,7 @@ from superset.tasks.thumbnails import (
 )
 from superset.tasks.utils import get_current_user
 from superset.utils import json
-from superset.utils.core import parse_boolean_string
+from superset.utils.core import get_user_id, parse_boolean_string
 from superset.utils.pdf import build_pdf_from_screenshots
 from superset.utils.screenshots import (
     DashboardScreenshot,
@@ -136,6 +139,26 @@ from superset.views.filters import (
 )
 
 logger = logging.getLogger(__name__)
+
+get_welcome_dashboards_schema = {
+    "type": "object",
+    "properties": {
+        "page": {"type": "number"},
+        "page_size": {"type": "number"},
+        "top_limit": {"type": "number"},
+        "filters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "col": {"type": "string"},
+                    "opr": {"type": "string"},
+                    "value": {},
+                },
+            },
+        },
+    },
+}
 
 
 def with_dashboard(
@@ -183,6 +206,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         "screenshot",
         "put_filters",
         "put_colors",
+        "welcome",
     }
     resource_name = "dashboard"
     allow_browser_login = True
@@ -334,6 +358,224 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             current_app.config["VERSION_STRING"],
             current_app.config["VERSION_SHA"],
         )
+
+    def _base_welcome_dashboard_query(self) -> Any:
+        datamodel = SQLAInterface(Dashboard, db.session)
+        query = (
+            db.session.query(Dashboard)
+            .options(
+                joinedload(Dashboard.changed_by),
+                selectinload(Dashboard.owners),
+                selectinload(Dashboard.tags),
+            )
+            .filter(Dashboard.published.is_(True))
+        )
+        return DashboardAccessFilter("id", datamodel).apply(query, None)
+
+    def _apply_welcome_filters(
+        self,
+        query: Any,
+        filters: list[dict[str, Any]],
+    ) -> Any:
+        datamodel = SQLAInterface(Dashboard, db.session)
+        user_id = get_user_id()
+
+        for filter_config in filters or []:
+            column = filter_config.get("col")
+            operator = filter_config.get("opr")
+            value = filter_config.get("value")
+
+            if value in ("", None):
+                continue
+
+            if column == "dashboard_title" and operator == "title_or_slug":
+                query = DashboardTitleOrSlugFilter("dashboard_title", datamodel).apply(
+                    query, value
+                )
+            elif column == "tags" and operator == "dashboard_tag_id":
+                query = DashboardTagIdFilter("tags", datamodel).apply(query, value)
+            elif column == "owners" and operator == "rel_m_m":
+                query = query.filter(Dashboard.owners.any(id=int(value)))
+            elif (
+                column == "id"
+                and operator == "dashboard_is_favorite"
+                and user_id is not None
+            ):
+                query = DashboardFavoriteFilter("id", datamodel).apply(
+                    query,
+                    parse_boolean_string(value)
+                    if isinstance(value, str)
+                    else bool(value),
+                )
+            elif column == "id" and operator == "dashboard_is_certified":
+                query = DashboardCertifiedFilter("id", datamodel).apply(
+                    query,
+                    parse_boolean_string(value)
+                    if isinstance(value, str)
+                    else bool(value),
+                )
+
+        return query
+
+    @staticmethod
+    def _serialize_dashboards(dashboards: list[Dashboard]) -> list[dict[str, Any]]:
+        return DashboardGetResponseSchema(many=True).dump(dashboards)
+
+    def _get_manual_top_dashboards(
+        self,
+        query: Any,
+        top_limit: int,
+    ) -> list[Dashboard]:
+        configured_ids = current_app.config.get("WELCOME_DASHBOARD_TOP_IDS", [])
+        if not configured_ids:
+            return []
+
+        order = {
+            dashboard_id: index for index, dashboard_id in enumerate(configured_ids)
+        }
+        dashboards = query.filter(Dashboard.id.in_(configured_ids)).order_by(None).all()
+        dashboards.sort(key=lambda dashboard: order.get(dashboard.id, len(order)))
+        return dashboards[:top_limit]
+
+    def _get_cached_top_dashboard_ids(self) -> tuple[list[int], int]:
+        lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
+        today = datetime.utcnow().date()
+        period_end = datetime.combine(today, time.min)
+        period_start = period_end - timedelta(days=lookback_days)
+        cache_key = (
+            "welcome_dashboard_top_ids:"
+            f"{lookback_days}:"
+            f"{period_start.date().isoformat()}:"
+            f"{(period_end - timedelta(days=1)).date().isoformat()}"
+        )
+
+        cached_ids = cache_manager.cache.get(cache_key)
+        if cached_ids is not None:
+            return cached_ids, lookback_days
+
+        top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
+        top_dashboard_ids = [
+            dashboard_id
+            for dashboard_id, _view_count, _last_viewed_at in (
+                db.session.query(
+                    Log.dashboard_id.label("dashboard_id"),
+                    func.count(Log.id).label("view_count"),
+                    func.max(Log.dttm).label("last_viewed_at"),
+                )
+                .filter(
+                    Log.action == "log",
+                    Log.dashboard_id.isnot(None),
+                    Log.dttm >= period_start,
+                    Log.dttm < period_end,
+                    Log.json.contains('"event_name": "mount_dashboard"'),
+                )
+                .group_by(Log.dashboard_id)
+                .order_by(
+                    func.count(Log.id).desc(),
+                    func.max(Log.dttm).desc(),
+                )
+                .limit(top_limit)
+                .all()
+            )
+            if dashboard_id is not None
+        ]
+        cache_manager.cache.set(cache_key, top_dashboard_ids, timeout=24 * 60 * 60)
+        return top_dashboard_ids, lookback_days
+
+    def _get_top_dashboards(
+        self,
+        query: Any,
+        top_limit: int,
+    ) -> tuple[str, list[Dashboard], int]:
+        try:
+            ranked_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
+            if not ranked_dashboard_ids:
+                manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
+                if manual_dashboards:
+                    return "manual_config", manual_dashboards, lookback_days
+                return "empty", [], lookback_days
+
+            order = {
+                dashboard_id: index
+                for index, dashboard_id in enumerate(ranked_dashboard_ids)
+            }
+            top_dashboards = (
+                query.filter(Dashboard.id.in_(ranked_dashboard_ids))
+                .order_by(None)
+                .all()
+            )
+            top_dashboards.sort(
+                key=lambda dashboard: order.get(dashboard.id, len(order))
+            )
+            top_dashboards = top_dashboards[:top_limit]
+            if top_dashboards:
+                return "recent_views", top_dashboards, lookback_days
+        except Exception:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to resolve welcome top dashboards from recent logs",
+                exc_info=True,
+            )
+
+        manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
+        if manual_dashboards:
+            return "manual_config", manual_dashboards, lookback_days
+
+        return "empty", [], lookback_days
+
+    @expose("/welcome/", methods=("GET",))
+    @protect()
+    @safe
+    @permission_name("read")
+    @statsd_metrics
+    @rison(get_welcome_dashboards_schema)
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.welcome",
+        log_to_statsd=False,
+    )
+    def welcome(self, **kwargs: Any) -> Response:
+        args = kwargs.get("rison", {})
+        page, page_size = self._sanitize_page_args(*self._handle_page_args(args))
+        configured_top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
+        top_limit = max(
+            1,
+            min(
+                int(args.get("top_limit", configured_top_limit)),
+                configured_top_limit,
+            ),
+        )
+        filters = args.get("filters", [])
+
+        filtered_query = self._apply_welcome_filters(
+            self._base_welcome_dashboard_query(),
+            filters,
+        )
+        dashboards_query = filtered_query.order_by(
+            Dashboard.changed_on.desc(),
+            Dashboard.id.desc(),
+        )
+        dashboard_count = filtered_query.order_by(None).count()
+        dashboards = dashboards_query.limit(page_size).offset(page * page_size).all()
+        top_mode, top_dashboards, lookback_days = self._get_top_dashboards(
+            filtered_query,
+            top_limit,
+        )
+
+        result = {
+            "top_mode": top_mode,
+            "top_lookback_days": lookback_days,
+            "top_dashboards": self._serialize_dashboards(top_dashboards),
+            "sections": [
+                {
+                    "key": "all_dashboards",
+                    "title": str(gettext("All dashboards")),
+                    "count": dashboard_count,
+                    "page": page,
+                    "page_size": page_size,
+                    "dashboards": self._serialize_dashboards(dashboards),
+                }
+            ],
+        }
+        return self.response(200, result=result)
 
     @expose("/<id_or_slug>", methods=("GET",))
     @protect()

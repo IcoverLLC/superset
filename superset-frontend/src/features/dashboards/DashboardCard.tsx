@@ -38,7 +38,8 @@ import { MenuItem } from '@superset-ui/core/components/Menu';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { Dashboard } from 'src/views/CRUD/types';
 import { assetUrl } from 'src/utils/assetUrl';
-import { FacePile } from 'src/components';
+import { FacePile, TagsList, type TagType } from 'src/components';
+import { TagTypeEnum } from 'src/components/Tag/TagType';
 
 const DashboardCardStyles = styled(CardStyles)`
   && .ant-card.ant-card-bordered {
@@ -118,6 +119,10 @@ function DashboardCard({
   }, [dashboard, thumbnailUrl]);
 
   const menuItems: MenuItem[] = [];
+  const customTags = (dashboard.tags || []).filter(
+    (tag: TagType) =>
+      tag.type === 'TagTypes.custom' || tag.type === TagTypeEnum.Custom,
+  );
 
   if (canEdit && openDashboardEditModal) {
     menuItems.push({
@@ -195,6 +200,9 @@ function DashboardCard({
         )}
         description={t('Modified %s', dashboard.changed_on_delta_humanized)}
         coverLeft={<FacePile users={dashboard.owners || []} />}
+        coverRight={
+          customTags.length ? <TagsList tags={customTags} maxTags={2} /> : null
+        }
         actions={
           <ListViewCard.Actions
             onClick={e => {

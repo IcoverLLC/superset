@@ -65,6 +65,11 @@ export interface Dashboard {
   url: string;
   thumbnail_url: string;
   owners: Owner[];
+  tags?: Array<{
+    id: number;
+    name: string;
+    type: string;
+  }>;
   loading?: boolean;
 }
 

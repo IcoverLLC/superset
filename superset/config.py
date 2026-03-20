@@ -618,6 +618,8 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     # Enable support for date range timeshifts (e.g., "2015-01-03 : 2015-01-04")
     # in addition to relative timeshifts (e.g., "1 day ago")
     "DATE_RANGE_TIMESHIFTS_ENABLED": False,
+    # Switches /superset/welcome/ to a dashboard-catalog oriented experience.
+    "WELCOME_DASHBOARD_CATALOG": False,
 }
 
 # ------------------------------
@@ -2065,6 +2067,14 @@ ADVANCED_DATA_TYPES: dict[str, AdvancedDataType] = {
 WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, Any]]] = (
     "all"
 )
+
+# Welcome dashboard catalogue configuration.
+# TOP dashboards are first resolved from dashboard view logs for the configured
+# lookback window, and fall back to the manual ID list when no recent log-based
+# ranking is available.
+WELCOME_DASHBOARD_TOP_LIMIT = 10
+WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
+WELCOME_DASHBOARD_TOP_IDS: list[int] = []
 
 # Max allowed size for a zipped file
 ZIPPED_FILE_MAX_SIZE = 100 * 1024 * 1024  # 100MB

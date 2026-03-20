@@ -27,11 +27,7 @@ import { useSelector } from 'react-redux';
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
-import {
-  createFetchRelated,
-  createErrorHandler,
-  handleDashboardDelete,
-} from 'src/views/CRUD/utils';
+import { createErrorHandler, handleDashboardDelete } from 'src/views/CRUD/utils';
 import { useListViewResource, useFavoriteStatus } from 'src/views/CRUD/hooks';
 import {
   CertifiedBadge,
@@ -49,9 +45,7 @@ import {
   ModifiedInfo,
   ImportModal as ImportModelsModal,
   ListView,
-  ListViewFilterOperator as FilterOperator,
   type ListViewProps,
-  type ListViewFilter,
   type ListViewFilters,
 } from 'src/components';
 import handleResourceExport from 'src/utils/export';
@@ -68,13 +62,12 @@ import {
   QueryObjectColumns,
 } from 'src/views/CRUD/types';
 import { TagTypeEnum } from 'src/components/Tag/TagType';
-import { loadTags } from 'src/components/Tag/utils';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
+import { getDashboardListFilters } from 'src/features/dashboards/listFilters';
 import { DashboardStatus } from 'src/features/dashboards/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { navigateTo } from 'src/utils/navigationUtils';
-import { WIDER_DROPDOWN_WIDTH } from 'src/components/ListView/utils';
 
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
@@ -521,118 +514,13 @@ function DashboardList(props: DashboardListProps) {
     ],
   );
 
-  const favoritesFilter: ListViewFilter = useMemo(
-    () => ({
-      Header: t('Favorite'),
-      key: 'favorite',
-      id: 'id',
-      urlDisplay: 'favorite',
-      input: 'select',
-      operator: FilterOperator.DashboardIsFav,
-      unfilteredLabel: t('Any'),
-      selects: [
-        { label: t('Yes'), value: true },
-        { label: t('No'), value: false },
-      ],
-    }),
-    [],
-  );
-
   const filters: ListViewFilters = useMemo(() => {
-    const filters_list = [
-      {
-        Header: t('Name'),
-        key: 'search',
-        id: 'dashboard_title',
-        input: 'search',
-        operator: FilterOperator.TitleOrSlug,
-      },
-      {
-        Header: t('Status'),
-        key: 'published',
-        id: 'published',
-        input: 'select',
-        operator: FilterOperator.Equals,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Published'), value: true },
-          { label: t('Draft'), value: false },
-        ],
-      },
-      ...(isFeatureEnabled(FeatureFlag.TaggingSystem) && canReadTag
-        ? [
-            {
-              Header: t('Tag'),
-              key: 'tags',
-              id: 'tags',
-              input: 'select',
-              operator: FilterOperator.DashboardTagById,
-              unfilteredLabel: t('All'),
-              fetchSelects: loadTags,
-            },
-          ]
-        : []),
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.RelationManyMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dashboard',
-          'owners',
-          createErrorHandler(errMsg =>
-            addDangerToast(
-              t(
-                'An error occurred while fetching dashboard owner values: %s',
-                errMsg,
-              ),
-            ),
-          ),
-          props.user,
-        ),
-        paginate: true,
-        dropdownStyle: { minWidth: WIDER_DROPDOWN_WIDTH },
-      },
-      ...(user?.userId ? [favoritesFilter] : []),
-      {
-        Header: t('Certified'),
-        key: 'certified',
-        id: 'id',
-        urlDisplay: 'certified',
-        input: 'select',
-        operator: FilterOperator.DashboardIsCertified,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Yes'), value: true },
-          { label: t('No'), value: false },
-        ],
-      },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.RelationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dashboard',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-        dropdownStyle: { minWidth: WIDER_DROPDOWN_WIDTH },
-      },
-    ] as ListViewFilters;
-    return filters_list;
-  }, [addDangerToast, favoritesFilter, props.user]);
+    return getDashboardListFilters({
+      addDangerToast,
+      canReadTag,
+      user: props.user,
+    });
+  }, [addDangerToast, canReadTag, props.user]);
 
   const sortTypes = [
     {
