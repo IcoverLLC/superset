@@ -35,8 +35,6 @@ export const Styles = styled.div`
 
     table thead {
       background-color: ${theme.colorBgBase};
-      position: ${isDashboardEditMode ? 'inherit' : 'sticky'};
-      top: 0;
     }
 
     table tbody tr {
@@ -50,6 +48,14 @@ export const Styles = styled.div`
       font-size: ${theme.fontSizeSM}px;
       padding: ${theme.sizeUnit}px;
       font-weight: ${theme.fontWeightNormal};
+    }
+
+    table.pvtTable thead tr th {
+      position: ${isDashboardEditMode ? 'inherit' : 'sticky'};
+      top: var(--pvt-header-top, 0px);
+      z-index: 3;
+      background-color: ${theme.colorBgBase};
+      background-clip: padding-box;
     }
 
     table.pvtTable tbody tr.pvtRowTotals {

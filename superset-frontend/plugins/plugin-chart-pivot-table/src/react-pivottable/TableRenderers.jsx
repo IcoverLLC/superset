@@ -182,6 +182,21 @@ export class TableRenderer extends Component {
       return;
     }
 
+    const headerRows = Array.from(this.tableRef.querySelectorAll('thead tr'));
+    let top = 0;
+    const topOffsets = headerRows.map(row => {
+      const offset = top;
+      top += row.getBoundingClientRect().height || row.offsetHeight || 0;
+      return offset;
+    });
+    this.tableRef.querySelectorAll('thead [data-header-row]').forEach(cell => {
+      const headerRow = Number(cell.getAttribute('data-header-row'));
+      cell.style.setProperty(
+        '--pvt-header-top',
+        `${topOffsets[headerRow] || 0}px`,
+      );
+    });
+
     const stickyCells = this.tableRef.querySelectorAll('[data-sticky-start]');
     if (!this.tableRef.classList.contains('pvtTable--pin-rows')) {
       stickyCells.forEach(cell => {
@@ -204,13 +219,6 @@ export class TableRenderer extends Component {
     const offsets = measureCells.map(cell => {
       const offset = left;
       left += cell.getBoundingClientRect().width || cell.offsetWidth || 0;
-      return offset;
-    });
-    const headerRows = Array.from(this.tableRef.querySelectorAll('thead tr'));
-    let top = 0;
-    const topOffsets = headerRows.map(row => {
-      const offset = top;
-      top += row.getBoundingClientRect().height || row.offsetHeight || 0;
       return offset;
     });
 
@@ -529,6 +537,7 @@ export class TableRenderer extends Component {
           colSpan={rowAttrs.length}
           rowSpan={colAttrs.length}
           aria-hidden="true"
+          data-header-row={attrIdx}
           data-sticky-start={pinRowsBlock ? 0 : undefined}
           data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
           data-sticky-boundary={
@@ -552,6 +561,7 @@ export class TableRenderer extends Component {
       <th
         key="label"
         className="pvtAxisLabel"
+        data-header-row={attrIdx}
         data-sticky-start={pinRowsBlock ? rowAttrs.length : undefined}
         data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
         data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
@@ -610,6 +620,7 @@ export class TableRenderer extends Component {
             key={`colKey-${flatColKey}`}
             colSpan={colSpan}
             rowSpan={rowSpan}
+            data-header-row={attrIdx}
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -640,6 +651,7 @@ export class TableRenderer extends Component {
             key={`colKeyBuffer-${flatKey(colKey)}`}
             colSpan={colSpan}
             rowSpan={rowSpan}
+            data-header-row={attrIdx}
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -664,6 +676,7 @@ export class TableRenderer extends Component {
           key="total"
           className="pvtTotalLabel"
           rowSpan={colAttrs.length + Math.min(rowAttrs.length, 1)}
+          data-header-row={attrIdx}
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -720,6 +733,7 @@ export class TableRenderer extends Component {
             <th
               className="pvtAxisLabel"
               key={`rowAttr-${i}`}
+              data-header-row={colAttrs.length}
               data-sticky-measure={pinRowsBlock ? 'true' : undefined}
               data-sticky-start={pinRowsBlock ? i : undefined}
               data-sticky-top-row={pinRowsBlock ? colAttrs.length : undefined}
@@ -743,6 +757,7 @@ export class TableRenderer extends Component {
         <th
           className="pvtTotalLabel"
           key="padding"
+          data-header-row={colAttrs.length}
           data-sticky-measure={
             pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
           }
