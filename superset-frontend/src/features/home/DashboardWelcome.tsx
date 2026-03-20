@@ -172,6 +172,15 @@ const LoadMoreRow = styled.div`
 const WelcomeCardContainer = styled(CardContainer)`
   max-height: none;
   overflow: visible;
+  grid-template-columns: repeat(4, 300px);
+
+  @media (max-width: 1279px) {
+    grid-template-columns: repeat(2, 300px);
+  }
+
+  @media (max-width: 679px) {
+    grid-template-columns: repeat(1, 300px);
+  }
 `;
 
 const TopCardContainer = styled(WelcomeCardContainer)`
