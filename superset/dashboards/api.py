@@ -556,11 +556,23 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             Dashboard.changed_on.desc(),
             Dashboard.id.desc(),
         )
-        dashboard_count = filtered_query.order_by(None).count()
-        dashboards = dashboards_query.limit(page_size).offset(page * page_size).all()
         top_mode, top_dashboards, lookback_days = self._get_top_dashboards(
             filtered_query,
             top_limit,
+        )
+        top_dashboard_ids = [dashboard.id for dashboard in top_dashboards]
+        other_dashboards_query = dashboards_query
+        other_dashboard_count_query = filtered_query
+        if top_dashboard_ids:
+            other_dashboards_query = other_dashboards_query.filter(
+                Dashboard.id.notin_(top_dashboard_ids)
+            )
+            other_dashboard_count_query = other_dashboard_count_query.filter(
+                Dashboard.id.notin_(top_dashboard_ids)
+            )
+        dashboard_count = other_dashboard_count_query.order_by(None).count()
+        dashboards = (
+            other_dashboards_query.limit(page_size).offset(page * page_size).all()
         )
 
         result = {

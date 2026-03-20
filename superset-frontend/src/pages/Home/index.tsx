@@ -332,7 +332,9 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
 
   const menuData: SubMenuProps = {
     activeChild: 'Home',
-    name: t('Home'),
+    name: useDashboardCatalogWelcome
+      ? t('\u0413\u043b\u0430\u0432\u043d\u0430\u044f')
+      : t('Home'),
   };
 
   if (isThumbnailsEnabled) {

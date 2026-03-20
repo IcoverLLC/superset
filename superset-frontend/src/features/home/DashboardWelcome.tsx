@@ -35,7 +35,6 @@ import handleResourceExport from 'src/utils/export';
 import PropertiesModal from 'src/dashboard/components/PropertiesModal';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
 import {
-  DASHBOARD_WELCOME_FILTER_KEYS,
   getDashboardListFilters,
 } from 'src/features/dashboards/listFilters';
 import {
@@ -58,6 +57,13 @@ import { findPermission } from 'src/utils/findPermission';
 import type { User, UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 
 const SECTION_PAGE_SIZE = 24;
+const WELCOME_FILTER_KEYS = ['search', 'tags', 'favorite'] as const;
+const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], string> =
+  {
+    search: '\u0418\u043c\u044f',
+    tags: '\u0422\u0435\u0433',
+    favorite: '\u0418\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435',
+  };
 
 type WelcomeTopMode = 'recent_views' | 'manual_config' | 'empty';
 
@@ -187,11 +193,19 @@ function DashboardWelcome({
           firstName: user.firstName,
           lastName: user.lastName,
         },
-      }).filter(filter =>
-        DASHBOARD_WELCOME_FILTER_KEYS.includes(
-          filter.key as (typeof DASHBOARD_WELCOME_FILTER_KEYS)[number],
-        ),
-      ),
+      })
+        .filter(filter =>
+          WELCOME_FILTER_KEYS.includes(
+            filter.key as (typeof WELCOME_FILTER_KEYS)[number],
+          ),
+        )
+        .map(filter => ({
+          ...filter,
+          Header:
+            WELCOME_FILTER_HEADERS[
+              filter.key as (typeof WELCOME_FILTER_KEYS)[number]
+            ] ?? filter.Header,
+        })),
     [addDangerToast, canReadTag, user.firstName, user.lastName, user.userId],
   );
   const defaultFilters = useMemo<InternalFilter[]>(
@@ -304,7 +318,14 @@ function DashboardWelcome({
       } catch (response) {
         await createErrorHandler(errMsg =>
           addDangerToast(
-            t('There was an issue fetching welcome dashboards: %s', errMsg),
+            t(
+              '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c ' +
+                '\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c ' +
+                '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
+                '\u043d\u0430 \u0433\u043b\u0430\u0432\u043d\u043e\u0439 ' +
+                '\u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435: %s',
+              errMsg,
+            ),
           ),
         )(response as string);
         setWelcomeData(null);
@@ -343,18 +364,34 @@ function DashboardWelcome({
 
   const topSectionDescription = useMemo(() => {
     if (!welcomeData) {
-      return t('Loading dashboards');
+      return t(
+        '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 ' +
+          '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
+      );
     }
     if (welcomeData.top_mode === 'recent_views') {
       return t(
-        'Ranked by dashboard opens in the last %s days',
+        '\u0420\u0435\u0439\u0442\u0438\u043d\u0433 \u043f\u043e ' +
+          '\u043e\u0442\u043a\u0440\u044b\u0442\u0438\u044f\u043c ' +
+          '\u0437\u0430 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 ' +
+          '%s \u043f\u043e\u043b\u043d\u044b\u0445 \u0434\u043d\u0435\u0439',
         welcomeData.top_lookback_days,
       );
     }
     if (welcomeData.top_mode === 'manual_config') {
-      return t('Filled from the manual dashboard ID fallback in Superset config');
+      return t(
+        '\u0421\u0435\u043a\u0446\u0438\u044f \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0430 ' +
+          '\u0438\u0437 \u0440\u0435\u0437\u0435\u0440\u0432\u043d\u043e\u0433\u043e ' +
+          '\u0441\u043f\u0438\u0441\u043a\u0430 dashboard ID ' +
+          '\u0432 \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 Superset',
+      );
     }
-    return t('No published dashboards matched the current filters');
+    return t(
+      '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
+        '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
+        '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
+        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+    );
   }, [welcomeData]);
 
   const renderCards = useCallback(
@@ -412,7 +449,7 @@ function DashboardWelcome({
       </FiltersBar>
 
       <SectionIntro>
-        <h2>{t('Top dashboards')}</h2>
+        <h2>{t('\u0422\u041e\u041f \u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432')}</h2>
         <p>{topSectionDescription}</p>
       </SectionIntro>
 
@@ -430,7 +467,14 @@ function DashboardWelcome({
       ) : welcomeData?.top_dashboards.length ? (
         renderCards(welcomeData.top_dashboards, favoriteStatus)
       ) : (
-        <EmptySection>{t('No dashboards to show in the TOP section.')}</EmptySection>
+        <EmptySection>
+          {t(
+            '\u0412 \u0441\u0435\u043a\u0446\u0438\u0438 \u0422\u041e\u041f ' +
+              '\u043f\u043e\u043a\u0430 \u043d\u0435\u0442 ' +
+              '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432 ' +
+              '\u0434\u043b\u044f \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f',
+          )}
+        </EmptySection>
       )}
 
       <Collapse
@@ -439,7 +483,10 @@ function DashboardWelcome({
         items={[
           {
             key: 'all_dashboards',
-            label: `${section?.title ?? t('All dashboards')} (${section?.count ?? 0})`,
+            label: `${t(
+              '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+            )} (${section?.count ?? 0})`,
             children:
               loading && !welcomeData ? (
                 <CardContainer showThumbnails={showThumbnails}>
@@ -466,14 +513,20 @@ function DashboardWelcome({
                           }
                         }}
                       >
-                        {t('Load more')}
+                        {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
                       </Button>
                     </LoadMoreRow>
                   )}
                 </>
               ) : (
                 <EmptySection>
-                  {t('No published dashboards matched the current filters.')}
+                  {t(
+                    '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
+                      '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
+                      '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
+                      '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+                  )}
                 </EmptySection>
               ),
           },

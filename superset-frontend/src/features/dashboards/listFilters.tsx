@@ -40,14 +40,6 @@ interface DashboardFilterArgs {
   };
 }
 
-export const DASHBOARD_WELCOME_FILTER_KEYS = [
-  'search',
-  'tags',
-  'owner',
-  'favorite',
-  'certified',
-] as const;
-
 export function getDashboardListFilters({
   addDangerToast,
   canReadTag,
