@@ -212,7 +212,10 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     allow_browser_login = True
 
     class_permission_name = "Dashboard"
-    method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
+    method_permission_name = {
+        **MODEL_API_RW_METHOD_PERMISSION_MAP,
+        "welcome": "read",
+    }
 
     list_columns = [
         "id",
