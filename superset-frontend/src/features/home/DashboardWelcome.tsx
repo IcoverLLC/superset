@@ -473,7 +473,7 @@ function DashboardWelcome({
             key={dashboard.id}
             dashboard={dashboard}
             description={
-              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ?? ''
+              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ?? '\u00a0'
             }
             hasPerm={hasPerm}
             bulkSelectEnabled={false}
