@@ -186,7 +186,7 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
     'welcome.main.replacement',
   );
   const useDashboardCatalogWelcome = isFeatureEnabled(
-    'WELCOME_DASHBOARD_CATALOG',
+    FeatureFlag.WelcomeDashboardCatalog,
   );
 
   const [otherTabTitle, otherTabFilters] = useMemo(() => {

@@ -235,7 +235,7 @@ function DashboardWelcome({
         addDangerToast,
         canReadTag,
         user: {
-          userId: user.userId,
+          userId: user.userId ?? '',
           firstName: user.firstName,
           lastName: user.lastName,
         },

@@ -40,8 +40,8 @@ import {
 } from '@superset-ui/core/components';
 import {
   FacePile,
-  TagType,
   TagsList,
+  type TagType,
   ModifiedInfo,
   ImportModal as ImportModelsModal,
   ListView,
@@ -51,7 +51,6 @@ import {
 import handleResourceExport from 'src/utils/export';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import { dangerouslyGetItemDoNotUse } from 'src/utils/localStorageHelpers';
-import Owner from 'src/types/Owner';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { Icons } from '@superset-ui/core/components/Icons';
 import PropertiesModal from 'src/dashboard/components/PropertiesModal';
@@ -91,20 +90,6 @@ interface DashboardListProps {
     firstName: string;
     lastName: string;
   };
-}
-
-export interface Dashboard {
-  changed_by_name: string;
-  changed_on_delta_humanized: string;
-  changed_by: string;
-  dashboard_title: string;
-  id: number;
-  published: boolean;
-  url: string;
-  thumbnail_url: string;
-  owners: Owner[];
-  tags: TagType[];
-  created_by: object;
 }
 
 const Actions = styled.div`
@@ -154,7 +139,7 @@ function DashboardList(props: DashboardListProps) {
     fetchData,
     toggleBulkSelect,
     refreshData,
-  } = useListViewResource<Dashboard>(
+  } = useListViewResource<CRUDDashboard>(
     'dashboard',
     t('dashboard'),
     addDangerToast,
@@ -171,7 +156,7 @@ function DashboardList(props: DashboardListProps) {
     addDangerToast,
   );
 
-  const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(
+  const [dashboardToEdit, setDashboardToEdit] = useState<CRUDDashboard | null>(
     null,
   );
   const [dashboardToDelete, setDashboardToDelete] =
@@ -215,11 +200,11 @@ function DashboardList(props: DashboardListProps) {
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
 
-  function openDashboardEditModal(dashboard: Dashboard) {
+  function openDashboardEditModal(dashboard: CRUDDashboard) {
     setDashboardToEdit(dashboard);
   }
 
-  function handleDashboardEdit(edits: Dashboard) {
+  function handleDashboardEdit(edits: CRUDDashboard) {
     return SupersetClient.get({
       endpoint: `/api/v1/dashboard/${edits.id}`,
     }).then(
@@ -267,7 +252,7 @@ function DashboardList(props: DashboardListProps) {
     );
   }
 
-  const handleBulkDashboardExport = (dashboardsToExport: Dashboard[]) => {
+  const handleBulkDashboardExport = (dashboardsToExport: CRUDDashboard[]) => {
     const ids = dashboardsToExport.map(({ id }) => id);
     handleResourceExport('dashboard', ids, () => {
       setPreparingExport(false);
@@ -275,7 +260,7 @@ function DashboardList(props: DashboardListProps) {
     setPreparingExport(true);
   };
 
-  function handleBulkDashboardDelete(dashboardsToDelete: Dashboard[]) {
+  function handleBulkDashboardDelete(dashboardsToDelete: CRUDDashboard[]) {
     return SupersetClient.delete({
       endpoint: `/api/v1/dashboard/?q=${rison.encode(
         dashboardsToDelete.map(({ id }) => id),
@@ -544,7 +529,7 @@ function DashboardList(props: DashboardListProps) {
   ];
 
   const renderCard = useCallback(
-    (dashboard: Dashboard) => (
+    (dashboard: CRUDDashboard) => (
       <DashboardCard
         dashboard={dashboard}
         hasPerm={hasPerm}
@@ -674,7 +659,7 @@ function DashboardList(props: DashboardListProps) {
                   title={t('Please confirm')}
                 />
               )}
-              <ListView<Dashboard>
+              <ListView<CRUDDashboard>
                 bulkActions={bulkActions}
                 bulkSelectEnabled={bulkSelectEnabled}
                 cardSortSelectOptions={sortTypes}
