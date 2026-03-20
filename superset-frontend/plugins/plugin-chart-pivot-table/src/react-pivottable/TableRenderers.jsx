@@ -48,8 +48,8 @@ const getAdaptiveConditionalFormattingBackground = ({
     .toHex8String();
 };
 
-const getConditionalFormattingTextColor = backgroundColor => {
-  if (!backgroundColor?.startsWith('#')) {
+const getConditionalFormattingTextColor = ({ backgroundColor, isDarkTheme }) => {
+  if (!isDarkTheme || !backgroundColor?.startsWith('#')) {
     return undefined;
   }
 
@@ -783,7 +783,10 @@ export class TableRenderer extends Component {
       const style = {
         ...(agg.isSubtotal ? { fontWeight: 'bold' } : {}),
         backgroundColor: adaptiveBackgroundColor,
-        color: getConditionalFormattingTextColor(adaptiveBackgroundColor),
+        color: getConditionalFormattingTextColor({
+          backgroundColor: adaptiveBackgroundColor,
+          isDarkTheme,
+        }),
       };
 
       return (

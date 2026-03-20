@@ -63,8 +63,14 @@ const getAdaptiveConditionalFormattingBackground = ({
     .toHex8String();
 };
 
-const getConditionalFormattingTextColor = (backgroundColor?: string) => {
-  if (!backgroundColor?.startsWith('#')) {
+const getConditionalFormattingTextColor = ({
+  backgroundColor,
+  isDarkTheme,
+}: {
+  backgroundColor?: string;
+  isDarkTheme?: boolean;
+}) => {
+  if (!isDarkTheme || !backgroundColor?.startsWith('#')) {
     return '';
   }
 
@@ -127,7 +133,10 @@ const getCellStyle = (params: CellStyleParams) => {
 
   return {
     backgroundColor: adaptiveBackgroundColor || '',
-    color: getConditionalFormattingTextColor(adaptiveBackgroundColor),
+    color: getConditionalFormattingTextColor({
+      backgroundColor: adaptiveBackgroundColor,
+      isDarkTheme,
+    }),
     textAlign,
   };
 };

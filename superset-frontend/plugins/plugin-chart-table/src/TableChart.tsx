@@ -149,8 +149,14 @@ const getAdaptiveConditionalFormattingBackground = ({
     .toHex8String();
 };
 
-const getConditionalFormattingTextColor = (backgroundColor?: string) => {
-  if (!backgroundColor?.startsWith('#')) {
+const getConditionalFormattingTextColor = ({
+  backgroundColor,
+  isDarkTheme,
+}: {
+  backgroundColor?: string;
+  isDarkTheme: boolean;
+}) => {
+  if (!isDarkTheme || !backgroundColor?.startsWith('#')) {
     return undefined;
   }
 
@@ -988,7 +994,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               themeBackgroundColor: theme.colorBgContainer,
             }) || backgroundColor;
           const textColor =
-            getConditionalFormattingTextColor(adaptiveBackgroundColor) ||
+            getConditionalFormattingTextColor({
+              backgroundColor: adaptiveBackgroundColor,
+              isDarkTheme: tinycolor(theme.colorBgContainer).isDark(),
+            }) ||
             theme.colorText;
           const StyledCell = styled.td`
             color: ${textColor};
