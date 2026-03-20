@@ -22,6 +22,7 @@ import {
   SupersetClient,
   t,
 } from '@superset-ui/core';
+import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import rison from 'rison';
 import { useSelector } from 'react-redux';
 import {
@@ -41,6 +42,7 @@ import {
   type Dashboard,
   type FavoriteStatus,
 } from 'src/views/CRUD/types';
+import type { RecentActivity } from 'src/features/home/types';
 import { useFavoriteStatus, useListViewResource } from 'src/views/CRUD/hooks';
 import {
   CardContainer,
@@ -57,6 +59,7 @@ import { findPermission } from 'src/utils/findPermission';
 import type { User, UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 
 const SECTION_PAGE_SIZE = 24;
+const RECENT_ACTIVITY_PAGE_SIZE = 100;
 const WELCOME_FILTER_KEYS = ['search', 'tags', 'favorite'] as const;
 const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], string> =
   {
@@ -173,6 +176,23 @@ function normalizeFilterValue(value: ListViewFilterValue['value']) {
   return value;
 }
 
+function normalizeDashboardUrl(url?: string | null) {
+  if (!url) {
+    return '';
+  }
+
+  return url
+    .replace(/^https?:\/\/[^/]+/i, '')
+    .split('?')[0]
+    .replace(/\/+$/, '');
+}
+
+function getRecentViewedDescription(activity: RecentActivity) {
+  const humanized =
+    activity.time_delta_humanized ?? extendedDayjs(activity.time).fromNow();
+  return t('Viewed %s', humanized);
+}
+
 function DashboardWelcome({
   user,
   showThumbnails,
@@ -228,6 +248,10 @@ function DashboardWelcome({
     null,
   );
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
+  const [recentlyViewedMap, setRecentlyViewedMap] = useState<
+    Record<string, string>
+  >({});
+  const [sectionExpanded, setSectionExpanded] = useState(false);
 
   const { hasPerm } = useListViewResource<Dashboard>(
     'dashboard',
@@ -242,6 +266,37 @@ function DashboardWelcome({
   useEffect(() => {
     setInternalFilters(defaultFilters);
   }, [defaultFilters]);
+
+  useEffect(() => {
+    const recentActivityParams = rison.encode({
+      page_size: RECENT_ACTIVITY_PAGE_SIZE,
+      distinct: false,
+    });
+
+    SupersetClient.get({
+      endpoint: `/api/v1/log/recent_activity/?q=${recentActivityParams}`,
+    })
+      .then(({ json = {} }) => {
+        const nextRecentlyViewedMap: Record<string, string> = {};
+        (json.result || []).forEach((record: RecentActivity) => {
+          if (record.item_type !== 'dashboard') {
+            return;
+          }
+
+          const normalizedUrl = normalizeDashboardUrl(record.item_url);
+          if (!normalizedUrl || nextRecentlyViewedMap[normalizedUrl]) {
+            return;
+          }
+
+          nextRecentlyViewedMap[normalizedUrl] =
+            getRecentViewedDescription(record);
+        });
+        setRecentlyViewedMap(nextRecentlyViewedMap);
+      })
+      .catch(() => {
+        setRecentlyViewedMap({});
+      });
+  }, []);
 
   const apiFilters = useMemo(
     () =>
@@ -278,7 +333,7 @@ function DashboardWelcome({
   );
 
   const fetchWelcomeData = useCallback(
-    async (page: number, append = false) => {
+    async (page: number, append = false, loadSections = false) => {
       if (append) {
         setLoadingMore(true);
       } else {
@@ -287,6 +342,7 @@ function DashboardWelcome({
 
       const queryParams = rison.encode_uri({
         filters: apiFilters,
+        load_sections: loadSections,
         page,
         page_size: SECTION_PAGE_SIZE,
       });
@@ -338,7 +394,7 @@ function DashboardWelcome({
   );
 
   useEffect(() => {
-    void fetchWelcomeData(0);
+    void fetchWelcomeData(0, false, false);
   }, [fetchWelcomeData]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
@@ -356,8 +412,8 @@ function DashboardWelcome({
     (dashboard: Dashboard) =>
       SupersetClient.get({
         endpoint: `/api/v1/dashboard/${dashboard.id}`,
-      }).then(() => fetchWelcomeData(0)),
-    [fetchWelcomeData],
+      }).then(() => fetchWelcomeData(0, false, sectionExpanded)),
+    [fetchWelcomeData, sectionExpanded],
   );
 
   const hasMoreDashboards = (section?.count ?? 0) > sectionDashboards.length;
@@ -401,6 +457,10 @@ function DashboardWelcome({
           <DashboardCard
             key={dashboard.id}
             dashboard={dashboard}
+            description={
+              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ??
+              undefined
+            }
             hasPerm={hasPerm}
             bulkSelectEnabled={false}
             showThumbnails={showThumbnails}
@@ -418,10 +478,34 @@ function DashboardWelcome({
     [
       handleBulkDashboardExport,
       hasPerm,
+      recentlyViewedMap,
       saveFavoriteStatus,
       showThumbnails,
       user.userId,
     ],
+  );
+
+  const topDashboards = useMemo(
+    () => welcomeData?.top_dashboards ?? [],
+    [welcomeData?.top_dashboards],
+  );
+
+  const handleCollapseChange = useCallback(
+    (activeKeys: string | string[]) => {
+      const nextKeys = Array.isArray(activeKeys) ? activeKeys : [activeKeys];
+      const isExpanded = nextKeys.includes('all_dashboards');
+      setSectionExpanded(isExpanded);
+
+      if (
+        isExpanded &&
+        welcomeData &&
+        !sectionDashboards.length &&
+        section?.count
+      ) {
+        void fetchWelcomeData(0, false, true);
+      }
+    },
+    [fetchWelcomeData, section?.count, sectionDashboards.length, welcomeData],
   );
 
   return (
@@ -464,8 +548,8 @@ function DashboardWelcome({
             />
           ))}
         </CardContainer>
-      ) : welcomeData?.top_dashboards.length ? (
-        renderCards(welcomeData.top_dashboards, favoriteStatus)
+      ) : topDashboards.length ? (
+        renderCards(topDashboards, favoriteStatus)
       ) : (
         <EmptySection>
           {t(
@@ -478,7 +562,8 @@ function DashboardWelcome({
       )}
 
       <Collapse
-        defaultActiveKey={['all_dashboards']}
+        activeKey={sectionExpanded ? ['all_dashboards'] : []}
+        onChange={handleCollapseChange}
         ghost
         items={[
           {
@@ -488,7 +573,7 @@ function DashboardWelcome({
                 '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
             )} (${section?.count ?? 0})`,
             children:
-              loading && !welcomeData ? (
+              loading && sectionExpanded && !sectionDashboards.length ? (
                 <CardContainer showThumbnails={showThumbnails}>
                   {[...new Array(loadingCardCount)].map((_, index) => (
                     <ListViewCard
@@ -509,7 +594,7 @@ function DashboardWelcome({
                         loading={loadingMore}
                         onClick={() => {
                           if (section) {
-                            void fetchWelcomeData(section.page + 1, true);
+                            void fetchWelcomeData(section.page + 1, true, true);
                           }
                         }}
                       >
@@ -518,7 +603,7 @@ function DashboardWelcome({
                     </LoadMoreRow>
                   )}
                 </>
-              ) : (
+              ) : sectionExpanded ? (
                 <EmptySection>
                   {t(
                     '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
@@ -528,7 +613,7 @@ function DashboardWelcome({
                       '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
                   )}
                 </EmptySection>
-              ),
+              ) : null,
           },
         ]}
       />
@@ -554,7 +639,7 @@ function DashboardWelcome({
             handleDashboardDelete(
               dashboardToDelete,
               () => {
-                void fetchWelcomeData(0);
+                void fetchWelcomeData(0, false, sectionExpanded);
               },
               addSuccessToast,
               addDangerToast,

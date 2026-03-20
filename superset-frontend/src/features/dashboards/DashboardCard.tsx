@@ -62,6 +62,7 @@ const DashboardCardStyles = styled(CardStyles)`
 interface DashboardCardProps {
   isChart?: boolean;
   dashboard: Dashboard;
+  description?: string;
   hasPerm: (name: string) => boolean;
   bulkSelectEnabled: boolean;
   loading: boolean;
@@ -76,6 +77,7 @@ interface DashboardCardProps {
 
 function DashboardCard({
   dashboard,
+  description,
   hasPerm,
   bulkSelectEnabled,
   userId,
@@ -198,7 +200,9 @@ function DashboardCard({
         imgFallbackURL={assetUrl(
           '/static/assets/images/dashboard-card-fallback.svg',
         )}
-        description={t('Modified %s', dashboard.changed_on_delta_humanized)}
+        description={
+          description ?? t('Modified %s', dashboard.changed_on_delta_humanized)
+        }
         coverLeft={<FacePile users={dashboard.owners || []} />}
         coverRight={
           customTags.length ? <TagsList tags={customTags} maxTags={2} /> : null

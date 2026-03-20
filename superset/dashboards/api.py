@@ -538,6 +538,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     def welcome(self, **kwargs: Any) -> Response:
         args = kwargs.get("rison", {})
         page, page_size = self._sanitize_page_args(*self._handle_page_args(args))
+        load_sections = parse_boolean_string(args.get("load_sections", False))
         configured_top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
         top_limit = max(
             1,
@@ -571,9 +572,11 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 Dashboard.id.notin_(top_dashboard_ids)
             )
         dashboard_count = other_dashboard_count_query.order_by(None).count()
-        dashboards = (
-            other_dashboards_query.limit(page_size).offset(page * page_size).all()
-        )
+        dashboards = []
+        if load_sections:
+            dashboards = (
+                other_dashboards_query.limit(page_size).offset(page * page_size).all()
+            )
 
         result = {
             "top_mode": top_mode,

@@ -117,6 +117,28 @@ it('Renders the modified date', () => {
   expect(modifiedDateElement).toBeInTheDocument();
 });
 
+it('renders a custom description when provided', () => {
+  render(
+    <MemoryRouter>
+      <DashboardCard
+        dashboard={mockDashboard}
+        description="Viewed 3 hours ago"
+        hasPerm={mockHasPerm}
+        bulkSelectEnabled={false}
+        loading={false}
+        openDashboardEditModal={mockOpenDashboardEditModal}
+        saveFavoriteStatus={mockSaveFavoriteStatus}
+        favoriteStatus={false}
+        userId={1}
+        handleBulkDashboardExport={mockHandleBulkDashboardExport}
+        onDelete={mockOnDelete}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText('Viewed 3 hours ago')).toBeInTheDocument();
+});
+
 it('keeps the highlighted border for bordered dashboard cards', () => {
   expect(screen.getByTestId('styled-card').parentElement).toHaveStyleRule(
     'border',
