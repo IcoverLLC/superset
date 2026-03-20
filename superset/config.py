@@ -2072,7 +2072,7 @@ WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, An
 # TOP dashboards are first resolved from dashboard view logs for the configured
 # lookback window, and fall back to the manual ID list when no recent log-based
 # ranking is available.
-WELCOME_DASHBOARD_TOP_LIMIT = 10
+WELCOME_DASHBOARD_TOP_LIMIT = 8
 WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
 WELCOME_DASHBOARD_TOP_IDS: list[int] = []
 
