@@ -104,6 +104,7 @@ export const Styles = styled.div`
     }
 
     table.pvtTable.pvtTable--pin-rows thead [data-sticky-start] {
+      top: var(--pvt-sticky-top, 0px);
       z-index: 4;
     }
 

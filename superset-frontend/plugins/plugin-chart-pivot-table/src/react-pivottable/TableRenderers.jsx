@@ -184,9 +184,10 @@ export class TableRenderer extends Component {
 
     const stickyCells = this.tableRef.querySelectorAll('[data-sticky-start]');
     if (!this.tableRef.classList.contains('pvtTable--pin-rows')) {
-      stickyCells.forEach(cell =>
-        cell.style.removeProperty('--pvt-sticky-left'),
-      );
+      stickyCells.forEach(cell => {
+        cell.style.removeProperty('--pvt-sticky-left');
+        cell.style.removeProperty('--pvt-sticky-top');
+      });
       return;
     }
 
@@ -205,6 +206,13 @@ export class TableRenderer extends Component {
       left += cell.getBoundingClientRect().width || cell.offsetWidth || 0;
       return offset;
     });
+    const headerRows = Array.from(this.tableRef.querySelectorAll('thead tr'));
+    let top = 0;
+    const topOffsets = headerRows.map(row => {
+      const offset = top;
+      top += row.getBoundingClientRect().height || row.offsetHeight || 0;
+      return offset;
+    });
 
     stickyCells.forEach(cell => {
       const startIndex = Number(cell.getAttribute('data-sticky-start'));
@@ -212,6 +220,13 @@ export class TableRenderer extends Component {
         '--pvt-sticky-left',
         `${offsets[startIndex] || 0}px`,
       );
+      const topRow = cell.getAttribute('data-sticky-top-row');
+      if (topRow !== null) {
+        cell.style.setProperty(
+          '--pvt-sticky-top',
+          `${topOffsets[Number(topRow)] || 0}px`,
+        );
+      }
     });
   }
 
@@ -515,7 +530,10 @@ export class TableRenderer extends Component {
           rowSpan={colAttrs.length}
           aria-hidden="true"
           data-sticky-start={pinRowsBlock ? 0 : undefined}
-          data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
+          data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
+          data-sticky-boundary={
+            pinRowsBlock && colAttrs.length === 0 ? 'true' : undefined
+          }
         />
       ) : null;
 
@@ -531,7 +549,13 @@ export class TableRenderer extends Component {
       subArrow = attrIdx + 1 < maxColVisible ? arrowExpanded : arrowCollapsed;
     }
     const attrNameCell = (
-      <th key="label" className="pvtAxisLabel">
+      <th
+        key="label"
+        className="pvtAxisLabel"
+        data-sticky-start={pinRowsBlock ? rowAttrs.length : undefined}
+        data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
+        data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
+      >
         {displayHeaderCell(
           needToggle,
           subArrow,
@@ -698,6 +722,7 @@ export class TableRenderer extends Component {
               key={`rowAttr-${i}`}
               data-sticky-measure={pinRowsBlock ? 'true' : undefined}
               data-sticky-start={pinRowsBlock ? i : undefined}
+              data-sticky-top-row={pinRowsBlock ? colAttrs.length : undefined}
               data-sticky-boundary={
                 pinRowsBlock && i === rowAttrs.length - 1 && colAttrs.length === 0
                   ? 'true'
@@ -724,6 +749,7 @@ export class TableRenderer extends Component {
           data-sticky-start={
             pinRowsBlock && colAttrs.length !== 0 ? rowAttrs.length : undefined
           }
+          data-sticky-top-row={pinRowsBlock ? colAttrs.length : undefined}
           data-sticky-boundary={
             pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
           }
