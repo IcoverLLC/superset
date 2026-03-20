@@ -142,26 +142,64 @@ const getGradientColors = (
 
 const getGradientPosition = (
   value: number,
-  cutoffValue: number,
-  extremeValue: number,
+  lowerBound: number,
+  upperBound: number,
 ) => {
-  if (extremeValue === cutoffValue) {
+  if (upperBound === lowerBound) {
     return 1;
   }
 
-  return clamp(Math.abs((value - cutoffValue) / (extremeValue - cutoffValue)));
+  return clamp((value - lowerBound) / (upperBound - lowerBound));
 };
 
-const getGradientColor = (position: number, colors: string[]) => {
+const getGradientColor = (
+  value: number,
+  cutoffValue: number,
+  extremeValue: number,
+  colors: string[],
+  midpoint?: number,
+) => {
+  const lowerBound = Math.min(cutoffValue, extremeValue);
+  const upperBound = Math.max(cutoffValue, extremeValue);
+
+  if (upperBound === lowerBound) {
+    return colors[colors.length - 1];
+  }
+
   if (colors.length === 2) {
-    return interpolateHexColor(colors[0], colors[1], position);
+    return interpolateHexColor(
+      colors[0],
+      colors[1],
+      getGradientPosition(value, lowerBound, upperBound),
+    );
   }
 
-  if (position <= 0.5) {
-    return interpolateHexColor(colors[0], colors[1], position * 2);
+  const resolvedMidpoint =
+    midpoint === undefined
+      ? lowerBound + (upperBound - lowerBound) / 2
+      : Math.min(upperBound, Math.max(lowerBound, midpoint));
+
+  if (value <= resolvedMidpoint) {
+    if (resolvedMidpoint === lowerBound) {
+      return colors[0];
+    }
+
+    return interpolateHexColor(
+      colors[0],
+      colors[1],
+      getGradientPosition(value, lowerBound, resolvedMidpoint),
+    );
   }
 
-  return interpolateHexColor(colors[1], colors[2], (position - 0.5) * 2);
+  if (resolvedMidpoint === upperBound) {
+    return colors[2];
+  }
+
+  return interpolateHexColor(
+    colors[1],
+    colors[2],
+    getGradientPosition(value, resolvedMidpoint, upperBound),
+  );
 };
 
 export const getOpacity = (
@@ -201,6 +239,7 @@ export const getColorFunction = (
     targetValue,
     targetValueLeft,
     targetValueRight,
+    midpoint,
     colorScheme,
   }: ConditionalFormattingConfig,
   columnValues: number[],
@@ -324,8 +363,11 @@ export const getColorFunction = (
 
     if (gradientColors) {
       return getGradientColor(
-        getGradientPosition(value, cutoffValue, extremeValue),
+        value,
+        cutoffValue,
+        extremeValue,
         gradientColors,
+        midpoint,
       );
     }
 

@@ -267,6 +267,26 @@ test('getColorFunction THREE_LEVELS', () => {
   expect(colorFunction(125)).toBeUndefined();
 });
 
+test('getColorFunction THREE_LEVELS with midpoint', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      midpoint: 25,
+      colorScheme: CustomConditionalFormattingColorScheme.ThreeLevels,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#FF0000');
+  expect(colorFunction(25)).toEqual('#FFFF00');
+  expect(colorFunction(50)).toEqual('#AAFF00');
+  expect(colorFunction(100)).toEqual('#00FF00');
+});
+
 test('getColorFunction REVERSE_TWO_LEVELS', () => {
   const colorFunction = getColorFunction(
     {
@@ -322,6 +342,26 @@ test('getColorFunction RED_WHITE_GREEN', () => {
   expect(colorFunction(50)).toEqual('#FFFFFF');
   expect(colorFunction(100)).toEqual('#00FF00');
   expect(colorFunction(125)).toBeUndefined();
+});
+
+test('getColorFunction RED_WHITE_GREEN with midpoint', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      midpoint: 25,
+      colorScheme: CustomConditionalFormattingColorScheme.RedWhiteGreen,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#FF0000');
+  expect(colorFunction(25)).toEqual('#FFFFFF');
+  expect(colorFunction(50)).toEqual('#AAFFAA');
+  expect(colorFunction(100)).toEqual('#00FF00');
 });
 
 test('getColorFunction BETWEEN_OR_LEFT_EQUAL', () => {
