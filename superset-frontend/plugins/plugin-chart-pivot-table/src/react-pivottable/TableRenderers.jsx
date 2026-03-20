@@ -18,10 +18,47 @@
  */
 
 import { Component } from 'react';
-import { t, safeHtmlSpan } from '@superset-ui/core';
+import { getContrastingColor, t, safeHtmlSpan } from '@superset-ui/core';
 import PropTypes from 'prop-types';
+import tinycolor from 'tinycolor2';
 import { PivotData, flatKey } from './utilities';
 import { Styles } from './Styles';
+
+const DARK_THEME_CONDITIONAL_FORMATTING_MIX = 72;
+
+const getAdaptiveConditionalFormattingBackground = ({
+  backgroundColor,
+  isDarkTheme,
+  themeBackgroundColor,
+}) => {
+  if (
+    !backgroundColor?.startsWith('#') ||
+    !isDarkTheme ||
+    !themeBackgroundColor
+  ) {
+    return backgroundColor;
+  }
+
+  return tinycolor
+    .mix(
+      themeBackgroundColor,
+      backgroundColor,
+      DARK_THEME_CONDITIONAL_FORMATTING_MIX,
+    )
+    .toHex8String();
+};
+
+const getConditionalFormattingTextColor = backgroundColor => {
+  if (!backgroundColor?.startsWith('#')) {
+    return undefined;
+  }
+
+  return getContrastingColor(
+    backgroundColor.length === 9
+      ? backgroundColor.slice(0, 7)
+      : backgroundColor,
+  );
+};
 
 const parseLabel = value => {
   if (typeof value === 'string') {
@@ -617,6 +654,8 @@ export class TableRenderer extends Component {
       highlightedHeaderCells,
       cellColorFormatters,
       dateFormatters,
+      isDarkTheme,
+      themeBackgroundColor,
     } = this.props.tableOptions;
     const flatRowKey = flatKey(rowKey);
 
@@ -735,9 +774,17 @@ export class TableRenderer extends Component {
         });
       }
 
-      const style = agg.isSubtotal
-        ? { fontWeight: 'bold' }
-        : { backgroundColor };
+      const adaptiveBackgroundColor = getAdaptiveConditionalFormattingBackground({
+        backgroundColor,
+        isDarkTheme,
+        themeBackgroundColor,
+      });
+
+      const style = {
+        ...(agg.isSubtotal ? { fontWeight: 'bold' } : {}),
+        backgroundColor: adaptiveBackgroundColor,
+        color: getConditionalFormattingTextColor(adaptiveBackgroundColor),
+      };
 
       return (
         <td

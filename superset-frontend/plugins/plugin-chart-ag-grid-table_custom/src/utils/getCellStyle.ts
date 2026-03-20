@@ -18,7 +18,9 @@
  */
 
 import { ColorFormatters } from '@superset-ui/chart-controls';
+import { getContrastingColor } from '@superset-ui/core';
 import { CellClassParams } from '@superset-ui/core/components/ThemedAgGridReact';
+import tinycolor from 'tinycolor2';
 import { BasicColorFormatterType, InputColumn } from '../types';
 
 type CellStyleParams = CellClassParams & {
@@ -29,6 +31,48 @@ type CellStyleParams = CellClassParams & {
     [Key: string]: BasicColorFormatterType;
   }[];
   col: InputColumn;
+  isDarkTheme?: boolean;
+  themeBackgroundColor?: string;
+};
+
+const DARK_THEME_CONDITIONAL_FORMATTING_MIX = 72;
+
+const getAdaptiveConditionalFormattingBackground = ({
+  backgroundColor,
+  isDarkTheme,
+  themeBackgroundColor,
+}: {
+  backgroundColor?: string;
+  isDarkTheme?: boolean;
+  themeBackgroundColor?: string;
+}) => {
+  if (
+    !backgroundColor?.startsWith('#') ||
+    !isDarkTheme ||
+    !themeBackgroundColor
+  ) {
+    return backgroundColor;
+  }
+
+  return tinycolor
+    .mix(
+      themeBackgroundColor,
+      backgroundColor,
+      DARK_THEME_CONDITIONAL_FORMATTING_MIX,
+    )
+    .toHex8String();
+};
+
+const getConditionalFormattingTextColor = (backgroundColor?: string) => {
+  if (!backgroundColor?.startsWith('#')) {
+    return '';
+  }
+
+  return getContrastingColor(
+    backgroundColor.length === 9
+      ? backgroundColor.slice(0, 7)
+      : backgroundColor,
+  );
 };
 
 const getCellStyle = (params: CellStyleParams) => {
@@ -42,6 +86,8 @@ const getCellStyle = (params: CellStyleParams) => {
     columnColorFormatters,
     col,
     node,
+    isDarkTheme,
+    themeBackgroundColor,
   } = params;
   let backgroundColor;
   if (hasColumnColorFormatters && node?.rowPinned !== 'bottom') {
@@ -72,9 +118,16 @@ const getCellStyle = (params: CellStyleParams) => {
 
   const textAlign =
     col?.config?.horizontalAlign || (col?.isNumeric ? 'right' : 'left');
+  const adaptiveBackgroundColor =
+    getAdaptiveConditionalFormattingBackground({
+      backgroundColor,
+      isDarkTheme,
+      themeBackgroundColor,
+    }) || backgroundColor;
 
   return {
-    backgroundColor: backgroundColor || '',
+    backgroundColor: adaptiveBackgroundColor || '',
+    color: getConditionalFormattingTextColor(adaptiveBackgroundColor),
     textAlign,
   };
 };

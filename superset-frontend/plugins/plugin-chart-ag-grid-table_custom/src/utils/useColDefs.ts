@@ -237,6 +237,8 @@ export const useColDefs = ({
             hasBasicColorFormatters,
             basicColorFormatters,
             col,
+            isDarkTheme,
+            themeBackgroundColor: theme.colorBgContainer,
           }),
         cellClass: (p: CellClassParams) =>
           getCellClass({

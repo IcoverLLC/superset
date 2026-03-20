@@ -38,11 +38,13 @@ import { FaSort } from '@react-icons/all-files/fa/FaSort';
 import { FaSortDown as FaSortDesc } from '@react-icons/all-files/fa/FaSortDown';
 import { FaSortUp as FaSortAsc } from '@react-icons/all-files/fa/FaSortUp';
 import cx from 'classnames';
+import tinycolor from 'tinycolor2';
 import {
   DataRecord,
   DataRecordValue,
   DTTM_ALIAS,
   ensureIsArray,
+  getContrastingColor,
   GenericDataType,
   getSelectedText,
   getTimeFormatterForGranularity,
@@ -119,6 +121,44 @@ const getComparisonKeyPortion = (columnKey: string) => {
     return columnKey.substring('%'.length);
   }
   return columnKey;
+};
+
+const DARK_THEME_CONDITIONAL_FORMATTING_MIX = 72;
+
+const getAdaptiveConditionalFormattingBackground = ({
+  backgroundColor,
+  themeBackgroundColor,
+}: {
+  backgroundColor?: string;
+  themeBackgroundColor?: string;
+}) => {
+  if (
+    !backgroundColor?.startsWith('#') ||
+    !themeBackgroundColor ||
+    !tinycolor(themeBackgroundColor).isDark()
+  ) {
+    return backgroundColor;
+  }
+
+  return tinycolor
+    .mix(
+      themeBackgroundColor,
+      backgroundColor,
+      DARK_THEME_CONDITIONAL_FORMATTING_MIX,
+    )
+    .toHex8String();
+};
+
+const getConditionalFormattingTextColor = (backgroundColor?: string) => {
+  if (!backgroundColor?.startsWith('#')) {
+    return undefined;
+  }
+
+  return getContrastingColor(
+    backgroundColor.length === 9
+      ? backgroundColor.slice(0, 7)
+      : backgroundColor,
+  );
 };
 
 /**
@@ -942,12 +982,20 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 ? basicColorColumnFormatters[row.index][column.key]?.mainArrow
                 : '';
           }
+          const adaptiveBackgroundColor =
+            getAdaptiveConditionalFormattingBackground({
+              backgroundColor,
+              themeBackgroundColor: theme.colorBgContainer,
+            }) || backgroundColor;
+          const textColor =
+            getConditionalFormattingTextColor(adaptiveBackgroundColor) ||
+            theme.colorText;
           const StyledCell = styled.td`
-            color: ${theme.colorText};
+            color: ${textColor};
             text-align: ${sharedStyle.textAlign};
             white-space: ${value instanceof Date ? 'nowrap' : undefined};
             position: relative;
-            background: ${backgroundColor || undefined};
+            background: ${adaptiveBackgroundColor || undefined};
             padding-left: ${column.isChildColumn
               ? `${theme.sizeUnit * 5}px`
               : `${theme.sizeUnit}px`};

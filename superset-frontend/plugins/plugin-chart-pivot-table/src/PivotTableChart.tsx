@@ -18,6 +18,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
+import tinycolor from 'tinycolor2';
 import {
   AdhocMetric,
   BinaryQueryObjectFilterClause,
@@ -475,6 +476,8 @@ export default function PivotTableChart(props: PivotTableProps) {
       omittedHighlightHeaderGroups: [METRIC_KEY],
       cellColorFormatters: { [METRIC_KEY]: metricColorFormatters },
       dateFormatters,
+      isDarkTheme: tinycolor(theme.colorBgContainer).isDark(),
+      themeBackgroundColor: theme.colorBgContainer,
     }),
     [
       colTotals,
@@ -485,6 +488,7 @@ export default function PivotTableChart(props: PivotTableProps) {
       rowTotals,
       rowSubTotals,
       selectedFilters,
+      theme,
       toggleFilter,
     ],
   );

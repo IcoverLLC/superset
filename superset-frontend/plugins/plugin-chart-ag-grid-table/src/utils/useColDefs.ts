@@ -19,7 +19,7 @@
  */
 import { ColDef } from '@superset-ui/core/components/ThemedAgGridReact';
 import { useCallback, useMemo } from 'react';
-import { DataRecord, GenericDataType } from '@superset-ui/core';
+import { DataRecord, GenericDataType, useTheme } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import {
@@ -36,6 +36,7 @@ import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
+import { useIsDark } from './useTableTheme';
 
 interface InputData {
   [key: string]: any;
@@ -145,6 +146,9 @@ export const useColDefs = ({
   alignPositiveNegative,
   slice_id,
 }: UseColDefsProps) => {
+  const theme = useTheme();
+  const isDarkTheme = useIsDark();
+
   const getCommonColProps = useCallback(
     (
       col: InputColumn,
@@ -207,6 +211,8 @@ export const useColDefs = ({
             hasBasicColorFormatters,
             basicColorFormatters,
             col,
+            isDarkTheme,
+            themeBackgroundColor: theme.colorBgContainer,
           }),
         cellClass: p =>
           getCellClass({
@@ -290,6 +296,8 @@ export const useColDefs = ({
       allowRearrangeColumns,
       serverPagination,
       alignPositiveNegative,
+      isDarkTheme,
+      theme,
     ],
   );
 

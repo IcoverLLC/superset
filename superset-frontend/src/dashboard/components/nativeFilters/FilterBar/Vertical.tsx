@@ -30,7 +30,7 @@ import {
   FC,
 } from 'react';
 import cx from 'classnames';
-import { styled, t, useTheme } from '@superset-ui/core';
+import { styled, t, useTheme, type SupersetTheme } from '@superset-ui/core';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { EmptyState, Loading } from '@superset-ui/core/components';
 import { getFilterBarTestId } from './utils';
@@ -100,6 +100,42 @@ const FilterBarEmptyStateContainer = styled.div`
   margin-top: ${({ theme }) => theme.sizeUnit * 8}px;
 `;
 
+const getScrollbarStyles = (theme: SupersetTheme) => `
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colorFillSecondary} ${theme.colorFillQuaternary};
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colorFillQuaternary};
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colorFillSecondary};
+    border-radius: ${theme.borderRadiusSM}px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${theme.colorFillTertiary};
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: ${theme.colorFillQuaternary};
+  }
+`;
+
+const ScrollableContent = styled.div<{ height: number | string }>`
+  ${({ theme, height }) => `
+    overflow: auto;
+    height: ${typeof height === 'number' ? `${height}px` : height};
+    overscroll-behavior: contain;
+    ${getScrollbarStyles(theme)}
+  `}
+`;
+
 const FilterControlsWrapper = styled.div`
   ${({ theme }) => `
     display: flex;
@@ -154,11 +190,6 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
       document.onscroll = null;
     };
   }, [onScroll]);
-
-  const tabPaneStyle = useMemo(
-    () => ({ overflow: 'auto', height, overscrollBehavior: 'contain' }),
-    [height],
-  );
 
   const filterControls = useMemo(
     () =>
@@ -226,12 +257,12 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
               <Loading />
             </div>
           ) : (
-            <div css={tabPaneStyle} onScroll={onScroll}>
+            <ScrollableContent height={height} onScroll={onScroll}>
               <>
                 <CrossFiltersVertical />
                 {filterControls}
               </>
-            </div>
+            </ScrollableContent>
           )}
           {actions}
         </Bar>
