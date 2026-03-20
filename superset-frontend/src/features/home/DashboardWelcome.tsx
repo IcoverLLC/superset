@@ -169,6 +169,27 @@ const LoadMoreRow = styled.div`
   `}
 `;
 
+const WelcomeCardContainer = styled(CardContainer)`
+  max-height: none;
+  overflow: visible;
+`;
+
+const TopCardContainer = styled(WelcomeCardContainer)`
+  grid-template-columns: repeat(8, 300px);
+
+  @media (max-width: 2559px) {
+    grid-template-columns: repeat(4, 300px);
+  }
+
+  @media (max-width: 1279px) {
+    grid-template-columns: repeat(2, 300px);
+  }
+
+  @media (max-width: 679px) {
+    grid-template-columns: repeat(1, 300px);
+  }
+`;
+
 function isFilterValuePresent(value: ListViewFilterValue['value']) {
   return value !== '' && value !== null && value !== undefined;
 }
@@ -480,8 +501,15 @@ function DashboardWelcome({
   }, [welcomeData]);
 
   const renderCards = useCallback(
-    (dashboards: Dashboard[], currentFavoriteStatus: FavoriteStatus) => (
-      <CardContainer showThumbnails={showThumbnails}>
+    (
+      dashboards: Dashboard[],
+      currentFavoriteStatus: FavoriteStatus,
+      layout: 'default' | 'top' = 'default',
+    ) => {
+      const Container =
+        layout === 'top' ? TopCardContainer : WelcomeCardContainer;
+      return (
+        <Container showThumbnails={showThumbnails}>
         {dashboards.map(dashboard => (
           <DashboardCard
             key={dashboard.id}
@@ -501,8 +529,9 @@ function DashboardWelcome({
             onDelete={setDashboardToDelete}
           />
         ))}
-      </CardContainer>
-    ),
+        </Container>
+      );
+    },
     [
       handleBulkDashboardExport,
       hasPerm,
@@ -566,7 +595,7 @@ function DashboardWelcome({
       </SectionIntro>
 
       {loading && !welcomeData ? (
-        <CardContainer showThumbnails={showThumbnails}>
+        <TopCardContainer showThumbnails={showThumbnails}>
           {[...new Array(loadingCardCount)].map((_, index) => (
             <ListViewCard
               key={index}
@@ -575,9 +604,9 @@ function DashboardWelcome({
               loading
             />
           ))}
-        </CardContainer>
+        </TopCardContainer>
       ) : topDashboards.length ? (
-        renderCards(topDashboards, favoriteStatus)
+        renderCards(topDashboards, favoriteStatus, 'top')
       ) : (
         <EmptySection>
           {t(
@@ -602,7 +631,7 @@ function DashboardWelcome({
             )} (${section?.count ?? 0})`,
             children:
               loading && sectionExpanded && !sectionDashboards.length ? (
-                <CardContainer showThumbnails={showThumbnails}>
+                <WelcomeCardContainer showThumbnails={showThumbnails}>
                   {[...new Array(loadingCardCount)].map((_, index) => (
                     <ListViewCard
                       key={index}
@@ -611,7 +640,7 @@ function DashboardWelcome({
                       loading
                     />
                   ))}
-                </CardContainer>
+                </WelcomeCardContainer>
               ) : sectionDashboards.length ? (
                 <>
                   {renderCards(sectionDashboards, favoriteStatus)}
