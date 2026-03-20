@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { styled, t } from '@superset-ui/core';
 import {
   Comparator,
+  CustomConditionalFormattingColorScheme,
   MultipleValueComparators,
 } from '@superset-ui/chart-controls';
 import {
@@ -55,6 +56,14 @@ const colorSchemeOptions = () => [
   { value: 'colorSuccess', label: t('success') },
   { value: 'colorWarning', label: t('alert') },
   { value: 'colorError', label: t('error') },
+  {
+    value: CustomConditionalFormattingColorScheme.ThreeLevels,
+    label: t('Три уровня'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.TwoLevels,
+    label: t('Два уровня'),
+  },
 ];
 
 const operatorOptions = [

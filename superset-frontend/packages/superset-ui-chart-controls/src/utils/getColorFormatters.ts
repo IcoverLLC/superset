@@ -22,6 +22,7 @@ import {
   ColorFormatters,
   Comparator,
   ConditionalFormattingConfig,
+  CustomConditionalFormattingColorScheme,
   MultipleValueComparators,
 } from '../types';
 
@@ -31,6 +32,110 @@ export const round = (num: number, precision = 0) =>
 const MIN_OPACITY_BOUNDED = 0.05;
 const MIN_OPACITY_UNBOUNDED = 0;
 const MAX_OPACITY = 1;
+const DEFAULT_TWO_LEVELS_COLORS = ['#D14343', '#2E8B57'] as const;
+const DEFAULT_THREE_LEVELS_COLORS = ['#D14343', '#F0B429', '#2E8B57'] as const;
+
+const clamp = (value: number, min = 0, max = 1) =>
+  Math.min(max, Math.max(min, value));
+
+const normalizeHexColor = (color: string) => {
+  if (!color.startsWith('#')) {
+    return null;
+  }
+
+  if (color.length === 4) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+  }
+
+  if (color.length === 7) {
+    return color;
+  }
+
+  if (color.length === 9) {
+    return color.slice(0, 7);
+  }
+
+  return null;
+};
+
+const interpolateChannel = (start: number, end: number, ratio: number) =>
+  Math.round(start + (end - start) * ratio);
+
+const interpolateHexColor = (
+  startColor: string,
+  endColor: string,
+  ratio: number,
+) => {
+  const normalizedStart = normalizeHexColor(startColor);
+  const normalizedEnd = normalizeHexColor(endColor);
+
+  if (!normalizedStart || !normalizedEnd) {
+    return endColor;
+  }
+
+  const safeRatio = clamp(ratio);
+  const startRed = parseInt(normalizedStart.slice(1, 3), 16);
+  const startGreen = parseInt(normalizedStart.slice(3, 5), 16);
+  const startBlue = parseInt(normalizedStart.slice(5, 7), 16);
+  const endRed = parseInt(normalizedEnd.slice(1, 3), 16);
+  const endGreen = parseInt(normalizedEnd.slice(3, 5), 16);
+  const endBlue = parseInt(normalizedEnd.slice(5, 7), 16);
+
+  return `#${interpolateChannel(startRed, endRed, safeRatio)
+    .toString(16)
+    .padStart(2, '0')}${interpolateChannel(startGreen, endGreen, safeRatio)
+    .toString(16)
+    .padStart(2, '0')}${interpolateChannel(startBlue, endBlue, safeRatio)
+    .toString(16)
+    .padStart(2, '0')}`.toUpperCase();
+};
+
+const getGradientColors = (
+  colorScheme: string | undefined,
+  theme?: Record<string, any>,
+) => {
+  if (colorScheme === CustomConditionalFormattingColorScheme.TwoLevels) {
+    return [
+      theme?.colorError ?? DEFAULT_TWO_LEVELS_COLORS[0],
+      theme?.colorSuccess ?? DEFAULT_TWO_LEVELS_COLORS[1],
+    ];
+  }
+
+  if (colorScheme === CustomConditionalFormattingColorScheme.ThreeLevels) {
+    return [
+      theme?.colorError ?? DEFAULT_THREE_LEVELS_COLORS[0],
+      theme?.colorWarning ?? DEFAULT_THREE_LEVELS_COLORS[1],
+      theme?.colorSuccess ?? DEFAULT_THREE_LEVELS_COLORS[2],
+    ];
+  }
+
+  return null;
+};
+
+const getGradientPosition = (
+  value: number,
+  cutoffValue: number,
+  extremeValue: number,
+) => {
+  if (extremeValue === cutoffValue) {
+    return 1;
+  }
+
+  return clamp(Math.abs((value - cutoffValue) / (extremeValue - cutoffValue)));
+};
+
+const getGradientColor = (position: number, colors: string[]) => {
+  if (colors.length === 2) {
+    return interpolateHexColor(colors[0], colors[1], position);
+  }
+
+  if (position <= 0.5) {
+    return interpolateHexColor(colors[0], colors[1], position * 2);
+  }
+
+  return interpolateHexColor(colors[1], colors[2], (position - 0.5) * 2);
+};
+
 export const getOpacity = (
   value: number | string,
   cutoffPoint: number | string,
@@ -72,6 +177,7 @@ export const getColorFunction = (
   }: ConditionalFormattingConfig,
   columnValues: number[],
   alpha?: boolean,
+  theme?: Record<string, any>,
 ) => {
   let minOpacity = MIN_OPACITY_BOUNDED;
   const maxOpacity = MAX_OPACITY;
@@ -186,6 +292,15 @@ export const getColorFunction = (
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
+    const gradientColors = getGradientColors(colorScheme, theme);
+
+    if (gradientColors) {
+      return getGradientColor(
+        getGradientPosition(value, cutoffValue, extremeValue),
+        gradientColors,
+      );
+    }
+
     if (alpha === undefined || alpha) {
       return addAlpha(
         colorScheme,
@@ -230,6 +345,7 @@ export const getColorFormatters = memoizeOne(
               { ...config, colorScheme: resolvedColorScheme },
               data.map(row => row[config.column!] as number),
               alpha,
+              theme,
             ),
           });
         }

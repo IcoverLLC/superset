@@ -19,6 +19,7 @@
 import { configure } from '@superset-ui/core';
 import {
   Comparator,
+  CustomConditionalFormattingColorScheme,
   getOpacity,
   round,
   getColorFormatters,
@@ -31,6 +32,11 @@ const mockData = [
   { count: 100, sum: 400 },
 ];
 const countValues = mockData.map(row => row.count);
+const mockTheme = {
+  colorError: '#FF0000',
+  colorWarning: '#FFFF00',
+  colorSuccess: '#00FF00',
+};
 
 test('round', () => {
   expect(round(1)).toEqual(1);
@@ -220,6 +226,44 @@ test('getColorFunction BETWEEN_OR_EQUAL without opacity', () => {
   expect(colorFunction(50)).toEqual('#FF0000');
   expect(colorFunction(75)).toEqual('#FF0000');
   expect(colorFunction(100)).toEqual('#FF0000');
+  expect(colorFunction(125)).toBeUndefined();
+});
+
+test('getColorFunction TWO_LEVELS', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      colorScheme: CustomConditionalFormattingColorScheme.TwoLevels,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#FF0000');
+  expect(colorFunction(50)).toEqual('#808000');
+  expect(colorFunction(100)).toEqual('#00FF00');
+  expect(colorFunction(125)).toBeUndefined();
+});
+
+test('getColorFunction THREE_LEVELS', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      colorScheme: CustomConditionalFormattingColorScheme.ThreeLevels,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#FF0000');
+  expect(colorFunction(50)).toEqual('#FFFF00');
+  expect(colorFunction(100)).toEqual('#00FF00');
   expect(colorFunction(125)).toBeUndefined();
 });
 

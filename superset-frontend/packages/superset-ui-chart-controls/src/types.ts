@@ -467,6 +467,11 @@ export const MultipleValueComparators = [
   Comparator.BetweenOrRightEqual,
 ];
 
+export const CustomConditionalFormattingColorScheme = {
+  TwoLevels: 'twoLevels',
+  ThreeLevels: 'threeLevels',
+} as const;
+
 export type ConditionalFormattingConfig = {
   operator?: Comparator;
   targetValue?: number;
