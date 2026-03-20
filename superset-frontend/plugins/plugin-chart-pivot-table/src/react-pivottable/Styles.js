@@ -55,7 +55,7 @@ export const Styles = styled.div`
       top: var(--pvt-header-top, 0px);
       z-index: 3;
       background-color: ${theme.colorBgBase};
-      background-clip: padding-box;
+      background-clip: border-box;
     }
 
     table.pvtTable tbody tr.pvtRowTotals {
@@ -106,7 +106,7 @@ export const Styles = styled.div`
       left: var(--pvt-sticky-left, 0px);
       z-index: 2;
       background-color: ${theme.colorBgBase};
-      background-clip: padding-box;
+      background-clip: border-box;
     }
 
     table.pvtTable.pvtTable--pin-rows thead [data-sticky-start] {
