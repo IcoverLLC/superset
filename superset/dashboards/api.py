@@ -146,6 +146,7 @@ get_welcome_dashboards_schema = {
         "page": {"type": "number"},
         "page_size": {"type": "number"},
         "top_limit": {"type": "number"},
+        "load_sections": {},
         "filters": {
             "type": "array",
             "items": {
@@ -497,26 +498,25 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     ) -> tuple[str, list[Dashboard], int]:
         try:
             user_id = get_user_id()
-            personal_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids(
-                user_id
+            personal_dashboard_ids, lookback_days = (
+                self._get_cached_top_dashboard_ids(user_id)
+                if user_id is not None
+                else ([], current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
             )
-            global_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
 
-            ranked_dashboard_ids: list[int] = []
-            seen_dashboard_ids: set[int] = set()
-            for dashboard_id in personal_dashboard_ids + global_dashboard_ids:
-                if dashboard_id in seen_dashboard_ids:
-                    continue
-                ranked_dashboard_ids.append(dashboard_id)
-                seen_dashboard_ids.add(dashboard_id)
-                if len(ranked_dashboard_ids) >= top_limit:
-                    break
+            ranked_dashboard_ids = personal_dashboard_ids[:top_limit]
+            top_mode = "personal_recent_views" if personal_dashboard_ids else "recent_views"
+            if len(ranked_dashboard_ids) < top_limit:
+                global_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
+                seen_dashboard_ids = set(ranked_dashboard_ids)
+                for dashboard_id in global_dashboard_ids:
+                    if dashboard_id in seen_dashboard_ids:
+                        continue
+                    ranked_dashboard_ids.append(dashboard_id)
+                    seen_dashboard_ids.add(dashboard_id)
+                    if len(ranked_dashboard_ids) >= top_limit:
+                        break
 
-            top_mode = (
-                "personal_recent_views"
-                if personal_dashboard_ids
-                else "recent_views"
-            )
             if not ranked_dashboard_ids:
                 manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
                 if manual_dashboards:
@@ -550,6 +550,34 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
         return "empty", [], lookback_days
 
+    def _get_recently_viewed_at(
+        self,
+        dashboard_ids: list[int],
+    ) -> dict[str, str]:
+        user_id = get_user_id()
+        if user_id is None or not dashboard_ids:
+            return {}
+
+        viewed_rows = (
+            db.session.query(
+                Log.dashboard_id.label("dashboard_id"),
+                func.max(Log.dttm).label("last_viewed_at"),
+            )
+            .filter(
+                Log.action == "log",
+                Log.user_id == user_id,
+                Log.dashboard_id.in_(dashboard_ids),
+                Log.json.contains('"event_name": "mount_dashboard"'),
+            )
+            .group_by(Log.dashboard_id)
+            .all()
+        )
+        return {
+            str(dashboard_id): last_viewed_at.isoformat()
+            for dashboard_id, last_viewed_at in viewed_rows
+            if dashboard_id is not None and last_viewed_at is not None
+        }
+
     @expose("/welcome/", methods=("GET",))
     @protect()
     @safe
@@ -563,7 +591,12 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     def welcome(self, **kwargs: Any) -> Response:
         args = kwargs.get("rison", {})
         page, page_size = self._sanitize_page_args(*self._handle_page_args(args))
-        load_sections = parse_boolean_string(args.get("load_sections", False))
+        load_sections_arg = args.get("load_sections")
+        load_sections = (
+            parse_boolean_string(load_sections_arg)
+            if isinstance(load_sections_arg, str)
+            else bool(load_sections_arg)
+        )
         configured_top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
         top_limit = max(
             1,
@@ -596,17 +629,24 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             other_dashboard_count_query = other_dashboard_count_query.filter(
                 Dashboard.id.notin_(top_dashboard_ids)
             )
-        dashboard_count = other_dashboard_count_query.order_by(None).count()
+
+        dashboard_count = None
         dashboards = []
         if load_sections:
+            if page == 0:
+                dashboard_count = other_dashboard_count_query.order_by(None).count()
             dashboards = (
                 other_dashboards_query.limit(page_size).offset(page * page_size).all()
             )
+        recently_viewed_at = self._get_recently_viewed_at(
+            top_dashboard_ids + [dashboard.id for dashboard in dashboards]
+        )
 
         result = {
             "top_mode": top_mode,
             "top_lookback_days": lookback_days,
             "top_dashboards": self._serialize_dashboards(top_dashboards),
+            "recently_viewed_at": recently_viewed_at,
             "sections": [
                 {
                     "key": "all_dashboards",

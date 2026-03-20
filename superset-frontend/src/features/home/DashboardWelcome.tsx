@@ -42,7 +42,6 @@ import {
   type Dashboard,
   type FavoriteStatus,
 } from 'src/views/CRUD/types';
-import type { RecentActivity } from 'src/features/home/types';
 import { useFavoriteStatus, useListViewResource } from 'src/views/CRUD/hooks';
 import {
   CardContainer,
@@ -59,7 +58,6 @@ import { findPermission } from 'src/utils/findPermission';
 import type { User, UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 
 const SECTION_PAGE_SIZE = 24;
-const RECENT_ACTIVITY_PAGE_SIZE = 100;
 const WELCOME_FILTER_KEYS = ['search', 'tags', 'favorite'] as const;
 const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], string> =
   {
@@ -77,7 +75,7 @@ type WelcomeTopMode =
 interface WelcomeSection {
   key: string;
   title: string;
-  count: number;
+  count: number | null;
   page: number;
   page_size: number;
   dashboards: Dashboard[];
@@ -87,6 +85,7 @@ interface WelcomeResponse {
   top_mode: WelcomeTopMode;
   top_lookback_days: number;
   top_dashboards: Dashboard[];
+  recently_viewed_at?: Record<string, string>;
   sections: WelcomeSection[];
 }
 
@@ -210,19 +209,14 @@ function normalizeFilterValue(value: ListViewFilterValue['value']) {
   return value;
 }
 
-function normalizeDashboardUrl(url?: string | null) {
-  if (!url) {
-    return '';
+function getRecentlyViewedDescription(viewedAt?: string) {
+  if (!viewedAt) {
+    return '\u00a0';
   }
-
-  return url
-    .replace(/^https?:\/\/[^/]+/i, '')
-    .split('?')[0]
-    .replace(/\/+$/, '');
-}
-
-function getRecentViewedDescription(activity: RecentActivity) {
-  return t('Viewed %s', extendedDayjs(activity.time).fromNow());
+  return t(
+    '\u041f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u043d\u043e %s',
+    extendedDayjs(viewedAt).fromNow(),
+  );
 }
 
 function DashboardWelcome({
@@ -297,9 +291,6 @@ function DashboardWelcome({
     null,
   );
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
-  const [recentlyViewedMap, setRecentlyViewedMap] = useState<
-    Record<string, string>
-  >({});
   const [sectionExpanded, setSectionExpanded] = useState(false);
 
   const { hasPerm } = useListViewResource<Dashboard>(
@@ -315,37 +306,6 @@ function DashboardWelcome({
   useEffect(() => {
     setInternalFilters(defaultFilters);
   }, [defaultFilters]);
-
-  useEffect(() => {
-    const recentActivityParams = rison.encode({
-      page_size: RECENT_ACTIVITY_PAGE_SIZE,
-      distinct: false,
-    });
-
-    SupersetClient.get({
-      endpoint: `/api/v1/log/recent_activity/?q=${recentActivityParams}`,
-    })
-      .then(({ json = {} }) => {
-        const nextRecentlyViewedMap: Record<string, string> = {};
-        (json.result || []).forEach((record: RecentActivity) => {
-          if (record.item_type !== 'dashboard') {
-            return;
-          }
-
-          const normalizedUrl = normalizeDashboardUrl(record.item_url);
-          if (!normalizedUrl || nextRecentlyViewedMap[normalizedUrl]) {
-            return;
-          }
-
-          nextRecentlyViewedMap[normalizedUrl] =
-            getRecentViewedDescription(record);
-        });
-        setRecentlyViewedMap(nextRecentlyViewedMap);
-      })
-      .catch(() => {
-        setRecentlyViewedMap({});
-      });
-  }, []);
 
   const apiFilters = useMemo(
     () =>
@@ -409,9 +369,14 @@ function DashboardWelcome({
           const previousSection = current.sections[0];
           return {
             ...result,
+            recently_viewed_at: {
+              ...(current.recently_viewed_at || {}),
+              ...(result.recently_viewed_at || {}),
+            },
             sections: [
               {
                 ...nextSection,
+                count: nextSection.count ?? previousSection.count,
                 dashboards: [
                   ...previousSection.dashboards,
                   ...nextSection.dashboards,
@@ -443,8 +408,8 @@ function DashboardWelcome({
   );
 
   useEffect(() => {
-    void fetchWelcomeData(0, false, false);
-  }, [fetchWelcomeData]);
+    void fetchWelcomeData(0, false, sectionExpanded);
+  }, [fetchWelcomeData, sectionExpanded]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
     setPreparingExport(true);
@@ -465,7 +430,8 @@ function DashboardWelcome({
     [fetchWelcomeData, sectionExpanded],
   );
 
-  const hasMoreDashboards = (section?.count ?? 0) > sectionDashboards.length;
+  const hasMoreDashboards =
+    section?.count != null && section.count > sectionDashboards.length;
 
   const topSectionDescription = useMemo(() => {
     if (!welcomeData) {
@@ -522,9 +488,9 @@ function DashboardWelcome({
           <DashboardCard
             key={dashboard.id}
             dashboard={dashboard}
-            description={
-              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ?? '\u00a0'
-            }
+            description={getRecentlyViewedDescription(
+              welcomeData?.recently_viewed_at?.[String(dashboard.id)],
+            )}
             hasPerm={hasPerm}
             bulkSelectEnabled={false}
             showThumbnails={showThumbnails}
@@ -543,10 +509,10 @@ function DashboardWelcome({
     [
       handleBulkDashboardExport,
       hasPerm,
-      recentlyViewedMap,
       saveFavoriteStatus,
       showThumbnails,
       user.userId,
+      welcomeData?.recently_viewed_at,
     ],
   );
 
@@ -558,19 +524,9 @@ function DashboardWelcome({
   const handleCollapseChange = useCallback(
     (activeKeys: string | string[]) => {
       const nextKeys = Array.isArray(activeKeys) ? activeKeys : [activeKeys];
-      const isExpanded = nextKeys.includes('all_dashboards');
-      setSectionExpanded(isExpanded);
-
-      if (
-        isExpanded &&
-        welcomeData &&
-        !sectionDashboards.length &&
-        section?.count
-      ) {
-        void fetchWelcomeData(0, false, true);
-      }
+      setSectionExpanded(nextKeys.includes('all_dashboards'));
     },
-    [fetchWelcomeData, section?.count, sectionDashboards.length, welcomeData],
+    [],
   );
 
   return (
@@ -638,10 +594,16 @@ function DashboardWelcome({
         items={[
           {
             key: 'all_dashboards',
-            label: `${t(
-              '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-            )} (${section?.count ?? 0})`,
+            label:
+              section?.count == null
+                ? t(
+                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                  )
+                : `${t(
+                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                  )} (${section.count})`,
             children:
               loading && sectionExpanded && !sectionDashboards.length ? (
                 <WelcomeCardContainer showThumbnails={showThumbnails}>
