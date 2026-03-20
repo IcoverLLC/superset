@@ -119,6 +119,7 @@ export class TableRenderer extends Component {
       collapsedRows: {},
       collapsedCols: {},
       hoveredRowKey: null,
+      hoveredCellKey: null,
       selectedRowKey: null,
     };
     this.tableRef = null;
@@ -413,8 +414,19 @@ export class TableRenderer extends Component {
   handleRowMouseLeave(flatRowKey) {
     return () => {
       this.setState(state =>
-        state.hoveredRowKey === flatRowKey ? { hoveredRowKey: null } : null,
+        state.hoveredRowKey === flatRowKey
+          ? { hoveredRowKey: null, hoveredCellKey: null }
+          : null,
       );
+    };
+  }
+
+  handleCellMouseEnter(flatRowKey, hoveredCellKey) {
+    return () => {
+      this.setState({
+        hoveredRowKey: flatRowKey,
+        hoveredCellKey,
+      });
     };
   }
 
@@ -849,6 +861,7 @@ export class TableRenderer extends Component {
       isDarkTheme,
       themeBackgroundColor,
       rowHoverBackgroundColor,
+      hoveredCellBackgroundColor,
       rowSelectedBackgroundColor,
       rowHighlightTextColor,
     } = this.props.tableOptions;
@@ -890,10 +903,15 @@ export class TableRenderer extends Component {
           dateFormatters && dateFormatters[rowAttrs[i]]
             ? dateFormatters[rowAttrs[i]](r)
             : r;
+        const hoveredCellKey = `row-header-${i}`;
         return (
           <th
             key={`rowKeyLabel-${i}`}
-            className={valueCellClassName}
+            className={`${valueCellClassName}${
+              isHoveredRow && this.state.hoveredCellKey === hoveredCellKey
+                ? ' pvtCellHovered'
+                : ''
+            }`}
             rowSpan={rowSpan}
             colSpan={colSpan}
             data-sticky-start={pinRowsBlock ? i : undefined}
@@ -915,6 +933,7 @@ export class TableRenderer extends Component {
                 this.props.tableOptions.clickRowHeaderCallback,
               ),
             )}
+            onMouseEnter={this.handleCellMouseEnter(flatRowKey, hoveredCellKey)}
             onContextMenu={handleContextMenu}
           >
             {displayHeaderCell(
@@ -936,7 +955,11 @@ export class TableRenderer extends Component {
     const attrValuePaddingCell =
       rowKey.length < rowAttrs.length ? (
         <th
-          className="pvtRowLabel pvtSubtotalLabel"
+          className={`pvtRowLabel pvtSubtotalLabel${
+            isHoveredRow && this.state.hoveredCellKey === 'row-subtotal'
+              ? ' pvtCellHovered'
+              : ''
+          }`}
           key="rowKeyBuffer"
           colSpan={rowAttrs.length - rowKey.length + colIncrSpan}
           rowSpan={1}
@@ -954,6 +977,7 @@ export class TableRenderer extends Component {
               true,
             ),
           )}
+          onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-subtotal')}
         >
           {t('Subtotal')}
         </th>
@@ -997,10 +1021,15 @@ export class TableRenderer extends Component {
         : isHoveredRow
           ? rowHoverBackgroundColor
           : adaptiveBackgroundColor;
+      const isHoveredCell = isHoveredRow && this.state.hoveredCellKey === flatColKey;
+      const effectiveBackgroundColor =
+        isSelectedRow || !isHoveredCell
+          ? rowBackgroundColor
+          : hoveredCellBackgroundColor;
 
       const style = {
         ...(agg.isSubtotal ? { fontWeight: 'bold' } : {}),
-        backgroundColor: rowBackgroundColor,
+        backgroundColor: effectiveBackgroundColor,
         color:
           isHoveredRow || isSelectedRow
             ? rowHighlightTextColor
@@ -1013,9 +1042,10 @@ export class TableRenderer extends Component {
       return (
         <td
           role="gridcell"
-          className="pvtVal"
+          className={`pvtVal${isHoveredCell ? ' pvtCellHovered' : ''}`}
           key={`pvtVal-${flatColKey}`}
           onClick={this.handleRowClick(flatRowKey, rowClickHandlers[flatColKey])}
+          onMouseEnter={this.handleCellMouseEnter(flatRowKey, flatColKey)}
           onContextMenu={e => this.props.onContextMenu(e, colKey, rowKey)}
           style={style}
         >
@@ -1032,11 +1062,16 @@ export class TableRenderer extends Component {
         <td
           role="gridcell"
           key="total"
-          className="pvtTotal"
+          className={`pvtTotal${
+            isHoveredRow && this.state.hoveredCellKey === 'row-total'
+              ? ' pvtCellHovered'
+              : ''
+          }`}
           onClick={this.handleRowClick(
             flatRowKey,
             rowTotalCallbacks[flatRowKey],
           )}
+          onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-total')}
           onContextMenu={e => this.props.onContextMenu(e, undefined, rowKey)}
         >
           {displayCell(agg.format(aggValue), allowRenderHtml)}

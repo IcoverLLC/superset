@@ -152,7 +152,13 @@ export const Styles = styled.div`
 
     table.pvtTable tbody tr.pvtRowHovered > th,
     table.pvtTable tbody tr.pvtRowHovered > td {
-      background-color: ${theme.colorPrimaryBgHover};
+      background-color: ${theme.colorFillTertiary};
+      color: ${theme.colorText};
+    }
+
+    table.pvtTable tbody tr.pvtRowHovered > th.pvtCellHovered,
+    table.pvtTable tbody tr.pvtRowHovered > td.pvtCellHovered {
+      background-color: ${theme.colorPrimaryBg};
       color: ${theme.colorText};
     }
 
