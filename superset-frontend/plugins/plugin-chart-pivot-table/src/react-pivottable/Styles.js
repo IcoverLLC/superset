@@ -95,6 +95,31 @@ export const Styles = styled.div`
       border-right: none;
     }
 
+    table.pvtTable.pvtTable--pin-rows [data-sticky-start] {
+      position: sticky;
+      left: var(--pvt-sticky-left, 0px);
+      z-index: 2;
+      background-color: ${theme.colorBgBase};
+      background-clip: padding-box;
+    }
+
+    table.pvtTable.pvtTable--pin-rows thead [data-sticky-start] {
+      z-index: 4;
+    }
+
+    table.pvtTable.pvtTable--pin-rows
+      tbody
+      tr.pvtRowTotals
+      [data-sticky-start] {
+      z-index: 5;
+    }
+
+    table.pvtTable.pvtTable--pin-rows [data-sticky-boundary='true'] {
+      box-shadow:
+        1px 0 0 ${theme.colorSplit},
+        12px 0 16px -14px ${theme.colorFillSecondary};
+    }
+
     table.pvtTable tr th.active {
       background-color: ${theme.colorPrimaryBg};
     }

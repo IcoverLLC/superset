@@ -160,6 +160,7 @@ export default function PivotTableChart(props: PivotTableProps) {
     groupbyRows: groupbyRowsRaw,
     groupbyColumns: groupbyColumnsRaw,
     metrics,
+    pinRowsBlock = false,
     colOrder,
     rowOrder,
     aggregateFunction,
@@ -478,6 +479,7 @@ export default function PivotTableChart(props: PivotTableProps) {
       dateFormatters,
       isDarkTheme: tinycolor(theme.colorBgContainer).isDark(),
       themeBackgroundColor: theme.colorBgContainer,
+      pinRowsBlock,
     }),
     [
       colTotals,
@@ -489,6 +491,7 @@ export default function PivotTableChart(props: PivotTableProps) {
       rowSubTotals,
       selectedFilters,
       theme,
+      pinRowsBlock,
       toggleFilter,
     ],
   );

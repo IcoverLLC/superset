@@ -283,6 +283,20 @@ const config: ControlPanelConfig = {
       controlSetRows: [
         [
           {
+            name: 'pinRowsBlock',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Pin rows block'),
+              default: false,
+              renderTrigger: true,
+              description: t(
+                'Keep the entire left rows block fixed while horizontally scrolling the pivot table.',
+              ),
+            },
+          },
+        ],
+        [
+          {
             name: 'valueFormat',
             config: {
               ...sharedControls.y_axis_format,

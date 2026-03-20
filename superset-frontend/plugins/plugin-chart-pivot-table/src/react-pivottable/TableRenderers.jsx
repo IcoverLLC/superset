@@ -116,9 +116,103 @@ export class TableRenderer extends Component {
     // This is an object with flat-keys indicating if the corresponding rows
     // should be collapsed.
     this.state = { collapsedRows: {}, collapsedCols: {} };
+    this.tableRef = null;
+    this.resizeObserver = null;
+    this.layoutFrame = null;
 
     this.clickHeaderHandler = this.clickHeaderHandler.bind(this);
     this.clickHandler = this.clickHandler.bind(this);
+    this.handleResize = this.handleResize.bind(this);
+    this.setTableRef = this.setTableRef.bind(this);
+    this.scheduleStickyLayout = this.scheduleStickyLayout.bind(this);
+    this.syncStickyLayout = this.syncStickyLayout.bind(this);
+  }
+
+  componentDidMount() {
+    window.addEventListener('resize', this.handleResize);
+    this.scheduleStickyLayout();
+  }
+
+  componentDidUpdate() {
+    this.scheduleStickyLayout();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    if (this.layoutFrame && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.layoutFrame);
+    }
+  }
+
+  setTableRef(node) {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    this.tableRef = node;
+    if (node && typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.scheduleStickyLayout());
+      this.resizeObserver.observe(node);
+    }
+  }
+
+  handleResize() {
+    this.scheduleStickyLayout();
+  }
+
+  scheduleStickyLayout() {
+    if (this.layoutFrame && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.layoutFrame);
+    }
+    if (typeof requestAnimationFrame !== 'function') {
+      this.syncStickyLayout();
+      return;
+    }
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = null;
+      this.syncStickyLayout();
+    });
+  }
+
+  syncStickyLayout() {
+    if (!this.tableRef) {
+      return;
+    }
+
+    const stickyCells = this.tableRef.querySelectorAll('[data-sticky-start]');
+    if (!this.tableRef.classList.contains('pvtTable--pin-rows')) {
+      stickyCells.forEach(cell =>
+        cell.style.removeProperty('--pvt-sticky-left'),
+      );
+      return;
+    }
+
+    const measureCells = Array.from(
+      this.tableRef.querySelectorAll(
+        'thead tr.pvtRowHeaderRow [data-sticky-measure="true"]',
+      ),
+    );
+    if (!measureCells.length) {
+      return;
+    }
+
+    let left = 0;
+    const offsets = measureCells.map(cell => {
+      const offset = left;
+      left += cell.getBoundingClientRect().width || cell.offsetWidth || 0;
+      return offset;
+    });
+
+    stickyCells.forEach(cell => {
+      const startIndex = Number(cell.getAttribute('data-sticky-start'));
+      cell.style.setProperty(
+        '--pvt-sticky-left',
+        `${offsets[startIndex] || 0}px`,
+      );
+    });
   }
 
   getBasePivotSettings() {
@@ -133,6 +227,7 @@ export class TableRenderer extends Component {
       colTotals: true,
       ...props.tableOptions,
     };
+    const pinRowsBlock = !!tableOptions.pinRowsBlock && rowAttrs.length > 0;
     const rowTotals = tableOptions.rowTotals || colAttrs.length === 0;
     const colTotals = tableOptions.colTotals || rowAttrs.length === 0;
 
@@ -229,6 +324,7 @@ export class TableRenderer extends Component {
       grandTotalCallback,
       namesMapping,
       allowRenderHtml: props.allowRenderHtml,
+      pinRowsBlock,
     };
   }
 
@@ -402,6 +498,7 @@ export class TableRenderer extends Component {
       pivotData,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
     const {
       highlightHeaderCellsOnHover,
@@ -417,6 +514,8 @@ export class TableRenderer extends Component {
           colSpan={rowAttrs.length}
           rowSpan={colAttrs.length}
           aria-hidden="true"
+          data-sticky-start={pinRowsBlock ? 0 : undefined}
+          data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
         />
       ) : null;
 
@@ -577,9 +676,10 @@ export class TableRenderer extends Component {
       pivotData,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
     return (
-      <tr key="rowHdr">
+      <tr key="rowHdr" className="pvtRowHeaderRow">
         {rowAttrs.map((r, i) => {
           const needLabelToggle =
             rowSubtotalDisplay.enabled && i !== rowAttrs.length - 1;
@@ -593,7 +693,17 @@ export class TableRenderer extends Component {
             subArrow = i + 1 < maxRowVisible ? arrowExpanded : arrowCollapsed;
           }
           return (
-            <th className="pvtAxisLabel" key={`rowAttr-${i}`}>
+            <th
+              className="pvtAxisLabel"
+              key={`rowAttr-${i}`}
+              data-sticky-measure={pinRowsBlock ? 'true' : undefined}
+              data-sticky-start={pinRowsBlock ? i : undefined}
+              data-sticky-boundary={
+                pinRowsBlock && i === rowAttrs.length - 1 && colAttrs.length === 0
+                  ? 'true'
+                  : undefined
+              }
+            >
               {displayHeaderCell(
                 needLabelToggle,
                 subArrow,
@@ -608,6 +718,15 @@ export class TableRenderer extends Component {
         <th
           className="pvtTotalLabel"
           key="padding"
+          data-sticky-measure={
+            pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
+          }
+          data-sticky-start={
+            pinRowsBlock && colAttrs.length !== 0 ? rowAttrs.length : undefined
+          }
+          data-sticky-boundary={
+            pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
+          }
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -646,6 +765,7 @@ export class TableRenderer extends Component {
       rowTotalCallbacks,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
 
     const {
@@ -699,6 +819,14 @@ export class TableRenderer extends Component {
             className={valueCellClassName}
             rowSpan={rowSpan}
             colSpan={colSpan}
+            data-sticky-start={pinRowsBlock ? i : undefined}
+            data-sticky-boundary={
+              pinRowsBlock &&
+              i === rowAttrs.length - 1 &&
+              rowKey.length === rowAttrs.length
+                ? 'true'
+                : undefined
+            }
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -732,6 +860,8 @@ export class TableRenderer extends Component {
           key="rowKeyBuffer"
           colSpan={rowAttrs.length - rowKey.length + colIncrSpan}
           rowSpan={1}
+          data-sticky-start={pinRowsBlock ? rowKey.length : undefined}
+          data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -841,6 +971,7 @@ export class TableRenderer extends Component {
       pivotData,
       colTotalCallbacks,
       grandTotalCallback,
+      pinRowsBlock,
     } = pivotSettings;
 
     const totalLabelCell = (
@@ -848,6 +979,8 @@ export class TableRenderer extends Component {
         key="label"
         className="pvtTotalLabel pvtRowTotalLabel"
         colSpan={rowAttrs.length + Math.min(colAttrs.length, 1)}
+        data-sticky-start={pinRowsBlock ? 0 : undefined}
+        data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
         role="columnheader button"
         onClick={this.clickHeaderHandler(
           pivotData,
@@ -942,6 +1075,7 @@ export class TableRenderer extends Component {
       rowSubtotalDisplay,
       colSubtotalDisplay,
       allowRenderHtml,
+      pinRowsBlock,
     } = this.cachedBasePivotSettings;
 
     // Need to account for exclusions to compute the effective row
@@ -959,6 +1093,9 @@ export class TableRenderer extends Component {
       colSubtotalDisplay,
     );
 
+    const isDashboardEditMode = this.isDashboardEditMode();
+    const pinRowsBlockEnabled = pinRowsBlock && !isDashboardEditMode;
+
     const pivotSettings = {
       visibleRowKeys,
       maxRowVisible: Math.max(...visibleRowKeys.map(k => k.length)),
@@ -966,13 +1103,18 @@ export class TableRenderer extends Component {
       maxColVisible: Math.max(...visibleColKeys.map(k => k.length)),
       rowAttrSpans: this.calcAttrSpans(visibleRowKeys, rowAttrs.length),
       colAttrSpans: this.calcAttrSpans(visibleColKeys, colAttrs.length),
-      allowRenderHtml,
       ...this.cachedBasePivotSettings,
+      allowRenderHtml,
+      pinRowsBlock: pinRowsBlockEnabled,
     };
 
     return (
-      <Styles isDashboardEditMode={this.isDashboardEditMode()}>
-        <table className="pvtTable" role="grid">
+      <Styles isDashboardEditMode={isDashboardEditMode}>
+        <table
+          className={`pvtTable${pinRowsBlockEnabled ? ' pvtTable--pin-rows' : ''}`}
+          role="grid"
+          ref={this.setTableRef}
+        >
           <thead>
             {colAttrs.map((c, j) =>
               this.renderColHeaderRow(c, j, pivotSettings),
