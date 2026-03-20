@@ -188,9 +188,7 @@ function normalizeDashboardUrl(url?: string | null) {
 }
 
 function getRecentViewedDescription(activity: RecentActivity) {
-  const humanized =
-    activity.time_delta_humanized ?? extendedDayjs(activity.time).fromNow();
-  return t('Viewed %s', humanized);
+  return t('Viewed %s', extendedDayjs(activity.time).fromNow());
 }
 
 function DashboardWelcome({
@@ -225,6 +223,23 @@ function DashboardWelcome({
             WELCOME_FILTER_HEADERS[
               filter.key as (typeof WELCOME_FILTER_KEYS)[number]
             ] ?? filter.Header,
+          unfilteredLabel:
+            filter.key === 'favorite'
+              ? '\u041b\u044e\u0431\u043e\u0435'
+              : filter.unfilteredLabel,
+          selects:
+            filter.key === 'favorite'
+              ? [
+                  {
+                    label: '\u0414\u0430',
+                    value: true,
+                  },
+                  {
+                    label: '\u041d\u0435\u0442',
+                    value: false,
+                  },
+                ]
+              : filter.selects,
         })),
     [addDangerToast, canReadTag, user.firstName, user.lastName, user.userId],
   );
@@ -458,8 +473,7 @@ function DashboardWelcome({
             key={dashboard.id}
             dashboard={dashboard}
             description={
-              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ??
-              undefined
+              recentlyViewedMap[normalizeDashboardUrl(dashboard.url)] ?? ''
             }
             hasPerm={hasPerm}
             bulkSelectEnabled={false}
