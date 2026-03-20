@@ -497,15 +497,26 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     ) -> tuple[str, list[Dashboard], int]:
         try:
             user_id = get_user_id()
-            ranked_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids(
+            personal_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids(
                 user_id
             )
-            top_mode = "personal_recent_views"
-            if not ranked_dashboard_ids:
-                ranked_dashboard_ids, lookback_days = (
-                    self._get_cached_top_dashboard_ids()
-                )
-                top_mode = "recent_views"
+            global_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
+
+            ranked_dashboard_ids: list[int] = []
+            seen_dashboard_ids: set[int] = set()
+            for dashboard_id in personal_dashboard_ids + global_dashboard_ids:
+                if dashboard_id in seen_dashboard_ids:
+                    continue
+                ranked_dashboard_ids.append(dashboard_id)
+                seen_dashboard_ids.add(dashboard_id)
+                if len(ranked_dashboard_ids) >= top_limit:
+                    break
+
+            top_mode = (
+                "personal_recent_views"
+                if personal_dashboard_ids
+                else "recent_views"
+            )
             if not ranked_dashboard_ids:
                 manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
                 if manual_dashboards:
