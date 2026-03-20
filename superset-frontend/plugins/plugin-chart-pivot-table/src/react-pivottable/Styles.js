@@ -150,6 +150,18 @@ export const Styles = styled.div`
       text-align: right;
     }
 
+    table.pvtTable tbody tr.pvtRowHovered > th,
+    table.pvtTable tbody tr.pvtRowHovered > td {
+      background-color: ${theme.colorPrimaryBgHover};
+      color: ${theme.colorText};
+    }
+
+    table.pvtTable tbody tr.pvtRowSelected > th,
+    table.pvtTable tbody tr.pvtRowSelected > td {
+      background-color: ${theme.colorPrimaryBg};
+      color: ${theme.colorText};
+    }
+
     table.pvtTable tbody tr th.pvtRowLabel {
       vertical-align: baseline;
     }

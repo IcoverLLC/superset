@@ -115,7 +115,12 @@ export class TableRenderer extends Component {
     // We need state to record which entries are collapsed and which aren't.
     // This is an object with flat-keys indicating if the corresponding rows
     // should be collapsed.
-    this.state = { collapsedRows: {}, collapsedCols: {} };
+    this.state = {
+      collapsedRows: {},
+      collapsedCols: {},
+      hoveredRowKey: null,
+      selectedRowKey: null,
+    };
     this.tableRef = null;
     this.resizeObserver = null;
     this.layoutFrame = null;
@@ -397,6 +402,32 @@ export class TableRenderer extends Component {
         isSubtotal,
         isGrandTotal,
       );
+  }
+
+  handleRowMouseEnter(flatRowKey) {
+    return () => {
+      this.setState({ hoveredRowKey: flatRowKey });
+    };
+  }
+
+  handleRowMouseLeave(flatRowKey) {
+    return () => {
+      this.setState(state =>
+        state.hoveredRowKey === flatRowKey ? { hoveredRowKey: null } : null,
+      );
+    };
+  }
+
+  handleRowClick(flatRowKey, callback) {
+    return e => {
+      if (!getSelectedText()) {
+        this.setState(state => ({
+          selectedRowKey:
+            state.selectedRowKey === flatRowKey ? null : flatRowKey,
+        }));
+      }
+      callback?.(e);
+    };
   }
 
   collapseAttr(rowOrCol, attrIdx, allKeys) {
@@ -817,8 +848,13 @@ export class TableRenderer extends Component {
       dateFormatters,
       isDarkTheme,
       themeBackgroundColor,
+      rowHoverBackgroundColor,
+      rowSelectedBackgroundColor,
+      rowHighlightTextColor,
     } = this.props.tableOptions;
     const flatRowKey = flatKey(rowKey);
+    const isHoveredRow = this.state.hoveredRowKey === flatRowKey;
+    const isSelectedRow = this.state.selectedRowKey === flatRowKey;
 
     const colIncrSpan = colAttrs.length !== 0 ? 1 : 0;
     const attrValueCells = rowKey.map((r, i) => {
@@ -869,12 +905,15 @@ export class TableRenderer extends Component {
                 : undefined
             }
             role="columnheader button"
-            onClick={this.clickHeaderHandler(
-              pivotData,
-              rowKey,
-              this.props.rows,
-              i,
-              this.props.tableOptions.clickRowHeaderCallback,
+            onClick={this.handleRowClick(
+              flatRowKey,
+              this.clickHeaderHandler(
+                pivotData,
+                rowKey,
+                this.props.rows,
+                i,
+                this.props.tableOptions.clickRowHeaderCallback,
+              ),
             )}
             onContextMenu={handleContextMenu}
           >
@@ -904,13 +943,16 @@ export class TableRenderer extends Component {
           data-sticky-start={pinRowsBlock ? rowKey.length : undefined}
           data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
           role="columnheader button"
-          onClick={this.clickHeaderHandler(
-            pivotData,
-            rowKey,
-            this.props.rows,
-            rowKey.length,
-            this.props.tableOptions.clickRowHeaderCallback,
-            true,
+          onClick={this.handleRowClick(
+            flatRowKey,
+            this.clickHeaderHandler(
+              pivotData,
+              rowKey,
+              this.props.rows,
+              rowKey.length,
+              this.props.tableOptions.clickRowHeaderCallback,
+              true,
+            ),
           )}
         >
           {t('Subtotal')}
@@ -950,14 +992,22 @@ export class TableRenderer extends Component {
         isDarkTheme,
         themeBackgroundColor,
       });
+      const rowBackgroundColor = isSelectedRow
+        ? rowSelectedBackgroundColor
+        : isHoveredRow
+          ? rowHoverBackgroundColor
+          : adaptiveBackgroundColor;
 
       const style = {
         ...(agg.isSubtotal ? { fontWeight: 'bold' } : {}),
-        backgroundColor: adaptiveBackgroundColor,
-        color: getConditionalFormattingTextColor({
-          backgroundColor: adaptiveBackgroundColor,
-          isDarkTheme,
-        }),
+        backgroundColor: rowBackgroundColor,
+        color:
+          isHoveredRow || isSelectedRow
+            ? rowHighlightTextColor
+            : getConditionalFormattingTextColor({
+                backgroundColor: adaptiveBackgroundColor,
+                isDarkTheme,
+              }),
       };
 
       return (
@@ -965,7 +1015,7 @@ export class TableRenderer extends Component {
           role="gridcell"
           className="pvtVal"
           key={`pvtVal-${flatColKey}`}
-          onClick={rowClickHandlers[flatColKey]}
+          onClick={this.handleRowClick(flatRowKey, rowClickHandlers[flatColKey])}
           onContextMenu={e => this.props.onContextMenu(e, colKey, rowKey)}
           style={style}
         >
@@ -983,7 +1033,10 @@ export class TableRenderer extends Component {
           role="gridcell"
           key="total"
           className="pvtTotal"
-          onClick={rowTotalCallbacks[flatRowKey]}
+          onClick={this.handleRowClick(
+            flatRowKey,
+            rowTotalCallbacks[flatRowKey],
+          )}
           onContextMenu={e => this.props.onContextMenu(e, undefined, rowKey)}
         >
           {displayCell(agg.format(aggValue), allowRenderHtml)}
@@ -998,7 +1051,21 @@ export class TableRenderer extends Component {
       totalCell,
     ];
 
-    return <tr key={`keyRow-${flatRowKey}`}>{rowCells}</tr>;
+    return (
+      <tr
+        key={`keyRow-${flatRowKey}`}
+        className={[
+          isHoveredRow ? 'pvtRowHovered' : '',
+          isSelectedRow ? 'pvtRowSelected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        onMouseEnter={this.handleRowMouseEnter(flatRowKey)}
+        onMouseLeave={this.handleRowMouseLeave(flatRowKey)}
+      >
+        {rowCells}
+      </tr>
+    );
   }
 
   renderTotalsRow(pivotSettings) {
