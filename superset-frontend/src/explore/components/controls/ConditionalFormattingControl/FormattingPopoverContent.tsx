@@ -58,11 +58,23 @@ const colorSchemeOptions = () => [
   { value: 'colorError', label: t('error') },
   {
     value: CustomConditionalFormattingColorScheme.ThreeLevels,
-    label: t('Три уровня'),
+    label: t('УФ: Красный Желтый Зеленый'),
   },
   {
     value: CustomConditionalFormattingColorScheme.TwoLevels,
-    label: t('Два уровня'),
+    label: t('УФ: Красный Зеленый'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.ReverseThreeLevels,
+    label: t('УФ: Зеленый Желтый Красный'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.RedWhiteGreen,
+    label: t('УФ: Красный Белый Зеленый'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.ReverseTwoLevels,
+    label: t('УФ: Зеленый Красный'),
   },
 ];
 

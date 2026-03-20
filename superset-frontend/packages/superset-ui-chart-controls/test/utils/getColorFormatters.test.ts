@@ -267,6 +267,63 @@ test('getColorFunction THREE_LEVELS', () => {
   expect(colorFunction(125)).toBeUndefined();
 });
 
+test('getColorFunction REVERSE_TWO_LEVELS', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      colorScheme: CustomConditionalFormattingColorScheme.ReverseTwoLevels,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#00FF00');
+  expect(colorFunction(50)).toEqual('#808000');
+  expect(colorFunction(100)).toEqual('#FF0000');
+  expect(colorFunction(125)).toBeUndefined();
+});
+
+test('getColorFunction REVERSE_THREE_LEVELS', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      colorScheme: CustomConditionalFormattingColorScheme.ReverseThreeLevels,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#00FF00');
+  expect(colorFunction(50)).toEqual('#FFFF00');
+  expect(colorFunction(100)).toEqual('#FF0000');
+  expect(colorFunction(125)).toBeUndefined();
+});
+
+test('getColorFunction RED_WHITE_GREEN', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.BetweenOrEqual,
+      targetValueLeft: 0,
+      targetValueRight: 100,
+      colorScheme: CustomConditionalFormattingColorScheme.RedWhiteGreen,
+      column: 'count',
+    },
+    countValues,
+    undefined,
+    mockTheme,
+  );
+  expect(colorFunction(0)).toEqual('#FF0000');
+  expect(colorFunction(50)).toEqual('#FFFFFF');
+  expect(colorFunction(100)).toEqual('#00FF00');
+  expect(colorFunction(125)).toBeUndefined();
+});
+
 test('getColorFunction BETWEEN_OR_LEFT_EQUAL', () => {
   const colorFunction = getColorFunction(
     {

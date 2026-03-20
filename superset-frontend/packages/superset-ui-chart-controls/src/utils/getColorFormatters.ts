@@ -34,6 +34,9 @@ const MIN_OPACITY_UNBOUNDED = 0;
 const MAX_OPACITY = 1;
 const DEFAULT_TWO_LEVELS_COLORS = ['#D14343', '#2E8B57'] as const;
 const DEFAULT_THREE_LEVELS_COLORS = ['#D14343', '#F0B429', '#2E8B57'] as const;
+const DEFAULT_REVERSE_TWO_LEVELS_COLORS = ['#2E8B57', '#D14343'] as const;
+const DEFAULT_REVERSE_THREE_LEVELS_COLORS = ['#2E8B57', '#F0B429', '#D14343'] as const;
+const DEFAULT_RED_WHITE_GREEN_COLORS = ['#D14343', '#FFFFFF', '#2E8B57'] as const;
 
 const clamp = (value: number, min = 0, max = 1) =>
   Math.min(max, Math.max(min, value));
@@ -106,6 +109,31 @@ const getGradientColors = (
       theme?.colorError ?? DEFAULT_THREE_LEVELS_COLORS[0],
       theme?.colorWarning ?? DEFAULT_THREE_LEVELS_COLORS[1],
       theme?.colorSuccess ?? DEFAULT_THREE_LEVELS_COLORS[2],
+    ];
+  }
+
+  if (colorScheme === CustomConditionalFormattingColorScheme.ReverseTwoLevels) {
+    return [
+      theme?.colorSuccess ?? DEFAULT_REVERSE_TWO_LEVELS_COLORS[0],
+      theme?.colorError ?? DEFAULT_REVERSE_TWO_LEVELS_COLORS[1],
+    ];
+  }
+
+  if (
+    colorScheme === CustomConditionalFormattingColorScheme.ReverseThreeLevels
+  ) {
+    return [
+      theme?.colorSuccess ?? DEFAULT_REVERSE_THREE_LEVELS_COLORS[0],
+      theme?.colorWarning ?? DEFAULT_REVERSE_THREE_LEVELS_COLORS[1],
+      theme?.colorError ?? DEFAULT_REVERSE_THREE_LEVELS_COLORS[2],
+    ];
+  }
+
+  if (colorScheme === CustomConditionalFormattingColorScheme.RedWhiteGreen) {
+    return [
+      theme?.colorError ?? DEFAULT_RED_WHITE_GREEN_COLORS[0],
+      DEFAULT_RED_WHITE_GREEN_COLORS[1],
+      theme?.colorSuccess ?? DEFAULT_RED_WHITE_GREEN_COLORS[2],
     ];
   }
 

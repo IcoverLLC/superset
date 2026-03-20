@@ -470,6 +470,9 @@ export const MultipleValueComparators = [
 export const CustomConditionalFormattingColorScheme = {
   TwoLevels: 'twoLevels',
   ThreeLevels: 'threeLevels',
+  ReverseTwoLevels: 'reverseTwoLevels',
+  ReverseThreeLevels: 'reverseThreeLevels',
+  RedWhiteGreen: 'redWhiteGreen',
 } as const;
 
 export type ConditionalFormattingConfig = {
