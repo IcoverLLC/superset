@@ -440,13 +440,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         dashboards.sort(key=lambda dashboard: order.get(dashboard.id, len(order)))
         return dashboards[:top_limit]
 
-    def _get_cached_top_dashboard_ids(self) -> tuple[list[int], int]:
+    def _get_cached_top_dashboard_ids(
+        self, user_id: int | None = None
+    ) -> tuple[list[int], int]:
         lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
         today = datetime.utcnow().date()
         period_end = datetime.combine(today, time.min)
         period_start = period_end - timedelta(days=lookback_days)
         cache_key = (
             "welcome_dashboard_top_ids:"
+            f"{user_id if user_id is not None else 'global'}:"
             f"{lookback_days}:"
             f"{period_start.date().isoformat()}:"
             f"{(period_end - timedelta(days=1)).date().isoformat()}"
@@ -457,22 +460,24 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             return cached_ids, lookback_days
 
         top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
+        log_query = db.session.query(
+            Log.dashboard_id.label("dashboard_id"),
+            func.count(Log.id).label("view_count"),
+            func.max(Log.dttm).label("last_viewed_at"),
+        ).filter(
+            Log.action == "log",
+            Log.dashboard_id.isnot(None),
+            Log.dttm >= period_start,
+            Log.dttm < period_end,
+            Log.json.contains('"event_name": "mount_dashboard"'),
+        )
+        if user_id is not None:
+            log_query = log_query.filter(Log.user_id == user_id)
+
         top_dashboard_ids = [
             dashboard_id
             for dashboard_id, _view_count, _last_viewed_at in (
-                db.session.query(
-                    Log.dashboard_id.label("dashboard_id"),
-                    func.count(Log.id).label("view_count"),
-                    func.max(Log.dttm).label("last_viewed_at"),
-                )
-                .filter(
-                    Log.action == "log",
-                    Log.dashboard_id.isnot(None),
-                    Log.dttm >= period_start,
-                    Log.dttm < period_end,
-                    Log.json.contains('"event_name": "mount_dashboard"'),
-                )
-                .group_by(Log.dashboard_id)
+                log_query.group_by(Log.dashboard_id)
                 .order_by(
                     func.count(Log.id).desc(),
                     func.max(Log.dttm).desc(),
@@ -491,7 +496,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         top_limit: int,
     ) -> tuple[str, list[Dashboard], int]:
         try:
-            ranked_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
+            user_id = get_user_id()
+            ranked_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids(
+                user_id
+            )
+            top_mode = "personal_recent_views"
+            if not ranked_dashboard_ids:
+                ranked_dashboard_ids, lookback_days = (
+                    self._get_cached_top_dashboard_ids()
+                )
+                top_mode = "recent_views"
             if not ranked_dashboard_ids:
                 manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
                 if manual_dashboards:
@@ -512,7 +526,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             )
             top_dashboards = top_dashboards[:top_limit]
             if top_dashboards:
-                return "recent_views", top_dashboards, lookback_days
+                return top_mode, top_dashboards, lookback_days
         except Exception:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to resolve welcome top dashboards from recent logs",

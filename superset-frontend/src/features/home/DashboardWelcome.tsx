@@ -68,7 +68,11 @@ const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], strin
     favorite: '\u0418\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435',
   };
 
-type WelcomeTopMode = 'recent_views' | 'manual_config' | 'empty';
+type WelcomeTopMode =
+  | 'personal_recent_views'
+  | 'recent_views'
+  | 'manual_config'
+  | 'empty';
 
 interface WelcomeSection {
   key: string;
@@ -444,6 +448,16 @@ function DashboardWelcome({
       return t(
         '\u0420\u0435\u0439\u0442\u0438\u043d\u0433 \u043f\u043e ' +
           '\u043e\u0442\u043a\u0440\u044b\u0442\u0438\u044f\u043c ' +
+          '\u0437\u0430 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 ' +
+          '%s \u043f\u043e\u043b\u043d\u044b\u0445 \u0434\u043d\u0435\u0439',
+        welcomeData.top_lookback_days,
+      );
+    }
+    if (welcomeData.top_mode === 'personal_recent_views') {
+      return t(
+        '\u0412\u0430\u0448 \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u043b\u044c\u043d\u044b\u0439 ' +
+          '\u0440\u0435\u0439\u0442\u0438\u043d\u0433 \u043f\u043e ' +
+          '\u0432\u0430\u0448\u0438\u043c \u043e\u0442\u043a\u0440\u044b\u0442\u0438\u044f\u043c ' +
           '\u0437\u0430 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 ' +
           '%s \u043f\u043e\u043b\u043d\u044b\u0445 \u0434\u043d\u0435\u0439',
         welcomeData.top_lookback_days,
