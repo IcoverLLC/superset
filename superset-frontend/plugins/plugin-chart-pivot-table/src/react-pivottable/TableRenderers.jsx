@@ -430,15 +430,19 @@ export class TableRenderer extends Component {
     };
   }
 
-  handleRowClick(flatRowKey, callback) {
+  handleRowActivation(flatRowKey) {
     return e => {
-      if (!getSelectedText()) {
-        this.setState(state => ({
-          selectedRowKey:
-            state.selectedRowKey === flatRowKey ? null : flatRowKey,
-        }));
+      if (getSelectedText()) {
+        return;
       }
-      callback?.(e);
+      const target = e.target;
+      if (target?.closest?.('.toggle')) {
+        return;
+      }
+      this.setState(state => ({
+        selectedRowKey:
+          state.selectedRowKey === flatRowKey ? null : flatRowKey,
+      }));
     };
   }
 
@@ -923,15 +927,12 @@ export class TableRenderer extends Component {
                 : undefined
             }
             role="columnheader button"
-            onClick={this.handleRowClick(
-              flatRowKey,
-              this.clickHeaderHandler(
-                pivotData,
-                rowKey,
-                this.props.rows,
-                i,
-                this.props.tableOptions.clickRowHeaderCallback,
-              ),
+            onClick={this.clickHeaderHandler(
+              pivotData,
+              rowKey,
+              this.props.rows,
+              i,
+              this.props.tableOptions.clickRowHeaderCallback,
             )}
             onMouseEnter={this.handleCellMouseEnter(flatRowKey, hoveredCellKey)}
             onContextMenu={handleContextMenu}
@@ -966,16 +967,13 @@ export class TableRenderer extends Component {
           data-sticky-start={pinRowsBlock ? rowKey.length : undefined}
           data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
           role="columnheader button"
-          onClick={this.handleRowClick(
-            flatRowKey,
-            this.clickHeaderHandler(
-              pivotData,
-              rowKey,
-              this.props.rows,
-              rowKey.length,
-              this.props.tableOptions.clickRowHeaderCallback,
-              true,
-            ),
+          onClick={this.clickHeaderHandler(
+            pivotData,
+            rowKey,
+            this.props.rows,
+            rowKey.length,
+            this.props.tableOptions.clickRowHeaderCallback,
+            true,
           )}
           onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-subtotal')}
         >
@@ -1044,7 +1042,7 @@ export class TableRenderer extends Component {
           role="gridcell"
           className={`pvtVal${isHoveredCell ? ' pvtCellHovered' : ''}`}
           key={`pvtVal-${flatColKey}`}
-          onClick={this.handleRowClick(flatRowKey, rowClickHandlers[flatColKey])}
+          onClick={rowClickHandlers[flatColKey]}
           onMouseEnter={this.handleCellMouseEnter(flatRowKey, flatColKey)}
           onContextMenu={e => this.props.onContextMenu(e, colKey, rowKey)}
           style={style}
@@ -1067,10 +1065,7 @@ export class TableRenderer extends Component {
               ? ' pvtCellHovered'
               : ''
           }`}
-          onClick={this.handleRowClick(
-            flatRowKey,
-            rowTotalCallbacks[flatRowKey],
-          )}
+          onClick={rowTotalCallbacks[flatRowKey]}
           onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-total')}
           onContextMenu={e => this.props.onContextMenu(e, undefined, rowKey)}
         >
@@ -1095,6 +1090,7 @@ export class TableRenderer extends Component {
         ]
           .filter(Boolean)
           .join(' ')}
+        onClick={this.handleRowActivation(flatRowKey)}
         onMouseEnter={this.handleRowMouseEnter(flatRowKey)}
         onMouseLeave={this.handleRowMouseLeave(flatRowKey)}
       >
