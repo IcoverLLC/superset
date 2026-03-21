@@ -100,6 +100,7 @@ function DashboardCard({
     if (
       !fetchingThumbnail &&
       dashboard.id &&
+      showThumbnails &&
       (thumbnailUrl === undefined || thumbnailUrl === null) &&
       isFeatureEnabled(FeatureFlag.Thumbnails)
     ) {
@@ -118,7 +119,7 @@ function DashboardCard({
         setFetchingThumbnail(false);
       });
     }
-  }, [dashboard, thumbnailUrl]);
+  }, [dashboard, fetchingThumbnail, showThumbnails, thumbnailUrl]);
 
   const menuItems: MenuItem[] = [];
   const customTags = (dashboard.tags || []).filter(

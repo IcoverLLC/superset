@@ -2071,10 +2071,13 @@ WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, An
 # Welcome dashboard catalogue configuration.
 # TOP dashboards are first resolved from dashboard view logs for the configured
 # lookback window, and fall back to the manual ID list when no recent log-based
-# ranking is available.
+# ranking is available. For production, the global ranking can be proactively
+# warmed via the `welcome_dashboard_top.warm_global` Celery task.
 WELCOME_DASHBOARD_TOP_LIMIT = 8
 WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
 WELCOME_DASHBOARD_TOP_IDS: list[int] = []
+WELCOME_DASHBOARD_TOP_CACHE_TIMEOUT = 24 * 60 * 60
+WELCOME_DASHBOARD_ACTIVITY_CACHE_TIMEOUT = 60 * 60
 
 # Max allowed size for a zipped file
 ZIPPED_FILE_MAX_SIZE = 100 * 1024 * 1024  # 100MB

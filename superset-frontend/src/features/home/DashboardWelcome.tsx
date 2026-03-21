@@ -432,16 +432,10 @@ function DashboardWelcome({
           '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
       );
     }
-    if (welcomeData.top_mode === 'recent_views') {
-      return t(
-        '\u041d\u0430 \u043e\u0441\u043d\u043e\u0432\u0435 \u0432\u0430\u0448\u0438\u0445 ' +
-          '\u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u0439 \u0437\u0430 ' +
-          '\u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 ' +
-          '%s \u0434\u043d\u0435\u0439',
-        welcomeData.top_lookback_days,
-      );
-    }
-    if (welcomeData.top_mode === 'personal_recent_views') {
+    if (
+      welcomeData.top_mode === 'recent_views' ||
+      welcomeData.top_mode === 'personal_recent_views'
+    ) {
       return t(
         '\u041d\u0430 \u043e\u0441\u043d\u043e\u0432\u0435 \u0432\u0430\u0448\u0438\u0445 ' +
           '\u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u0439 \u0437\u0430 ' +

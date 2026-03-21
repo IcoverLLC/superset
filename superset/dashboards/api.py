@@ -17,7 +17,7 @@
 # pylint: disable=too-many-lines
 import functools
 import logging
-from datetime import datetime, time, timedelta
+from datetime import datetime
 from io import BytesIO
 from typing import Any, Callable, cast
 from zipfile import is_zipfile, ZipFile
@@ -80,6 +80,12 @@ from superset.dashboards.filters import (
     DashboardTitleOrSlugFilter,
     FilterRelatedRoles,
 )
+from superset.dashboards.welcome_top import (
+    get_cached_top_dashboard_ids,
+    get_cached_user_has_recent_views,
+    get_welcome_top_cache_backend_name,
+    is_welcome_top_cache_enabled,
+)
 from superset.dashboards.permalink.types import DashboardPermalinkState
 from superset.dashboards.schemas import (
     CacheScreenshotSchema,
@@ -104,7 +110,7 @@ from superset.dashboards.schemas import (
     thumbnail_query_schema,
 )
 from superset.exceptions import ScreenshotImageNotAvailableException
-from superset.extensions import cache_manager, event_logger
+from superset.extensions import event_logger
 from superset.models.core import Log
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
@@ -441,56 +447,6 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         dashboards.sort(key=lambda dashboard: order.get(dashboard.id, len(order)))
         return dashboards[:top_limit]
 
-    def _get_cached_top_dashboard_ids(
-        self, user_id: int | None = None
-    ) -> tuple[list[int], int, str]:
-        lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
-        today = datetime.utcnow().date()
-        period_end = datetime.combine(today, time.min)
-        period_start = period_end - timedelta(days=lookback_days)
-        cache_key = (
-            "welcome_dashboard_top_ids:"
-            f"{user_id if user_id is not None else 'global'}:"
-            f"{lookback_days}:"
-            f"{period_start.date().isoformat()}:"
-            f"{(period_end - timedelta(days=1)).date().isoformat()}"
-        )
-
-        cached_ids = cache_manager.cache.get(cache_key)
-        if cached_ids is not None:
-            return cached_ids, lookback_days, "hit"
-
-        top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
-        log_query = db.session.query(
-            Log.dashboard_id.label("dashboard_id"),
-            func.count(Log.id).label("view_count"),
-            func.max(Log.dttm).label("last_viewed_at"),
-        ).filter(
-            Log.action == "log",
-            Log.dashboard_id.isnot(None),
-            Log.dttm >= period_start,
-            Log.dttm < period_end,
-            Log.json.contains('"event_name": "mount_dashboard"'),
-        )
-        if user_id is not None:
-            log_query = log_query.filter(Log.user_id == user_id)
-
-        top_dashboard_ids = [
-            dashboard_id
-            for dashboard_id, _view_count, _last_viewed_at in (
-                log_query.group_by(Log.dashboard_id)
-                .order_by(
-                    func.count(Log.id).desc(),
-                    func.max(Log.dttm).desc(),
-                )
-                .limit(top_limit)
-                .all()
-            )
-            if dashboard_id is not None
-        ]
-        cache_manager.cache.set(cache_key, top_dashboard_ids, timeout=24 * 60 * 60)
-        return top_dashboard_ids, lookback_days, "miss"
-
     def _get_top_dashboards(
         self,
         query: Any,
@@ -498,25 +454,36 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     ) -> tuple[str, list[Dashboard], int, dict[str, Any]]:
         try:
             user_id = get_user_id()
-            cache_backend = cache_manager.cache.__class__.__name__
+            cache_backend = get_welcome_top_cache_backend_name()
             personal_cache_status = "skipped"
+            personal_activity_status = "skipped"
             global_cache_status = "skipped"
+            has_personal_activity = False
+            lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
 
-            personal_dashboard_ids, lookback_days, personal_cache_status = (
-                self._get_cached_top_dashboard_ids(user_id)
-                if user_id is not None
-                else (
-                    [],
-                    current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"],
-                    "skipped",
-                )
-            )
+            personal_dashboard_ids: list[int] = []
+            if user_id is not None:
+                (
+                    has_personal_activity,
+                    lookback_days,
+                    personal_activity_status,
+                ) = get_cached_user_has_recent_views(user_id)
+                if has_personal_activity:
+                    (
+                        personal_dashboard_ids,
+                        lookback_days,
+                        personal_cache_status,
+                    ) = get_cached_top_dashboard_ids(user_id)
+                else:
+                    personal_cache_status = "skipped_no_activity"
 
             ranked_dashboard_ids = personal_dashboard_ids[:top_limit]
-            top_mode = "personal_recent_views" if personal_dashboard_ids else "recent_views"
+            top_mode = (
+                "personal_recent_views" if personal_dashboard_ids else "recent_views"
+            )
             if len(ranked_dashboard_ids) < top_limit:
                 global_dashboard_ids, lookback_days, global_cache_status = (
-                    self._get_cached_top_dashboard_ids()
+                    get_cached_top_dashboard_ids()
                 )
                 seen_dashboard_ids = set(ranked_dashboard_ids)
                 for dashboard_id in global_dashboard_ids:
@@ -529,8 +496,10 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
             top_cache = {
                 "backend": cache_backend,
-                "enabled": cache_backend != "NullCache",
+                "enabled": is_welcome_top_cache_enabled(),
                 "personal": personal_cache_status,
+                "personal_activity": personal_activity_status,
+                "has_personal_activity": has_personal_activity,
                 "global": global_cache_status,
                 "personal_count": len(personal_dashboard_ids),
                 "resolved_count": len(ranked_dashboard_ids),
@@ -569,9 +538,11 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
         if manual_dashboards:
             return "manual_config", manual_dashboards, lookback_days, {
-                "backend": cache_manager.cache.__class__.__name__,
-                "enabled": cache_manager.cache.__class__.__name__ != "NullCache",
+                "backend": get_welcome_top_cache_backend_name(),
+                "enabled": is_welcome_top_cache_enabled(),
                 "personal": "error",
+                "personal_activity": "error",
+                "has_personal_activity": False,
                 "global": "error",
                 "personal_count": 0,
                 "resolved_count": len(manual_dashboards),
@@ -579,9 +550,11 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             }
 
         return "empty", [], lookback_days, {
-            "backend": cache_manager.cache.__class__.__name__,
-            "enabled": cache_manager.cache.__class__.__name__ != "NullCache",
+            "backend": get_welcome_top_cache_backend_name(),
+            "enabled": is_welcome_top_cache_enabled(),
             "personal": "error",
+            "personal_activity": "error",
+            "has_personal_activity": False,
             "global": "error",
             "personal_count": 0,
             "resolved_count": 0,
@@ -676,8 +649,12 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             dashboards = (
                 other_dashboards_query.limit(page_size).offset(page * page_size).all()
             )
-        recently_viewed_at = self._get_recently_viewed_at(
-            top_dashboard_ids + [dashboard.id for dashboard in dashboards]
+        recently_viewed_at = (
+            self._get_recently_viewed_at(
+                top_dashboard_ids + [dashboard.id for dashboard in dashboards]
+            )
+            if top_cache.get("has_personal_activity")
+            else {}
         )
 
         result = {
