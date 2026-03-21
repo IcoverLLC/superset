@@ -30,6 +30,8 @@ from superset.models.welcome_dashboard_rank import WelcomeDashboardRank
 
 MOUNT_DASHBOARD_EVENT = '"event_name": "mount_dashboard"'
 GLOBAL_PARTITION_KEY = "global"
+WELCOME_TOP_SOURCE_SNAPSHOT = "snapshot"
+WELCOME_TOP_SOURCE_LIVE = "live"
 
 
 def get_welcome_top_lookback_window(lookback_days: int) -> tuple[datetime, datetime]:
@@ -39,7 +41,21 @@ def get_welcome_top_lookback_window(lookback_days: int) -> tuple[datetime, datet
     return period_start, period_end
 
 
+def get_welcome_top_source() -> str:
+    configured_source = str(
+        current_app.config.get(
+            "WELCOME_DASHBOARD_TOP_SOURCE",
+            WELCOME_TOP_SOURCE_SNAPSHOT,
+        )
+    ).strip().lower()
+    if configured_source == WELCOME_TOP_SOURCE_LIVE:
+        return WELCOME_TOP_SOURCE_LIVE
+    return WELCOME_TOP_SOURCE_SNAPSHOT
+
+
 def get_welcome_top_storage_name() -> str:
+    if get_welcome_top_source() == WELCOME_TOP_SOURCE_LIVE:
+        return "live_logs"
     return "metadata_table"
 
 
@@ -378,6 +394,39 @@ def get_welcome_snapshot_dashboard_ids(
     return dashboard_ids, lookback_days, "snapshot" if dashboard_ids else "missing"
 
 
+def get_welcome_live_dashboard_ids(
+    user_id: int | None = None,
+) -> tuple[list[int], int, str]:
+    lookback_days = int(current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+    ranking_limit = get_welcome_snapshot_limit()
+    window_start, window_end = get_welcome_top_lookback_window(lookback_days)
+
+    query = _base_log_query(window_start, window_end)
+    if user_id is not None:
+        query = query.filter(Log.user_id == user_id)
+
+    rows = (
+        query.group_by(Log.dashboard_id)
+        .order_by(
+            func.count(Log.id).desc(),
+            func.max(Log.dttm).desc(),
+            Log.dashboard_id.asc(),
+        )
+        .limit(ranking_limit)
+        .all()
+    )
+    dashboard_ids = [dashboard_id for dashboard_id, _, _ in rows if dashboard_id]
+    return dashboard_ids, lookback_days, "live" if dashboard_ids else "missing"
+
+
+def get_welcome_top_dashboard_ids(
+    user_id: int | None = None,
+) -> tuple[list[int], int, str]:
+    if get_welcome_top_source() == WELCOME_TOP_SOURCE_LIVE:
+        return get_welcome_live_dashboard_ids(user_id)
+    return get_welcome_snapshot_dashboard_ids(user_id)
+
+
 def get_welcome_snapshot_recently_viewed_at(
     dashboard_ids: list[int],
     user_id: int | None = None,
@@ -405,3 +454,45 @@ def get_welcome_snapshot_recently_viewed_at(
         for dashboard_id, last_viewed_at in rows
         if dashboard_id is not None and last_viewed_at is not None
     }
+
+
+def get_welcome_live_recently_viewed_at(
+    dashboard_ids: list[int],
+    user_id: int | None = None,
+) -> dict[str, str]:
+    if user_id is None or not dashboard_ids:
+        return {}
+
+    rows = (
+        db.session.query(
+            Log.dashboard_id,
+            func.max(Log.dttm).label("last_viewed_at"),
+        )
+        .join(
+            Dashboard,
+            Dashboard.id == Log.dashboard_id,
+        )
+        .filter(
+            Log.action == "log",
+            Log.user_id == user_id,
+            Log.dashboard_id.in_(dashboard_ids),
+            Log.json.contains(MOUNT_DASHBOARD_EVENT),
+            Dashboard.published.is_(True),
+        )
+        .group_by(Log.dashboard_id)
+        .all()
+    )
+    return {
+        str(dashboard_id): last_viewed_at.isoformat()
+        for dashboard_id, last_viewed_at in rows
+        if dashboard_id is not None and last_viewed_at is not None
+    }
+
+
+def get_welcome_top_recently_viewed_at(
+    dashboard_ids: list[int],
+    user_id: int | None = None,
+) -> dict[str, str]:
+    if get_welcome_top_source() == WELCOME_TOP_SOURCE_LIVE:
+        return get_welcome_live_recently_viewed_at(dashboard_ids, user_id)
+    return get_welcome_snapshot_recently_viewed_at(dashboard_ids, user_id)

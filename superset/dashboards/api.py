@@ -81,8 +81,8 @@ from superset.dashboards.filters import (
     FilterRelatedRoles,
 )
 from superset.dashboards.welcome_top import (
-    get_welcome_snapshot_dashboard_ids,
-    get_welcome_snapshot_recently_viewed_at,
+    get_welcome_top_dashboard_ids,
+    get_welcome_top_recently_viewed_at,
     get_welcome_top_storage_name,
 )
 from superset.dashboards.permalink.types import DashboardPermalinkState
@@ -525,11 +525,9 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             personal_status = "skipped"
             if user_id is not None:
                 personal_dashboard_ids, lookback_days, personal_status = (
-                    get_welcome_snapshot_dashboard_ids(user_id)
+                    get_welcome_top_dashboard_ids(user_id)
                 )
-            global_dashboard_ids, lookback_days, global_status = (
-                get_welcome_snapshot_dashboard_ids()
-            )
+            global_dashboard_ids, lookback_days, global_status = get_welcome_top_dashboard_ids()
 
             ranked_dashboard_ids: list[int] = []
             seen_dashboard_ids: set[int] = set()
@@ -737,7 +735,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             )
         recently_viewed_at: dict[str, str] = {}
         if load_recently_viewed_at:
-            recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
+            recently_viewed_at = get_welcome_top_recently_viewed_at(
                 top_dashboard_ids,
                 get_user_id(),
             )

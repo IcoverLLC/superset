@@ -2072,6 +2072,7 @@ WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, An
 # TOP dashboards are primarily resolved from snapshot rows stored in metadata DB.
 # Welcome requests only read snapshot rows; writes should happen via the
 # `welcome_dashboard_top.refresh_snapshots` Celery task.
+WELCOME_DASHBOARD_TOP_SOURCE = "snapshot"
 WELCOME_DASHBOARD_TOP_LIMIT = 8
 WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
 WELCOME_DASHBOARD_TOP_IDS: list[int] = []
