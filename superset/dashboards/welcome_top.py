@@ -23,7 +23,7 @@ from typing import Any
 from flask import current_app
 from sqlalchemy import func
 
-from superset import db
+from superset import db, security_manager
 from superset.models.core import Log
 from superset.models.dashboard import Dashboard
 from superset.models.welcome_dashboard_rank import WelcomeDashboardRank
@@ -49,6 +49,22 @@ def get_welcome_snapshot_limit() -> int:
     if configured_limit is None:
         return max(50, top_limit * 5)
     return max(top_limit, int(configured_limit))
+
+
+def get_welcome_thumbnail_warmup_limit() -> int:
+    configured_limit = current_app.config.get("WELCOME_DASHBOARD_THUMBNAIL_WARMUP_LIMIT")
+    snapshot_limit = get_welcome_snapshot_limit()
+    if configured_limit is None:
+        return min(snapshot_limit, int(current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]))
+    return max(0, min(snapshot_limit, int(configured_limit)))
+
+
+def get_welcome_thumbnail_warmup_user_limit() -> int:
+    configured_limit = current_app.config.get(
+        "WELCOME_DASHBOARD_THUMBNAIL_WARMUP_USER_LIMIT",
+        200,
+    )
+    return max(0, int(configured_limit))
 
 
 def get_welcome_rank_partition_key(user_id: int | None) -> str:
@@ -404,4 +420,122 @@ def get_welcome_snapshot_recently_viewed_at(
         str(dashboard_id): last_viewed_at.isoformat()
         for dashboard_id, last_viewed_at in rows
         if dashboard_id is not None and last_viewed_at is not None
+    }
+
+
+def get_welcome_thumbnail_warmup_targets() -> dict[str, Any]:
+    lookback_days = int(current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+    warmup_limit = get_welcome_thumbnail_warmup_limit()
+    warmup_user_limit = get_welcome_thumbnail_warmup_user_limit()
+
+    if warmup_limit <= 0 or warmup_user_limit <= 0:
+        return {
+            "lookback_days": lookback_days,
+            "warmup_limit": warmup_limit,
+            "user_limit": warmup_user_limit,
+            "global_dashboard_ids": [],
+            "users": [],
+        }
+
+    global_rows = (
+        db.session.query(WelcomeDashboardRank.dashboard_id)
+        .filter(
+            WelcomeDashboardRank.partition_key == GLOBAL_PARTITION_KEY,
+            WelcomeDashboardRank.lookback_days == lookback_days,
+        )
+        .order_by(WelcomeDashboardRank.rank.asc())
+        .limit(warmup_limit)
+        .all()
+    )
+    global_dashboard_ids = [
+        dashboard_id for dashboard_id, in global_rows if dashboard_id is not None
+    ]
+
+    user_model = security_manager.user_model
+    active_users = (
+        db.session.query(
+            WelcomeDashboardRank.user_id,
+            user_model.username,
+        )
+        .join(user_model, user_model.id == WelcomeDashboardRank.user_id)
+        .filter(
+            WelcomeDashboardRank.user_id.isnot(None),
+            WelcomeDashboardRank.lookback_days == lookback_days,
+        )
+        .group_by(
+            WelcomeDashboardRank.user_id,
+            user_model.username,
+        )
+        .order_by(
+            func.max(WelcomeDashboardRank.updated_at).desc(),
+            WelcomeDashboardRank.user_id.asc(),
+        )
+        .limit(warmup_user_limit)
+        .all()
+    )
+
+    user_ids = [user_id for user_id, _username in active_users if user_id is not None]
+    if not user_ids:
+        return {
+            "lookback_days": lookback_days,
+            "warmup_limit": warmup_limit,
+            "user_limit": warmup_user_limit,
+            "global_dashboard_ids": global_dashboard_ids,
+            "users": [],
+        }
+
+    personal_rows = (
+        db.session.query(
+            WelcomeDashboardRank.user_id,
+            WelcomeDashboardRank.dashboard_id,
+        )
+        .filter(
+            WelcomeDashboardRank.user_id.in_(user_ids),
+            WelcomeDashboardRank.lookback_days == lookback_days,
+        )
+        .order_by(
+            WelcomeDashboardRank.user_id.asc(),
+            WelcomeDashboardRank.rank.asc(),
+        )
+        .all()
+    )
+
+    personal_dashboard_ids_by_user_id: dict[int, list[int]] = defaultdict(list)
+    for user_id, dashboard_id in personal_rows:
+        if user_id is None or dashboard_id is None:
+            continue
+        dashboard_ids = personal_dashboard_ids_by_user_id[user_id]
+        if len(dashboard_ids) < warmup_limit:
+            dashboard_ids.append(dashboard_id)
+
+    users: list[dict[str, Any]] = []
+    for user_id, username in active_users:
+        if user_id is None:
+            continue
+        resolved_dashboard_ids: list[int] = []
+        seen_dashboard_ids: set[int] = set()
+        for dashboard_id in (
+            personal_dashboard_ids_by_user_id.get(user_id, []) + global_dashboard_ids
+        ):
+            if dashboard_id in seen_dashboard_ids:
+                continue
+            resolved_dashboard_ids.append(dashboard_id)
+            seen_dashboard_ids.add(dashboard_id)
+            if len(resolved_dashboard_ids) >= warmup_limit:
+                break
+        if resolved_dashboard_ids:
+            users.append(
+                {
+                    "user_id": user_id,
+                    "username": username,
+                    "dashboard_ids": resolved_dashboard_ids,
+                }
+            )
+
+    return {
+        "lookback_days": lookback_days,
+        "warmup_limit": warmup_limit,
+        "user_limit": warmup_user_limit,
+        "global_dashboard_ids": global_dashboard_ids,
+        "users": users,
     }
