@@ -82,6 +82,7 @@ from superset.dashboards.filters import (
 )
 from superset.dashboards.welcome_top import (
     get_welcome_snapshot_dashboard_ids,
+    get_welcome_snapshot_recently_viewed_at,
     get_welcome_top_storage_name,
 )
 from superset.dashboards.permalink.types import DashboardPermalinkState
@@ -151,6 +152,7 @@ get_welcome_dashboards_schema = {
         "page_size": {"type": "number"},
         "top_limit": {"type": "number"},
         "load_sections": {},
+        "load_recently_viewed_at": {},
         "filters": {
             "type": "array",
             "items": {
@@ -164,6 +166,52 @@ get_welcome_dashboards_schema = {
         },
     },
 }
+
+WELCOME_DASHBOARD_RESPONSE_FIELDS = (
+    "id",
+    "slug",
+    "url",
+    "dashboard_title",
+    "thumbnail_url",
+    "published",
+    "certified_by",
+    "certification_details",
+    "owners",
+    "tags",
+    "changed_on_humanized",
+)
+
+
+def get_welcome_ui_config() -> dict[str, bool]:
+    minimal_mode = bool(
+        current_app.config.get("WELCOME_DASHBOARD_MINIMAL_MODE", False)
+    )
+    return {
+        "minimal_mode": minimal_mode,
+        "show_filters": (
+            False
+            if minimal_mode
+            else bool(current_app.config.get("WELCOME_DASHBOARD_SHOW_FILTERS", True))
+        ),
+        "show_other_dashboards": (
+            False
+            if minimal_mode
+            else bool(
+                current_app.config.get(
+                    "WELCOME_DASHBOARD_SHOW_OTHER_DASHBOARDS", True
+                )
+            )
+        ),
+        "show_recently_viewed_at": (
+            False
+            if minimal_mode
+            else bool(
+                current_app.config.get(
+                    "WELCOME_DASHBOARD_SHOW_RECENTLY_VIEWED_AT", True
+                )
+            )
+        ),
+    }
 
 
 def with_dashboard(
@@ -372,7 +420,6 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         query = (
             db.session.query(Dashboard)
             .options(
-                joinedload(Dashboard.changed_by),
                 selectinload(Dashboard.owners),
                 selectinload(Dashboard.tags),
             )
@@ -428,6 +475,15 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     @staticmethod
     def _serialize_dashboards(dashboards: list[Dashboard]) -> list[dict[str, Any]]:
         return DashboardGetResponseSchema(many=True).dump(dashboards)
+
+    @staticmethod
+    def _serialize_welcome_dashboards(
+        dashboards: list[Dashboard],
+    ) -> list[dict[str, Any]]:
+        return DashboardGetResponseSchema(
+            many=True,
+            only=WELCOME_DASHBOARD_RESPONSE_FIELDS,
+        ).dump(dashboards)
 
     def _get_manual_top_dashboards(
         self,
@@ -620,12 +676,23 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     )
     def welcome(self, **kwargs: Any) -> Response:
         args = kwargs.get("rison", {})
+        ui_config = get_welcome_ui_config()
         page, page_size = self._sanitize_page_args(*self._handle_page_args(args))
         load_sections_arg = args.get("load_sections")
         load_sections = (
             parse_boolean_string(load_sections_arg)
             if isinstance(load_sections_arg, str)
             else bool(load_sections_arg)
+        )
+        load_sections = load_sections and ui_config["show_other_dashboards"]
+        load_recently_viewed_at_arg = args.get("load_recently_viewed_at", True)
+        load_recently_viewed_at = (
+            parse_boolean_string(load_recently_viewed_at_arg)
+            if isinstance(load_recently_viewed_at_arg, str)
+            else bool(load_recently_viewed_at_arg)
+        )
+        load_recently_viewed_at = (
+            load_recently_viewed_at and ui_config["show_recently_viewed_at"]
         )
         configured_top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
         top_limit = max(
@@ -668,26 +735,40 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             dashboards = (
                 other_dashboards_query.limit(page_size).offset(page * page_size).all()
             )
-        recently_viewed_at = self._get_recently_viewed_at(
-            top_dashboard_ids + [dashboard.id for dashboard in dashboards]
-        )
+        recently_viewed_at: dict[str, str] = {}
+        if load_recently_viewed_at:
+            recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
+                top_dashboard_ids,
+                get_user_id(),
+            )
+            if load_sections and dashboards:
+                recently_viewed_at.update(
+                    self._get_recently_viewed_at(
+                        [dashboard.id for dashboard in dashboards]
+                    )
+                )
 
-        result = {
-            "top_mode": top_mode,
-            "top_lookback_days": lookback_days,
-            "top_cache": top_cache,
-            "top_dashboards": self._serialize_dashboards(top_dashboards),
-            "recently_viewed_at": recently_viewed_at,
-            "sections": [
+        sections: list[dict[str, Any]] = []
+        if ui_config["show_other_dashboards"]:
+            sections = [
                 {
                     "key": "all_dashboards",
                     "title": str(gettext("All dashboards")),
                     "count": dashboard_count,
                     "page": page,
                     "page_size": page_size,
-                    "dashboards": self._serialize_dashboards(dashboards),
+                    "dashboards": self._serialize_welcome_dashboards(dashboards),
                 }
-            ],
+            ]
+
+        result = {
+            "ui_config": ui_config,
+            "top_mode": top_mode,
+            "top_lookback_days": lookback_days,
+            "top_cache": top_cache,
+            "top_dashboards": self._serialize_welcome_dashboards(top_dashboards),
+            "recently_viewed_at": recently_viewed_at,
+            "sections": sections,
         }
         return self.response(200, result=result)
 

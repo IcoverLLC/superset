@@ -82,7 +82,15 @@ interface WelcomeSection {
   dashboards: Dashboard[];
 }
 
+interface WelcomeUiConfig {
+  minimal_mode: boolean;
+  show_filters: boolean;
+  show_other_dashboards: boolean;
+  show_recently_viewed_at: boolean;
+}
+
 interface WelcomeResponse {
+  ui_config: WelcomeUiConfig;
   top_mode: WelcomeTopMode;
   top_lookback_days: number;
   top_dashboards: Dashboard[];
@@ -96,6 +104,13 @@ interface DashboardWelcomeProps {
   addDangerToast: (msg: string) => void;
   addSuccessToast: (msg: string) => void;
 }
+
+const defaultWelcomeUiConfig: WelcomeUiConfig = {
+  minimal_mode: false,
+  show_filters: false,
+  show_other_dashboards: false,
+  show_recently_viewed_at: false,
+};
 
 const WelcomeDashboardStyles = styled.div`
   ${({ theme }) => `
@@ -285,6 +300,7 @@ function DashboardWelcome({
   );
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
   const [sectionExpanded, setSectionExpanded] = useState(false);
+  const welcomeUiConfig = welcomeData?.ui_config ?? defaultWelcomeUiConfig;
 
   const { hasPerm } = useListViewResource<Dashboard>(
     'dashboard',
@@ -335,7 +351,13 @@ function DashboardWelcome({
   );
 
   const fetchWelcomeData = useCallback(
-    async (page: number, append = false, loadSections = true) => {
+    async (
+      page: number,
+      append = false,
+      loadSections = true,
+      loadRecentlyViewedAt = true,
+      preserveCurrentOnError = false,
+    ): Promise<WelcomeResponse | null> => {
       if (append) {
         setLoadingMore(true);
       } else {
@@ -345,6 +367,7 @@ function DashboardWelcome({
       const queryParams = rison.encode_uri({
         filters: apiFilters,
         load_sections: loadSections,
+        load_recently_viewed_at: loadRecentlyViewedAt,
         page,
         page_size: SECTION_PAGE_SIZE,
       });
@@ -355,7 +378,7 @@ function DashboardWelcome({
         });
         const result = json.result as WelcomeResponse;
         setWelcomeData(current => {
-          if (!append || !current?.sections[0]) {
+          if (!append || !current?.sections[0] || !result.sections[0]) {
             return result;
           }
           const nextSection = result.sections[0];
@@ -378,6 +401,7 @@ function DashboardWelcome({
             ],
           };
         });
+        return result;
       } catch (response) {
         await createErrorHandler(errMsg =>
           addDangerToast(
@@ -391,7 +415,10 @@ function DashboardWelcome({
             ),
           ),
         )(response as string);
-        setWelcomeData(null);
+        if (!preserveCurrentOnError) {
+          setWelcomeData(null);
+        }
+        return null;
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -400,9 +427,28 @@ function DashboardWelcome({
     [addDangerToast, apiFilters],
   );
 
-  useEffect(() => {
-    void fetchWelcomeData(0, false, true);
+  const fetchInitialWelcomeData = useCallback(async () => {
+    const initialData = await fetchWelcomeData(0, false, false, false);
+    if (!initialData) {
+      return;
+    }
+    if (
+      initialData.ui_config.show_other_dashboards ||
+      initialData.ui_config.show_recently_viewed_at
+    ) {
+      void fetchWelcomeData(
+        0,
+        false,
+        initialData.ui_config.show_other_dashboards,
+        initialData.ui_config.show_recently_viewed_at,
+        true,
+      );
+    }
   }, [fetchWelcomeData]);
+
+  useEffect(() => {
+    void fetchInitialWelcomeData();
+  }, [fetchInitialWelcomeData]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
     setPreparingExport(true);
@@ -419,8 +465,8 @@ function DashboardWelcome({
     (dashboard: Dashboard) =>
       SupersetClient.get({
         endpoint: `/api/v1/dashboard/${dashboard.id}`,
-      }).then(() => fetchWelcomeData(0, false, true)),
-    [fetchWelcomeData],
+      }).then(() => fetchInitialWelcomeData()),
+    [fetchInitialWelcomeData],
   );
 
   const hasMoreDashboards =
@@ -484,9 +530,13 @@ function DashboardWelcome({
             <DashboardCard
               key={dashboard.id}
               dashboard={dashboard}
-              description={getRecentlyViewedDescription(
-                welcomeData?.recently_viewed_at?.[String(dashboard.id)],
-              )}
+              description={
+                welcomeUiConfig.show_recently_viewed_at
+                  ? getRecentlyViewedDescription(
+                      welcomeData?.recently_viewed_at?.[String(dashboard.id)],
+                    )
+                  : ''
+              }
               hasPerm={hasPerm}
               bulkSelectEnabled={false}
               showThumbnails={showThumbnails}
@@ -511,6 +561,7 @@ function DashboardWelcome({
       showThumbnails,
       user.userId,
       welcomeData?.recently_viewed_at,
+      welcomeUiConfig.show_recently_viewed_at,
     ],
   );
 
@@ -529,27 +580,29 @@ function DashboardWelcome({
 
   return (
     <WelcomeDashboardStyles>
-      <FiltersBar>
-        <ListViewUIFilters
-          filters={filterConfigs}
-          internalFilters={internalFilters}
-          updateFilterValue={(index, value) => {
-            setInternalFilters(currentFilters =>
-              currentFilters.map((filterValue, filterIndex) =>
-                filterIndex === index
-                  ? {
-                      ...filterValue,
-                      id: filterConfigs[index].id,
-                      operator: filterConfigs[index].operator,
-                      urlDisplay: filterConfigs[index].urlDisplay,
-                      value,
-                    }
-                  : filterValue,
-              ),
-            );
-          }}
-        />
-      </FiltersBar>
+      {welcomeUiConfig.show_filters && (
+        <FiltersBar>
+          <ListViewUIFilters
+            filters={filterConfigs}
+            internalFilters={internalFilters}
+            updateFilterValue={(index, value) => {
+              setInternalFilters(currentFilters =>
+                currentFilters.map((filterValue, filterIndex) =>
+                  filterIndex === index
+                    ? {
+                        ...filterValue,
+                        id: filterConfigs[index].id,
+                        operator: filterConfigs[index].operator,
+                        urlDisplay: filterConfigs[index].urlDisplay,
+                        value,
+                      }
+                    : filterValue,
+                ),
+              );
+            }}
+          />
+        </FiltersBar>
+      )}
 
       <SectionIntro>
         <h2>
@@ -585,69 +638,76 @@ function DashboardWelcome({
         </EmptySection>
       )}
 
-      <Collapse
-        activeKey={sectionExpanded ? ['all_dashboards'] : []}
-        onChange={handleCollapseChange}
-        ghost
-        items={[
-          {
-            key: 'all_dashboards',
-            forceRender: true,
-            label:
-              section?.count == null
-                ? t(
-                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                  )
-                : `${t(
-                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                  )} (${section.count})`,
-            children:
-              loading && sectionExpanded && !sectionDashboards.length ? (
-                <WelcomeCardContainer showThumbnails={showThumbnails}>
-                  {[...new Array(loadingCardCount)].map((_, index) => (
-                    <ListViewCard
-                      key={index}
-                      cover={showThumbnails ? undefined : <></>}
-                      description=""
-                      loading
-                    />
-                  ))}
-                </WelcomeCardContainer>
-              ) : sectionDashboards.length ? (
-                <>
-                  {renderCards(sectionDashboards, favoriteStatus)}
-                  {hasMoreDashboards && (
-                    <LoadMoreRow>
-                      <Button
-                        buttonStyle="secondary"
-                        loading={loadingMore}
-                        onClick={() => {
-                          if (section) {
-                            void fetchWelcomeData(section.page + 1, true, true);
-                          }
-                        }}
-                      >
-                        {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
-                      </Button>
-                    </LoadMoreRow>
-                  )}
-                </>
-              ) : sectionExpanded ? (
-                <EmptySection>
-                  {t(
-                    '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
-                      '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
-                      '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
-                      '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
-                  )}
-                </EmptySection>
-              ) : null,
-          },
-        ]}
-      />
+      {welcomeUiConfig.show_other_dashboards && (
+        <Collapse
+          activeKey={sectionExpanded ? ['all_dashboards'] : []}
+          onChange={handleCollapseChange}
+          ghost
+          items={[
+            {
+              key: 'all_dashboards',
+              forceRender: true,
+              label:
+                section?.count == null
+                  ? t(
+                      '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                    )
+                  : `${t(
+                      '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                    )} (${section.count})`,
+              children:
+                loading && sectionExpanded && !sectionDashboards.length ? (
+                  <WelcomeCardContainer showThumbnails={showThumbnails}>
+                    {[...new Array(loadingCardCount)].map((_, index) => (
+                      <ListViewCard
+                        key={index}
+                        cover={showThumbnails ? undefined : <></>}
+                        description=""
+                        loading
+                      />
+                    ))}
+                  </WelcomeCardContainer>
+                ) : sectionDashboards.length ? (
+                  <>
+                    {renderCards(sectionDashboards, favoriteStatus)}
+                    {hasMoreDashboards && (
+                      <LoadMoreRow>
+                        <Button
+                          buttonStyle="secondary"
+                          loading={loadingMore}
+                          onClick={() => {
+                            if (section) {
+                              void fetchWelcomeData(
+                                section.page + 1,
+                                true,
+                                true,
+                                welcomeUiConfig.show_recently_viewed_at,
+                              );
+                            }
+                          }}
+                        >
+                          {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
+                        </Button>
+                      </LoadMoreRow>
+                    )}
+                  </>
+                ) : sectionExpanded ? (
+                  <EmptySection>
+                    {t(
+                      '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
+                        '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
+                        '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
+                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
+                        '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+                    )}
+                  </EmptySection>
+                ) : null,
+            },
+          ]}
+        />
+      )}
 
       {dashboardToEdit && (
         <PropertiesModal
@@ -670,7 +730,7 @@ function DashboardWelcome({
             handleDashboardDelete(
               dashboardToDelete,
               () => {
-                void fetchWelcomeData(0, false, true);
+                void fetchInitialWelcomeData();
               },
               addSuccessToast,
               addDangerToast,

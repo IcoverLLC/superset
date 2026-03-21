@@ -376,3 +376,32 @@ def get_welcome_snapshot_dashboard_ids(
     )
     dashboard_ids = [dashboard_id for dashboard_id, in rows if dashboard_id is not None]
     return dashboard_ids, lookback_days, "snapshot" if dashboard_ids else "missing"
+
+
+def get_welcome_snapshot_recently_viewed_at(
+    dashboard_ids: list[int],
+    user_id: int | None = None,
+) -> dict[str, str]:
+    if user_id is None or not dashboard_ids:
+        return {}
+
+    lookback_days = int(current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+    partition_key = get_welcome_rank_partition_key(user_id)
+    rows = (
+        db.session.query(
+            WelcomeDashboardRank.dashboard_id,
+            WelcomeDashboardRank.last_viewed_at,
+        )
+        .filter(
+            WelcomeDashboardRank.partition_key == partition_key,
+            WelcomeDashboardRank.lookback_days == lookback_days,
+            WelcomeDashboardRank.dashboard_id.in_(dashboard_ids),
+        )
+        .order_by(WelcomeDashboardRank.rank.asc())
+        .all()
+    )
+    return {
+        str(dashboard_id): last_viewed_at.isoformat()
+        for dashboard_id, last_viewed_at in rows
+        if dashboard_id is not None and last_viewed_at is not None
+    }
