@@ -140,7 +140,7 @@ function DashboardCard({
     setThumbnailLoadEnabled(false);
     const enableThumbnailLoading = () => setThumbnailLoadEnabled(true);
     let idleHandle: number | null = null;
-    let timeoutHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     const scheduleIdleLoading = () => {
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -150,11 +150,11 @@ function DashboardCard({
         return;
       }
 
-      timeoutHandle = window.setTimeout(enableThumbnailLoading, 0);
+      timeoutHandle = globalThis.setTimeout(enableThumbnailLoading, 0);
     };
 
     if (thumbnailLoadDelayMs > 0) {
-      timeoutHandle = window.setTimeout(
+      timeoutHandle = globalThis.setTimeout(
         scheduleIdleLoading,
         thumbnailLoadDelayMs,
       );
@@ -167,7 +167,7 @@ function DashboardCard({
         window.cancelIdleCallback?.(idleHandle);
       }
       if (timeoutHandle !== null) {
-        window.clearTimeout(timeoutHandle);
+        globalThis.clearTimeout(timeoutHandle);
       }
     };
   }, [
