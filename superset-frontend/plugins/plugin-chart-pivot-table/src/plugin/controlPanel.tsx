@@ -28,6 +28,7 @@ import {
   getColumnLabel,
   isAdhocColumn,
   isPhysicalColumn,
+  QueryFormColumn,
   QueryFormMetric,
   SMART_DATE_ID,
   t,
@@ -436,6 +437,12 @@ const config: ControlPanelConfig = {
                   ? (explore?.datasource as Dataset)?.verbose_map
                   : (explore?.datasource?.columns ?? {});
                 const chartStatus = chart?.chartStatus;
+                const isPivotHeaderColumn = (
+                  value: unknown,
+                ): value is QueryFormColumn =>
+                  typeof value === 'string' ||
+                  isPhysicalColumn(value) ||
+                  isAdhocColumn(value);
                 const metricColumn = metricValues.map(value => {
                   if (typeof value === 'string') {
                     return {
@@ -453,12 +460,7 @@ const config: ControlPanelConfig = {
                   };
                 });
                 const headerColumns = [...rowValues, ...columnValues]
-                  .filter(
-                    value =>
-                      typeof value === 'string' ||
-                      isPhysicalColumn(value) ||
-                      isAdhocColumn(value),
-                  )
+                  .filter(isPivotHeaderColumn)
                   .map(value => {
                     const label = getColumnLabel(value);
                     return {
