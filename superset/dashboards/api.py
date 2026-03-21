@@ -443,7 +443,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
     def _get_cached_top_dashboard_ids(
         self, user_id: int | None = None
-    ) -> tuple[list[int], int]:
+    ) -> tuple[list[int], int, str]:
         lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
         today = datetime.utcnow().date()
         period_end = datetime.combine(today, time.min)
@@ -458,7 +458,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
         cached_ids = cache_manager.cache.get(cache_key)
         if cached_ids is not None:
-            return cached_ids, lookback_days
+            return cached_ids, lookback_days, "hit"
 
         top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
         log_query = db.session.query(
@@ -489,25 +489,35 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             if dashboard_id is not None
         ]
         cache_manager.cache.set(cache_key, top_dashboard_ids, timeout=24 * 60 * 60)
-        return top_dashboard_ids, lookback_days
+        return top_dashboard_ids, lookback_days, "miss"
 
     def _get_top_dashboards(
         self,
         query: Any,
         top_limit: int,
-    ) -> tuple[str, list[Dashboard], int]:
+    ) -> tuple[str, list[Dashboard], int, dict[str, Any]]:
         try:
             user_id = get_user_id()
-            personal_dashboard_ids, lookback_days = (
+            cache_backend = cache_manager.cache.__class__.__name__
+            personal_cache_status = "skipped"
+            global_cache_status = "skipped"
+
+            personal_dashboard_ids, lookback_days, personal_cache_status = (
                 self._get_cached_top_dashboard_ids(user_id)
                 if user_id is not None
-                else ([], current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+                else (
+                    [],
+                    current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"],
+                    "skipped",
+                )
             )
 
             ranked_dashboard_ids = personal_dashboard_ids[:top_limit]
             top_mode = "personal_recent_views" if personal_dashboard_ids else "recent_views"
             if len(ranked_dashboard_ids) < top_limit:
-                global_dashboard_ids, lookback_days = self._get_cached_top_dashboard_ids()
+                global_dashboard_ids, lookback_days, global_cache_status = (
+                    self._get_cached_top_dashboard_ids()
+                )
                 seen_dashboard_ids = set(ranked_dashboard_ids)
                 for dashboard_id in global_dashboard_ids:
                     if dashboard_id in seen_dashboard_ids:
@@ -517,11 +527,22 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     if len(ranked_dashboard_ids) >= top_limit:
                         break
 
+            top_cache = {
+                "backend": cache_backend,
+                "enabled": cache_backend != "NullCache",
+                "personal": personal_cache_status,
+                "global": global_cache_status,
+                "personal_count": len(personal_dashboard_ids),
+                "resolved_count": len(ranked_dashboard_ids),
+            }
+
             if not ranked_dashboard_ids:
                 manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
                 if manual_dashboards:
-                    return "manual_config", manual_dashboards, lookback_days
-                return "empty", [], lookback_days
+                    top_cache["mode"] = "manual_config"
+                    return "manual_config", manual_dashboards, lookback_days, top_cache
+                top_cache["mode"] = "empty"
+                return "empty", [], lookback_days, top_cache
 
             order = {
                 dashboard_id: index
@@ -537,7 +558,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             )
             top_dashboards = top_dashboards[:top_limit]
             if top_dashboards:
-                return top_mode, top_dashboards, lookback_days
+                top_cache["mode"] = top_mode
+                return top_mode, top_dashboards, lookback_days, top_cache
         except Exception:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to resolve welcome top dashboards from recent logs",
@@ -546,9 +568,25 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
         manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
         if manual_dashboards:
-            return "manual_config", manual_dashboards, lookback_days
+            return "manual_config", manual_dashboards, lookback_days, {
+                "backend": cache_manager.cache.__class__.__name__,
+                "enabled": cache_manager.cache.__class__.__name__ != "NullCache",
+                "personal": "error",
+                "global": "error",
+                "personal_count": 0,
+                "resolved_count": len(manual_dashboards),
+                "mode": "manual_config",
+            }
 
-        return "empty", [], lookback_days
+        return "empty", [], lookback_days, {
+            "backend": cache_manager.cache.__class__.__name__,
+            "enabled": cache_manager.cache.__class__.__name__ != "NullCache",
+            "personal": "error",
+            "global": "error",
+            "personal_count": 0,
+            "resolved_count": 0,
+            "mode": "empty",
+        }
 
     def _get_recently_viewed_at(
         self,
@@ -615,7 +653,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             Dashboard.changed_on.desc(),
             Dashboard.id.desc(),
         )
-        top_mode, top_dashboards, lookback_days = self._get_top_dashboards(
+        top_mode, top_dashboards, lookback_days, top_cache = self._get_top_dashboards(
             filtered_query,
             top_limit,
         )
@@ -645,6 +683,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         result = {
             "top_mode": top_mode,
             "top_lookback_days": lookback_days,
+            "top_cache": top_cache,
             "top_dashboards": self._serialize_dashboards(top_dashboards),
             "recently_viewed_at": recently_viewed_at,
             "sections": [
