@@ -83,15 +83,7 @@ interface WelcomeSection {
   dashboards: Dashboard[];
 }
 
-interface WelcomeUiConfig {
-  minimal_mode: boolean;
-  show_filters: boolean;
-  show_other_dashboards: boolean;
-  show_recently_viewed_at: boolean;
-}
-
 interface WelcomeResponse {
-  ui_config: WelcomeUiConfig;
   top_mode: WelcomeTopMode;
   top_lookback_days: number;
   top_dashboards: Dashboard[];
@@ -105,13 +97,6 @@ interface DashboardWelcomeProps {
   addDangerToast: (msg: string) => void;
   addSuccessToast: (msg: string) => void;
 }
-
-const defaultWelcomeUiConfig: WelcomeUiConfig = {
-  minimal_mode: false,
-  show_filters: false,
-  show_other_dashboards: false,
-  show_recently_viewed_at: false,
-};
 
 const WelcomeDashboardStyles = styled.div`
   ${({ theme }) => `
@@ -305,7 +290,6 @@ function DashboardWelcome({
   );
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
   const [sectionExpanded, setSectionExpanded] = useState(false);
-  const welcomeUiConfig = welcomeData?.ui_config ?? defaultWelcomeUiConfig;
   const recentlyViewedRequestKeyRef = useRef('');
 
   const { hasPerm } = useListViewResource<Dashboard>(
@@ -496,9 +480,7 @@ function DashboardWelcome({
     if (!initialData) {
       return;
     }
-    if (initialData.ui_config.show_other_dashboards) {
-      void fetchWelcomeData(0, false, true, false, true);
-    }
+    void fetchWelcomeData(0, false, true, false, true);
   }, [fetchWelcomeData]);
 
   useEffect(() => {
@@ -506,20 +488,17 @@ function DashboardWelcome({
   }, [fetchInitialWelcomeData]);
 
   const recentlyViewedRequestKey = useMemo(() => {
-    if (!welcomeUiConfig.show_recently_viewed_at || !allDashboards.length) {
+    if (!allDashboards.length) {
       return '';
     }
     return allDashboards
       .map(dashboard => `${dashboard.id}:${normalizeDashboardUrl(dashboard.url)}`)
       .join('|');
-  }, [allDashboards, welcomeUiConfig.show_recently_viewed_at]);
+  }, [allDashboards]);
 
   useEffect(() => {
     const waitingForSectionStructure =
-      welcomeUiConfig.show_other_dashboards &&
-      !!section &&
-      section.count == null &&
-      !sectionDashboards.length;
+      !!section && section.count == null && !sectionDashboards.length;
 
     if (
       waitingForSectionStructure ||
@@ -537,7 +516,6 @@ function DashboardWelcome({
     recentlyViewedRequestKey,
     section,
     sectionDashboards.length,
-    welcomeUiConfig.show_other_dashboards,
   ]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
@@ -620,13 +598,9 @@ function DashboardWelcome({
             <DashboardCard
               key={dashboard.id}
               dashboard={dashboard}
-              description={
-                welcomeUiConfig.show_recently_viewed_at
-                  ? getRecentlyViewedDescription(
-                      welcomeData?.recently_viewed_at?.[String(dashboard.id)],
-                    )
-                  : ''
-              }
+              description={getRecentlyViewedDescription(
+                welcomeData?.recently_viewed_at?.[String(dashboard.id)],
+              )}
               showPublishedLabel={false}
               hasPerm={hasPerm}
               bulkSelectEnabled={false}
@@ -652,7 +626,6 @@ function DashboardWelcome({
       showThumbnails,
       user.userId,
       welcomeData?.recently_viewed_at,
-      welcomeUiConfig.show_recently_viewed_at,
     ],
   );
 
@@ -671,29 +644,27 @@ function DashboardWelcome({
 
   return (
     <WelcomeDashboardStyles>
-      {welcomeUiConfig.show_filters && (
-        <FiltersBar>
-          <ListViewUIFilters
-            filters={filterConfigs}
-            internalFilters={internalFilters}
-            updateFilterValue={(index, value) => {
-              setInternalFilters(currentFilters =>
-                currentFilters.map((filterValue, filterIndex) =>
-                  filterIndex === index
-                    ? {
-                        ...filterValue,
-                        id: filterConfigs[index].id,
-                        operator: filterConfigs[index].operator,
-                        urlDisplay: filterConfigs[index].urlDisplay,
-                        value,
-                      }
-                    : filterValue,
-                ),
-              );
-            }}
-          />
-        </FiltersBar>
-      )}
+      <FiltersBar>
+        <ListViewUIFilters
+          filters={filterConfigs}
+          internalFilters={internalFilters}
+          updateFilterValue={(index, value) => {
+            setInternalFilters(currentFilters =>
+              currentFilters.map((filterValue, filterIndex) =>
+                filterIndex === index
+                  ? {
+                      ...filterValue,
+                      id: filterConfigs[index].id,
+                      operator: filterConfigs[index].operator,
+                      urlDisplay: filterConfigs[index].urlDisplay,
+                      value,
+                    }
+                  : filterValue,
+              ),
+            );
+          }}
+        />
+      </FiltersBar>
 
       <SectionIntro>
         <h2>
@@ -729,76 +700,74 @@ function DashboardWelcome({
         </EmptySection>
       )}
 
-      {welcomeUiConfig.show_other_dashboards && (
-        <Collapse
-          activeKey={sectionExpanded ? ['all_dashboards'] : []}
-          onChange={handleCollapseChange}
-          ghost
-          items={[
-            {
-              key: 'all_dashboards',
-              forceRender: true,
-              label:
-                section?.count == null
-                  ? t(
-                      '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                    )
-                  : `${t(
-                      '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                    )} (${section.count})`,
-              children:
-                loading && sectionExpanded && !sectionDashboards.length ? (
-                  <WelcomeCardContainer showThumbnails={showThumbnails}>
-                    {[...new Array(loadingCardCount)].map((_, index) => (
-                      <ListViewCard
-                        key={index}
-                        cover={showThumbnails ? undefined : <></>}
-                        description=""
-                        loading
-                      />
-                    ))}
-                  </WelcomeCardContainer>
-                ) : sectionDashboards.length ? (
-                  <>
-                    {renderCards(sectionDashboards, favoriteStatus)}
-                    {hasMoreDashboards && (
-                      <LoadMoreRow>
-                        <Button
-                          buttonStyle="secondary"
-                          loading={loadingMore}
-                          onClick={() => {
-                            if (section) {
-                              void fetchWelcomeData(
-                                section.page + 1,
-                                true,
-                                true,
-                                welcomeUiConfig.show_recently_viewed_at,
-                              );
-                            }
-                          }}
-                        >
-                          {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
-                        </Button>
-                      </LoadMoreRow>
-                    )}
-                  </>
-                ) : sectionExpanded ? (
-                  <EmptySection>
-                    {t(
-                      '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
-                        '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
-                        '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
-                        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
-                        '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
-                    )}
-                  </EmptySection>
-                ) : null,
-            },
-          ]}
-        />
-      )}
+      <Collapse
+        activeKey={sectionExpanded ? ['all_dashboards'] : []}
+        onChange={handleCollapseChange}
+        ghost
+        items={[
+          {
+            key: 'all_dashboards',
+            forceRender: true,
+            label:
+              section?.count == null
+                ? t(
+                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                  )
+                : `${t(
+                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
+                  )} (${section.count})`,
+            children:
+              loading && sectionExpanded && !sectionDashboards.length ? (
+                <WelcomeCardContainer showThumbnails={showThumbnails}>
+                  {[...new Array(loadingCardCount)].map((_, index) => (
+                    <ListViewCard
+                      key={index}
+                      cover={showThumbnails ? undefined : <></>}
+                      description=""
+                      loading
+                    />
+                  ))}
+                </WelcomeCardContainer>
+              ) : sectionDashboards.length ? (
+                <>
+                  {renderCards(sectionDashboards, favoriteStatus)}
+                  {hasMoreDashboards && (
+                    <LoadMoreRow>
+                      <Button
+                        buttonStyle="secondary"
+                        loading={loadingMore}
+                        onClick={() => {
+                          if (section) {
+                            void fetchWelcomeData(
+                              section.page + 1,
+                              true,
+                              true,
+                              false,
+                            );
+                          }
+                        }}
+                      >
+                        {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
+                      </Button>
+                    </LoadMoreRow>
+                  )}
+                </>
+              ) : sectionExpanded ? (
+                <EmptySection>
+                  {t(
+                    '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
+                      '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
+                      '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
+                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
+                      '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+                  )}
+                </EmptySection>
+              ) : null,
+          },
+        ]}
+      />
 
       {dashboardToEdit && (
         <PropertiesModal
