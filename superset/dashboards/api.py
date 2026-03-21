@@ -81,10 +81,8 @@ from superset.dashboards.filters import (
     FilterRelatedRoles,
 )
 from superset.dashboards.welcome_top import (
-    get_cached_top_dashboard_ids,
-    get_cached_user_has_recent_views,
-    get_welcome_top_cache_backend_name,
-    is_welcome_top_cache_enabled,
+    get_welcome_snapshot_dashboard_ids,
+    get_welcome_top_storage_name,
 )
 from superset.dashboards.permalink.types import DashboardPermalinkState
 from superset.dashboards.schemas import (
@@ -447,60 +445,54 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         dashboards.sort(key=lambda dashboard: order.get(dashboard.id, len(order)))
         return dashboards[:top_limit]
 
+    def _get_default_top_dashboards(
+        self,
+        query: Any,
+        top_limit: int,
+        exclude_ids: list[int] | None = None,
+    ) -> list[Dashboard]:
+        ordered_query = query.order_by(Dashboard.changed_on.desc(), Dashboard.id.desc())
+        if exclude_ids:
+            ordered_query = ordered_query.filter(Dashboard.id.notin_(exclude_ids))
+        return ordered_query.limit(top_limit).all()
+
     def _get_top_dashboards(
         self,
         query: Any,
         top_limit: int,
     ) -> tuple[str, list[Dashboard], int, dict[str, Any]]:
+        lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
+        storage_name = get_welcome_top_storage_name()
         try:
             user_id = get_user_id()
-            cache_backend = get_welcome_top_cache_backend_name()
-            personal_cache_status = "skipped"
-            personal_activity_status = "skipped"
-            global_cache_status = "skipped"
-            has_personal_activity = False
-            lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
-
             personal_dashboard_ids: list[int] = []
+            personal_status = "skipped"
             if user_id is not None:
-                (
-                    has_personal_activity,
-                    lookback_days,
-                    personal_activity_status,
-                ) = get_cached_user_has_recent_views(user_id)
-                if has_personal_activity:
-                    (
-                        personal_dashboard_ids,
-                        lookback_days,
-                        personal_cache_status,
-                    ) = get_cached_top_dashboard_ids(user_id)
-                else:
-                    personal_cache_status = "skipped_no_activity"
-
-            ranked_dashboard_ids = personal_dashboard_ids[:top_limit]
-            top_mode = (
-                "personal_recent_views" if personal_dashboard_ids else "recent_views"
-            )
-            if len(ranked_dashboard_ids) < top_limit:
-                global_dashboard_ids, lookback_days, global_cache_status = (
-                    get_cached_top_dashboard_ids()
+                personal_dashboard_ids, lookback_days, personal_status = (
+                    get_welcome_snapshot_dashboard_ids(user_id)
                 )
-                seen_dashboard_ids = set(ranked_dashboard_ids)
-                for dashboard_id in global_dashboard_ids:
-                    if dashboard_id in seen_dashboard_ids:
-                        continue
-                    ranked_dashboard_ids.append(dashboard_id)
-                    seen_dashboard_ids.add(dashboard_id)
-                    if len(ranked_dashboard_ids) >= top_limit:
-                        break
+            global_dashboard_ids, lookback_days, global_status = (
+                get_welcome_snapshot_dashboard_ids()
+            )
+
+            ranked_dashboard_ids: list[int] = []
+            seen_dashboard_ids: set[int] = set()
+            for dashboard_id in personal_dashboard_ids + global_dashboard_ids:
+                if dashboard_id in seen_dashboard_ids:
+                    continue
+                ranked_dashboard_ids.append(dashboard_id)
+                seen_dashboard_ids.add(dashboard_id)
+
+            top_mode = "empty"
+            if personal_dashboard_ids:
+                top_mode = "personal_recent_views"
+            elif global_dashboard_ids:
+                top_mode = "recent_views"
 
             top_cache = {
-                "backend": cache_backend,
-                "enabled": is_welcome_top_cache_enabled(),
-                "personal": personal_cache_status,
-                "personal_activity": personal_activity_status,
-                "has_personal_activity": has_personal_activity,
-                "global": global_cache_status,
+                "storage": storage_name,
+                "personal": personal_status,
+                "global": global_status,
                 "personal_count": len(personal_dashboard_ids),
                 "resolved_count": len(ranked_dashboard_ids),
             }
@@ -510,6 +502,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 if manual_dashboards:
                     top_cache["mode"] = "manual_config"
                     return "manual_config", manual_dashboards, lookback_days, top_cache
+                fallback_dashboards = self._get_default_top_dashboards(query, top_limit)
+                if fallback_dashboards:
+                    top_cache["mode"] = "default_order"
+                    top_cache["resolved_count"] = len(fallback_dashboards)
+                    return (
+                        "default_order",
+                        fallback_dashboards,
+                        lookback_days,
+                        top_cache,
+                    )
                 top_cache["mode"] = "empty"
                 return "empty", [], lookback_days, top_cache
 
@@ -526,35 +528,52 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 key=lambda dashboard: order.get(dashboard.id, len(order))
             )
             top_dashboards = top_dashboards[:top_limit]
+            if len(top_dashboards) < top_limit:
+                additional_dashboards = self._get_default_top_dashboards(
+                    query,
+                    top_limit - len(top_dashboards),
+                    [dashboard.id for dashboard in top_dashboards],
+                )
+                if not top_dashboards and additional_dashboards:
+                    top_mode = "default_order"
+                top_dashboards.extend(
+                    additional_dashboards
+                )
             if top_dashboards:
                 top_cache["mode"] = top_mode
+                top_cache["resolved_count"] = len(top_dashboards)
                 return top_mode, top_dashboards, lookback_days, top_cache
         except Exception:  # pylint: disable=broad-except
             logger.warning(
-                "Failed to resolve welcome top dashboards from recent logs",
+                "Failed to resolve welcome top dashboards from snapshot storage",
                 exc_info=True,
             )
 
         manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
         if manual_dashboards:
             return "manual_config", manual_dashboards, lookback_days, {
-                "backend": get_welcome_top_cache_backend_name(),
-                "enabled": is_welcome_top_cache_enabled(),
+                "storage": storage_name,
                 "personal": "error",
-                "personal_activity": "error",
-                "has_personal_activity": False,
                 "global": "error",
                 "personal_count": 0,
                 "resolved_count": len(manual_dashboards),
                 "mode": "manual_config",
             }
 
+        fallback_dashboards = self._get_default_top_dashboards(query, top_limit)
+        if fallback_dashboards:
+            return "default_order", fallback_dashboards, lookback_days, {
+                "storage": storage_name,
+                "personal": "error",
+                "global": "error",
+                "personal_count": 0,
+                "resolved_count": len(fallback_dashboards),
+                "mode": "default_order",
+            }
+
         return "empty", [], lookback_days, {
-            "backend": get_welcome_top_cache_backend_name(),
-            "enabled": is_welcome_top_cache_enabled(),
+            "storage": storage_name,
             "personal": "error",
-            "personal_activity": "error",
-            "has_personal_activity": False,
             "global": "error",
             "personal_count": 0,
             "resolved_count": 0,
@@ -649,12 +668,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             dashboards = (
                 other_dashboards_query.limit(page_size).offset(page * page_size).all()
             )
-        recently_viewed_at = (
-            self._get_recently_viewed_at(
-                top_dashboard_ids + [dashboard.id for dashboard in dashboards]
-            )
-            if top_cache.get("has_personal_activity")
-            else {}
+        recently_viewed_at = self._get_recently_viewed_at(
+            top_dashboard_ids + [dashboard.id for dashboard in dashboards]
         )
 
         result = {

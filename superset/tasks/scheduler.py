@@ -33,7 +33,7 @@ from superset.commands.report.execute import AsyncExecuteReportScheduleCommand
 from superset.commands.report.log_prune import AsyncPruneReportScheduleLogCommand
 from superset.commands.sql_lab.query import QueryPruneCommand
 from superset.daos.report import ReportScheduleDAO
-from superset.dashboards.welcome_top import warm_global_top_dashboard_ids
+from superset.dashboards.welcome_top import refresh_welcome_dashboard_rankings
 from superset.extensions import celery_app
 from superset.stats_logger import BaseStatsLogger
 from superset.tasks.cron_util import cron_schedule_window
@@ -199,11 +199,13 @@ def prune_logs(
         logger.exception("An error occurred while pruning logs: %s", ex)
 
 
-@celery_app.task(name="welcome_dashboard_top.warm_global")
-def warm_welcome_dashboard_global_top(force_refresh: bool = True) -> dict[str, Any]:
+@celery_app.task(name="welcome_dashboard_top.refresh_snapshots")
+def refresh_welcome_dashboard_snapshots(
+    include_users: bool = True,
+) -> dict[str, Any]:
     stats_logger: BaseStatsLogger = current_app.config["STATS_LOGGER"]
-    stats_logger.incr("welcome_dashboard_top.warm_global")
+    stats_logger.incr("welcome_dashboard_top.refresh_snapshots")
 
-    result = warm_global_top_dashboard_ids(force_refresh=force_refresh)
-    logger.info("Warmed welcome dashboard global top: %s", result)
+    result = refresh_welcome_dashboard_rankings(include_users=include_users)
+    logger.info("Refreshed welcome dashboard snapshots: %s", result)
     return result

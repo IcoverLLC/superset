@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,6 +16,7 @@
 # under the License.
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, time, timedelta
 from typing import Any
 
@@ -24,10 +24,11 @@ from flask import current_app
 from sqlalchemy import func
 
 from superset import db
-from superset.extensions import cache_manager
 from superset.models.core import Log
+from superset.models.welcome_dashboard_rank import WelcomeDashboardRank
 
 MOUNT_DASHBOARD_EVENT = '"event_name": "mount_dashboard"'
+GLOBAL_PARTITION_KEY = "global"
 
 
 def get_welcome_top_lookback_window(lookback_days: int) -> tuple[datetime, datetime]:
@@ -37,127 +38,27 @@ def get_welcome_top_lookback_window(lookback_days: int) -> tuple[datetime, datet
     return period_start, period_end
 
 
-def get_welcome_top_cache_backend_name() -> str:
-    return cache_manager.cache.__class__.__name__
+def get_welcome_top_storage_name() -> str:
+    return "metadata_table"
 
 
-def is_welcome_top_cache_enabled() -> bool:
-    return get_welcome_top_cache_backend_name() != "NullCache"
+def get_welcome_snapshot_limit() -> int:
+    configured_limit = current_app.config.get("WELCOME_DASHBOARD_TOP_SNAPSHOT_LIMIT")
+    top_limit = int(current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"])
+    if configured_limit is None:
+        return max(50, top_limit * 5)
+    return max(top_limit, int(configured_limit))
 
 
-def get_welcome_top_cache_timeout() -> int:
-    return int(
-        current_app.config.get("WELCOME_DASHBOARD_TOP_CACHE_TIMEOUT", 24 * 60 * 60)
-    )
+def get_welcome_rank_partition_key(user_id: int | None) -> str:
+    return GLOBAL_PARTITION_KEY if user_id is None else f"user:{user_id}"
 
 
-def get_welcome_activity_cache_timeout() -> int:
-    return int(
-        current_app.config.get(
-            "WELCOME_DASHBOARD_ACTIVITY_CACHE_TIMEOUT",
-            get_welcome_top_cache_timeout(),
-        )
-    )
-
-
-def get_welcome_top_cache_key(
-    user_id: int | None,
-    lookback_days: int,
+def _base_log_query(
     period_start: datetime,
     period_end: datetime,
-    top_limit: int,
-) -> str:
-    return (
-        "welcome_dashboard_top_ids:"
-        f"{user_id if user_id is not None else 'global'}:"
-        f"{top_limit}:"
-        f"{lookback_days}:"
-        f"{period_start.date().isoformat()}:"
-        f"{(period_end - timedelta(days=1)).date().isoformat()}"
-    )
-
-
-def get_welcome_activity_cache_key(
-    user_id: int,
-    lookback_days: int,
-    period_start: datetime,
-    period_end: datetime,
-) -> str:
-    return (
-        "welcome_dashboard_has_recent_views:"
-        f"{user_id}:"
-        f"{lookback_days}:"
-        f"{period_start.date().isoformat()}:"
-        f"{(period_end - timedelta(days=1)).date().isoformat()}"
-    )
-
-
-def get_cached_user_has_recent_views(
-    user_id: int,
-    *,
-    force_refresh: bool = False,
-) -> tuple[bool, int, str]:
-    lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
-    period_start, period_end = get_welcome_top_lookback_window(lookback_days)
-    cache_key = get_welcome_activity_cache_key(
-        user_id, lookback_days, period_start, period_end
-    )
-    cache_enabled = is_welcome_top_cache_enabled()
-
-    if cache_enabled and not force_refresh:
-        cached_value = cache_manager.cache.get(cache_key)
-        if cached_value is not None:
-            return bool(cached_value), lookback_days, "hit"
-
-    has_recent_views = (
-        db.session.query(Log.id)
-        .filter(
-            Log.action == "log",
-            Log.user_id == user_id,
-            Log.dashboard_id.isnot(None),
-            Log.dttm >= period_start,
-            Log.dttm < period_end,
-            Log.json.contains(MOUNT_DASHBOARD_EVENT),
-        )
-        .limit(1)
-        .first()
-        is not None
-    )
-
-    if cache_enabled:
-        cache_manager.cache.set(
-            cache_key,
-            has_recent_views,
-            timeout=get_welcome_activity_cache_timeout(),
-        )
-        return has_recent_views, lookback_days, "refresh" if force_refresh else "miss"
-
-    return has_recent_views, lookback_days, "disabled"
-
-
-def get_cached_top_dashboard_ids(
-    user_id: int | None = None,
-    *,
-    force_refresh: bool = False,
-) -> tuple[list[int], int, str]:
-    lookback_days = current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"]
-    top_limit = current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"]
-    period_start, period_end = get_welcome_top_lookback_window(lookback_days)
-    cache_key = get_welcome_top_cache_key(
-        user_id,
-        lookback_days,
-        period_start,
-        period_end,
-        top_limit,
-    )
-    cache_enabled = is_welcome_top_cache_enabled()
-
-    if cache_enabled and not force_refresh:
-        cached_ids = cache_manager.cache.get(cache_key)
-        if cached_ids is not None:
-            return list(cached_ids), lookback_days, "hit"
-
-    log_query = db.session.query(
+) -> Any:
+    return db.session.query(
         Log.dashboard_id.label("dashboard_id"),
         func.count(Log.id).label("view_count"),
         func.max(Log.dttm).label("last_viewed_at"),
@@ -168,44 +69,300 @@ def get_cached_top_dashboard_ids(
         Log.dttm < period_end,
         Log.json.contains(MOUNT_DASHBOARD_EVENT),
     )
-    if user_id is not None:
-        log_query = log_query.filter(Log.user_id == user_id)
 
-    top_dashboard_ids = [
-        dashboard_id
-        for dashboard_id, _view_count, _last_viewed_at in (
-            log_query.group_by(Log.dashboard_id)
-            .order_by(
-                func.count(Log.id).desc(),
-                func.max(Log.dttm).desc(),
-            )
-            .limit(top_limit)
-            .all()
+
+def _snapshot_row(
+    *,
+    partition_key: str,
+    user_id: int | None,
+    dashboard_id: int,
+    rank: int,
+    view_count: int,
+    last_viewed_at: datetime | None,
+    lookback_days: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, Any]:
+    return {
+        "partition_key": partition_key,
+        "user_id": user_id,
+        "dashboard_id": dashboard_id,
+        "rank": rank,
+        "view_count": int(view_count),
+        "last_viewed_at": last_viewed_at,
+        "lookback_days": lookback_days,
+        "window_start": window_start,
+        "window_end": window_end,
+        "updated_at": datetime.utcnow(),
+    }
+
+
+def _build_global_snapshot_rows(
+    lookback_days: int,
+    snapshot_limit: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[dict[str, Any]]:
+    rows = (
+        _base_log_query(window_start, window_end)
+        .group_by(Log.dashboard_id)
+        .order_by(
+            func.count(Log.id).desc(),
+            func.max(Log.dttm).desc(),
+            Log.dashboard_id.asc(),
+        )
+        .limit(snapshot_limit)
+        .all()
+    )
+    return [
+        _snapshot_row(
+            partition_key=GLOBAL_PARTITION_KEY,
+            user_id=None,
+            dashboard_id=dashboard_id,
+            rank=index,
+            view_count=view_count,
+            last_viewed_at=last_viewed_at,
+            lookback_days=lookback_days,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        for index, (dashboard_id, view_count, last_viewed_at) in enumerate(rows, start=1)
+        if dashboard_id is not None
+    ]
+
+
+def _build_user_snapshot_rows(
+    user_id: int,
+    lookback_days: int,
+    snapshot_limit: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[dict[str, Any]]:
+    rows = (
+        _base_log_query(window_start, window_end)
+        .add_columns(Log.user_id.label("user_id"))
+        .filter(Log.user_id == user_id)
+        .group_by(Log.user_id, Log.dashboard_id)
+        .order_by(
+            func.count(Log.id).desc(),
+            func.max(Log.dttm).desc(),
+            Log.dashboard_id.asc(),
+        )
+        .limit(snapshot_limit)
+        .all()
+    )
+    partition_key = get_welcome_rank_partition_key(user_id)
+    return [
+        _snapshot_row(
+            partition_key=partition_key,
+            user_id=user_id,
+            dashboard_id=dashboard_id,
+            rank=index,
+            view_count=view_count,
+            last_viewed_at=last_viewed_at,
+            lookback_days=lookback_days,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        for index, (dashboard_id, view_count, last_viewed_at, _user_id) in enumerate(
+            rows, start=1
         )
         if dashboard_id is not None
     ]
 
-    if cache_enabled:
-        cache_manager.cache.set(
-            cache_key,
-            top_dashboard_ids,
-            timeout=get_welcome_top_cache_timeout(),
+
+def _build_all_user_snapshot_rows(
+    lookback_days: int,
+    snapshot_limit: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[dict[str, Any]]:
+    rows = (
+        db.session.query(
+            Log.user_id.label("user_id"),
+            Log.dashboard_id.label("dashboard_id"),
+            func.count(Log.id).label("view_count"),
+            func.max(Log.dttm).label("last_viewed_at"),
         )
-        return top_dashboard_ids, lookback_days, "refresh" if force_refresh else "miss"
+        .filter(
+            Log.action == "log",
+            Log.user_id.isnot(None),
+            Log.dashboard_id.isnot(None),
+            Log.dttm >= window_start,
+            Log.dttm < window_end,
+            Log.json.contains(MOUNT_DASHBOARD_EVENT),
+        )
+        .group_by(Log.user_id, Log.dashboard_id)
+        .order_by(
+            Log.user_id.asc(),
+            func.count(Log.id).desc(),
+            func.max(Log.dttm).desc(),
+            Log.dashboard_id.asc(),
+        )
+        .all()
+    )
 
-    return top_dashboard_ids, lookback_days, "disabled"
+    per_user_rank: dict[int, int] = defaultdict(int)
+    snapshot_rows: list[dict[str, Any]] = []
+    for user_id, dashboard_id, view_count, last_viewed_at in rows:
+        if user_id is None or dashboard_id is None:
+            continue
+        next_rank = per_user_rank[user_id] + 1
+        if next_rank > snapshot_limit:
+            continue
+        per_user_rank[user_id] = next_rank
+        snapshot_rows.append(
+            _snapshot_row(
+                partition_key=get_welcome_rank_partition_key(user_id),
+                user_id=user_id,
+                dashboard_id=dashboard_id,
+                rank=next_rank,
+                view_count=view_count,
+                last_viewed_at=last_viewed_at,
+                lookback_days=lookback_days,
+                window_start=window_start,
+                window_end=window_end,
+            )
+        )
+    return snapshot_rows
 
 
-def warm_global_top_dashboard_ids(*, force_refresh: bool = True) -> dict[str, Any]:
-    top_dashboard_ids, lookback_days, cache_status = get_cached_top_dashboard_ids(
-        force_refresh=force_refresh
+def _replace_snapshot_partition(
+    *,
+    partition_key: str,
+    lookback_days: int,
+    rows: list[dict[str, Any]],
+) -> None:
+    try:
+        (
+            db.session.query(WelcomeDashboardRank)
+            .filter(
+                WelcomeDashboardRank.partition_key == partition_key,
+                WelcomeDashboardRank.lookback_days == lookback_days,
+            )
+            .delete(synchronize_session=False)
+        )
+        if rows:
+            db.session.bulk_insert_mappings(WelcomeDashboardRank, rows)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def _replace_all_snapshot_rows(
+    *,
+    lookback_days: int,
+    rows: list[dict[str, Any]],
+) -> None:
+    try:
+        (
+            db.session.query(WelcomeDashboardRank)
+            .filter(WelcomeDashboardRank.lookback_days == lookback_days)
+            .delete(synchronize_session=False)
+        )
+        if rows:
+            db.session.bulk_insert_mappings(WelcomeDashboardRank, rows)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def refresh_welcome_dashboard_rankings(
+    *,
+    user_id: int | None = None,
+    include_users: bool = False,
+) -> dict[str, Any]:
+    lookback_days = int(current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+    snapshot_limit = get_welcome_snapshot_limit()
+    window_start, window_end = get_welcome_top_lookback_window(lookback_days)
+
+    if include_users:
+        global_rows = _build_global_snapshot_rows(
+            lookback_days,
+            snapshot_limit,
+            window_start,
+            window_end,
+        )
+        user_rows = _build_all_user_snapshot_rows(
+            lookback_days,
+            snapshot_limit,
+            window_start,
+            window_end,
+        )
+        all_rows = global_rows + user_rows
+        _replace_all_snapshot_rows(lookback_days=lookback_days, rows=all_rows)
+        return {
+            "storage": get_welcome_top_storage_name(),
+            "mode": "full_refresh",
+            "lookback_days": lookback_days,
+            "snapshot_limit": snapshot_limit,
+            "global_count": len(global_rows),
+            "user_count": len(user_rows),
+            "updated_count": len(all_rows),
+        }
+
+    if user_id is None:
+        rows = _build_global_snapshot_rows(
+            lookback_days,
+            snapshot_limit,
+            window_start,
+            window_end,
+        )
+        _replace_snapshot_partition(
+            partition_key=GLOBAL_PARTITION_KEY,
+            lookback_days=lookback_days,
+            rows=rows,
+        )
+        return {
+            "storage": get_welcome_top_storage_name(),
+            "mode": "global_refresh",
+            "lookback_days": lookback_days,
+            "snapshot_limit": snapshot_limit,
+            "dashboard_ids": [row["dashboard_id"] for row in rows],
+            "updated_count": len(rows),
+        }
+
+    rows = _build_user_snapshot_rows(
+        user_id,
+        lookback_days,
+        snapshot_limit,
+        window_start,
+        window_end,
+    )
+    _replace_snapshot_partition(
+        partition_key=get_welcome_rank_partition_key(user_id),
+        lookback_days=lookback_days,
+        rows=rows,
     )
     return {
-        "backend": get_welcome_top_cache_backend_name(),
-        "enabled": is_welcome_top_cache_enabled(),
-        "global": cache_status,
+        "storage": get_welcome_top_storage_name(),
+        "mode": "user_refresh",
         "lookback_days": lookback_days,
-        "top_limit": current_app.config["WELCOME_DASHBOARD_TOP_LIMIT"],
-        "dashboard_ids": top_dashboard_ids,
-        "resolved_count": len(top_dashboard_ids),
+        "snapshot_limit": snapshot_limit,
+        "user_id": user_id,
+        "dashboard_ids": [row["dashboard_id"] for row in rows],
+        "updated_count": len(rows),
     }
+
+
+def get_welcome_snapshot_dashboard_ids(
+    user_id: int | None = None,
+) -> tuple[list[int], int, str]:
+    lookback_days = int(current_app.config["WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS"])
+    snapshot_limit = get_welcome_snapshot_limit()
+    partition_key = get_welcome_rank_partition_key(user_id)
+
+    rows = (
+        db.session.query(WelcomeDashboardRank.dashboard_id)
+        .filter(
+            WelcomeDashboardRank.partition_key == partition_key,
+            WelcomeDashboardRank.lookback_days == lookback_days,
+        )
+        .order_by(WelcomeDashboardRank.rank.asc())
+        .limit(snapshot_limit)
+        .all()
+    )
+    dashboard_ids = [dashboard_id for dashboard_id, in rows if dashboard_id is not None]
+    return dashboard_ids, lookback_days, "snapshot" if dashboard_ids else "missing"

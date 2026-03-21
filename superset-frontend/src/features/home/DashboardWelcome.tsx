@@ -69,6 +69,7 @@ const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], strin
 type WelcomeTopMode =
   | 'personal_recent_views'
   | 'recent_views'
+  | 'default_order'
   | 'manual_config'
   | 'empty';
 
@@ -334,7 +335,7 @@ function DashboardWelcome({
   );
 
   const fetchWelcomeData = useCallback(
-    async (page: number, append = false, loadSections = false) => {
+    async (page: number, append = false, loadSections = true) => {
       if (append) {
         setLoadingMore(true);
       } else {
@@ -400,8 +401,8 @@ function DashboardWelcome({
   );
 
   useEffect(() => {
-    void fetchWelcomeData(0, false, sectionExpanded);
-  }, [fetchWelcomeData, sectionExpanded]);
+    void fetchWelcomeData(0, false, true);
+  }, [fetchWelcomeData]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
     setPreparingExport(true);
@@ -418,8 +419,8 @@ function DashboardWelcome({
     (dashboard: Dashboard) =>
       SupersetClient.get({
         endpoint: `/api/v1/dashboard/${dashboard.id}`,
-      }).then(() => fetchWelcomeData(0, false, sectionExpanded)),
-    [fetchWelcomeData, sectionExpanded],
+      }).then(() => fetchWelcomeData(0, false, true)),
+    [fetchWelcomeData],
   );
 
   const hasMoreDashboards =
@@ -450,6 +451,15 @@ function DashboardWelcome({
           '\u0438\u0437 \u0440\u0435\u0437\u0435\u0440\u0432\u043d\u043e\u0433\u043e ' +
           '\u0441\u043f\u0438\u0441\u043a\u0430 dashboard ID ' +
           '\u0432 \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 Superset',
+      );
+    }
+    if (welcomeData.top_mode === 'default_order') {
+      return t(
+        '\u041f\u043e\u0434\u0431\u043e\u0440\u043a\u0430 ' +
+          '\u0441\u0444\u043e\u0440\u043c\u0438\u0440\u043e\u0432\u0430\u043d\u0430 ' +
+          '\u0438\u0437 \u0430\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u044b\u0445 ' +
+          '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0445 ' +
+          '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
       );
     }
     return t(
@@ -657,7 +667,7 @@ function DashboardWelcome({
             handleDashboardDelete(
               dashboardToDelete,
               () => {
-                void fetchWelcomeData(0, false, sectionExpanded);
+                void fetchWelcomeData(0, false, true);
               },
               addSuccessToast,
               addDangerToast,
