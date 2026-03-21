@@ -25,6 +25,7 @@ from sqlalchemy import func
 
 from superset import db
 from superset.models.core import Log
+from superset.models.dashboard import Dashboard
 from superset.models.welcome_dashboard_rank import WelcomeDashboardRank
 
 MOUNT_DASHBOARD_EVENT = '"event_name": "mount_dashboard"'
@@ -62,12 +63,16 @@ def _base_log_query(
         Log.dashboard_id.label("dashboard_id"),
         func.count(Log.id).label("view_count"),
         func.max(Log.dttm).label("last_viewed_at"),
+    ).join(
+        Dashboard,
+        Dashboard.id == Log.dashboard_id,
     ).filter(
         Log.action == "log",
         Log.dashboard_id.isnot(None),
         Log.dttm >= period_start,
         Log.dttm < period_end,
         Log.json.contains(MOUNT_DASHBOARD_EVENT),
+        Dashboard.published.is_(True),
     )
 
 
@@ -184,6 +189,10 @@ def _build_all_user_snapshot_rows(
             func.count(Log.id).label("view_count"),
             func.max(Log.dttm).label("last_viewed_at"),
         )
+        .join(
+            Dashboard,
+            Dashboard.id == Log.dashboard_id,
+        )
         .filter(
             Log.action == "log",
             Log.user_id.isnot(None),
@@ -191,6 +200,7 @@ def _build_all_user_snapshot_rows(
             Log.dttm >= window_start,
             Log.dttm < window_end,
             Log.json.contains(MOUNT_DASHBOARD_EVENT),
+            Dashboard.published.is_(True),
         )
         .group_by(Log.user_id, Log.dashboard_id)
         .order_by(
