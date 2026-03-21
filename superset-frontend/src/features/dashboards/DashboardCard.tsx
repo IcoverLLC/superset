@@ -78,6 +78,7 @@ interface DashboardCardProps {
   isChart?: boolean;
   dashboard: Dashboard;
   description?: string;
+  showPublishedLabel?: boolean;
   hasPerm: (name: string) => boolean;
   bulkSelectEnabled: boolean;
   loading: boolean;
@@ -95,6 +96,7 @@ interface DashboardCardProps {
 function DashboardCard({
   dashboard,
   description,
+  showPublishedLabel = true,
   hasPerm,
   bulkSelectEnabled,
   userId,
@@ -281,7 +283,11 @@ function DashboardCard({
       <ListViewCard
         loading={dashboard.loading || false}
         title={dashboard.dashboard_title}
-        titleRight={<PublishedLabel isPublished={dashboard.published} />}
+        titleRight={
+          showPublishedLabel ? (
+            <PublishedLabel isPublished={dashboard.published} />
+          ) : null
+        }
         cover={
           !thumbnailsFeatureEnabled ? (
             <></>

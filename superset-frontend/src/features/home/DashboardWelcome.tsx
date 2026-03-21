@@ -627,6 +627,7 @@ function DashboardWelcome({
                     )
                   : ''
               }
+              showPublishedLabel={false}
               hasPerm={hasPerm}
               bulkSelectEnabled={false}
               showThumbnails={showThumbnails}
