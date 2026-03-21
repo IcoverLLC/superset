@@ -452,14 +452,23 @@ const config: ControlPanelConfig = {
                     dataType: 'number' as const,
                   };
                 });
-                const headerColumns = [...rowValues, ...columnValues].map(value => {
-                  const label = getColumnLabel(value);
-                  return {
-                    value: label,
-                    label: Array.isArray(verboseMap) ? label : verboseMap[label] || label,
-                    dataType: 'string' as const,
-                  };
-                });
+                const headerColumns = [...rowValues, ...columnValues]
+                  .filter(
+                    value =>
+                      typeof value === 'string' ||
+                      isPhysicalColumn(value) ||
+                      isAdhocColumn(value),
+                  )
+                  .map(value => {
+                    const label = getColumnLabel(value);
+                    return {
+                      value: label,
+                      label: Array.isArray(verboseMap)
+                        ? label
+                        : verboseMap[label] || label,
+                      dataType: 'string' as const,
+                    };
+                  });
                 return {
                   removeIrrelevantConditions: chartStatus === 'success',
                   columnOptions: [...metricColumn, ...headerColumns],

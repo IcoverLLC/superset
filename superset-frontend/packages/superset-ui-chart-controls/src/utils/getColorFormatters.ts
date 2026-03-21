@@ -423,18 +423,23 @@ export const getColorFunction = (
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
+    const numericValue = typeof value === 'number' ? value : null;
+    const numericCutoffValue =
+      typeof cutoffValue === 'number' ? cutoffValue : null;
+    const numericExtremeValue =
+      typeof extremeValue === 'number' ? extremeValue : null;
     const gradientColors =
-      typeof value === 'number' &&
-      typeof cutoffValue === 'number' &&
-      typeof extremeValue === 'number'
+      numericValue !== null &&
+      numericCutoffValue !== null &&
+      numericExtremeValue !== null
         ? getGradientColors(colorScheme, theme)
         : null;
 
     if (gradientColors) {
       return getGradientColor(
-        value,
-        cutoffValue,
-        extremeValue,
+        numericValue!,
+        numericCutoffValue!,
+        numericExtremeValue!,
         gradientColors,
         midpoint,
       );

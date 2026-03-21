@@ -309,7 +309,10 @@ export const FormattingPopoverContent = ({
               ariaLabel={t('Select column')}
               options={columns}
               onChange={value => {
-                const isStringColumn = getColumnDataType(columns, value) === 'string';
+                const selectedColumn =
+                  typeof value === 'string' ? value : undefined;
+                const isStringColumn =
+                  getColumnDataType(columns, selectedColumn) === 'string';
                 const currentOperator = form.getFieldValue('operator');
                 const allowedOperators = (
                   isStringColumn ? stringOperatorOptions : operatorOptions

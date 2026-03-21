@@ -356,6 +356,66 @@ class TestThumbnails(SupersetTestCase):
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.charts.api.cache_chart_thumbnail.delay")
+    def test_chart_thumbnail_returns_404_when_chart_thumbnails_disabled(
+        self, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            _, thumbnail_url = self._get_id_and_thumbnail_url(CHART_URL)
+            rv = self.client.get(thumbnail_url)
+
+        assert rv.status_code == 404
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.charts.api.cache_chart_thumbnail.delay")
+    def test_chart_cache_screenshot_returns_404_when_chart_thumbnails_disabled(
+        self, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            chart_id, _ = self._get_id_and_thumbnail_url(CHART_URL)
+            rv = self.client.get(
+                f"{CHART_URL}{chart_id}/cache_screenshot/",
+                query_string={"q": "(force:!f)"},
+            )
+
+        assert rv.status_code == 404
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.dashboards.api.cache_dashboard_thumbnail.delay")
+    @patch.object(
+        DashboardScreenshot,
+        "get_from_cache_key",
+        return_value=ScreenshotCachePayload(),
+    )
+    def test_dashboard_thumbnail_still_triggers_async_when_chart_thumbnails_disabled(
+        self, mock_get_from_cache_key, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            _, thumbnail_url = self._get_id_and_thumbnail_url(DASHBOARD_URL)
+            rv = self.client.get(thumbnail_url)
+
+        assert rv.status_code == 202
+        mock_get_from_cache_key.assert_called()
+        mock_delay.assert_called_once()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
     def test_get_async_chart_notfound(self):
         """
         Thumbnails: Simple get async chart not found
