@@ -290,6 +290,7 @@ function DashboardWelcome({
   );
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
   const [sectionExpanded, setSectionExpanded] = useState(false);
+  const welcomeLoadVersionRef = useRef(0);
   const recentlyViewedRequestKeyRef = useRef('');
 
   const { hasPerm } = useListViewResource<Dashboard>(
@@ -347,6 +348,7 @@ function DashboardWelcome({
       loadSections = true,
       loadRecentlyViewedAt = true,
       preserveCurrentOnError = false,
+      loadVersion = welcomeLoadVersionRef.current,
     ): Promise<WelcomeResponse | null> => {
       if (append) {
         setLoadingMore(true);
@@ -367,18 +369,30 @@ function DashboardWelcome({
           endpoint: `/api/v1/dashboard/welcome/?q=${queryParams}`,
         });
         const result = json.result as WelcomeResponse;
+        if (loadVersion !== welcomeLoadVersionRef.current) {
+          return null;
+        }
         setWelcomeData(current => {
+          if (loadVersion !== welcomeLoadVersionRef.current) {
+            return current;
+          }
+
+          const mergedRecentlyViewedAt = {
+            ...(current?.recently_viewed_at || {}),
+            ...(result.recently_viewed_at || {}),
+          };
+
           if (!append || !current?.sections[0] || !result.sections[0]) {
-            return result;
+            return {
+              ...result,
+              recently_viewed_at: mergedRecentlyViewedAt,
+            };
           }
           const nextSection = result.sections[0];
           const previousSection = current.sections[0];
           return {
             ...result,
-            recently_viewed_at: {
-              ...(current.recently_viewed_at || {}),
-              ...(result.recently_viewed_at || {}),
-            },
+            recently_viewed_at: mergedRecentlyViewedAt,
             sections: [
               {
                 ...nextSection,
@@ -393,6 +407,9 @@ function DashboardWelcome({
         });
         return result;
       } catch (response) {
+        if (loadVersion !== welcomeLoadVersionRef.current) {
+          return null;
+        }
         await createErrorHandler(errMsg =>
           addDangerToast(
             t(
@@ -410,16 +427,18 @@ function DashboardWelcome({
         }
         return null;
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (loadVersion === welcomeLoadVersionRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [addDangerToast, apiFilters],
   );
 
   const fetchRecentActivityViewedAt = useCallback(
-    async (dashboards: Dashboard[]) => {
-      if (!dashboards.length) {
+    async (dashboards: Dashboard[], loadVersion = welcomeLoadVersionRef.current) => {
+      if (!dashboards.length || loadVersion !== welcomeLoadVersionRef.current) {
         return;
       }
 
@@ -442,6 +461,9 @@ function DashboardWelcome({
         const { json = {} } = await SupersetClient.get({
           endpoint: `/api/v1/log/recent_activity/?q=${queryParams}`,
         });
+        if (loadVersion !== welcomeLoadVersionRef.current) {
+          return;
+        }
         const recentlyViewedAt: Record<string, string> = {};
         (json.result as RecentActivity[]).forEach(record => {
           if (record.item_type !== 'dashboard') {
@@ -457,7 +479,7 @@ function DashboardWelcome({
         });
 
         setWelcomeData(current =>
-          current
+          current && loadVersion === welcomeLoadVersionRef.current
             ? {
                 ...current,
                 recently_viewed_at: {
@@ -475,12 +497,21 @@ function DashboardWelcome({
   );
 
   const fetchInitialWelcomeData = useCallback(async () => {
+    const loadVersion = welcomeLoadVersionRef.current + 1;
+    welcomeLoadVersionRef.current = loadVersion;
     recentlyViewedRequestKeyRef.current = '';
-    const initialData = await fetchWelcomeData(0, false, false, false);
-    if (!initialData) {
+    const initialData = await fetchWelcomeData(
+      0,
+      false,
+      false,
+      false,
+      false,
+      loadVersion,
+    );
+    if (!initialData || loadVersion !== welcomeLoadVersionRef.current) {
       return;
     }
-    void fetchWelcomeData(0, false, true, false, true);
+    void fetchWelcomeData(0, false, true, false, true, loadVersion);
   }, [fetchWelcomeData]);
 
   useEffect(() => {
@@ -509,7 +540,10 @@ function DashboardWelcome({
     }
 
     recentlyViewedRequestKeyRef.current = recentlyViewedRequestKey;
-    void fetchRecentActivityViewedAt(allDashboards);
+    void fetchRecentActivityViewedAt(
+      allDashboards,
+      welcomeLoadVersionRef.current,
+    );
   }, [
     allDashboards,
     fetchRecentActivityViewedAt,

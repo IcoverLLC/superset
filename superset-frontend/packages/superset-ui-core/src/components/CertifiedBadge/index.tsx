@@ -36,6 +36,11 @@ const TooltipContent = styled.div`
   }
 `;
 
+const TooltipHeadline = styled.div`
+  font-weight: ${({ theme }) => theme.fontWeightStrong};
+  margin-bottom: ${({ theme }) => theme.sizeUnit}px;
+`;
+
 const normalizeDetails = (details: string) =>
   details.replace(/<br\s*\/?>(\r)?/gi, '\n').replace(/\n/g, '  \n');
 
@@ -55,14 +60,10 @@ export function CertifiedBadge({
       title={
         <TooltipContent>
           {headline && (
-            <div>
-              <strong>{headline}</strong>
-            </div>
+            <TooltipHeadline>{headline}</TooltipHeadline>
           )}
           {!headline && showCertifiedBy && certifiedBy && (
-            <div>
-              <strong>{t('Certified by %s', certifiedBy)}</strong>
-            </div>
+            <TooltipHeadline>{t('Certified by %s', certifiedBy)}</TooltipHeadline>
           )}
           {details && <SafeMarkdown source={normalizeDetails(details)} />}
         </TooltipContent>

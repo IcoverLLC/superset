@@ -408,6 +408,9 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             operator = filter_config.get("opr")
             value = filter_config.get("value")
 
+            if isinstance(value, dict):
+                value = value.get("value", value.get("key"))
+
             if value in ("", None):
                 continue
 
@@ -416,6 +419,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     query, value
                 )
             elif column == "tags" and operator == "dashboard_tag_id":
+                if isinstance(value, str) and value.isdigit():
+                    value = int(value)
                 query = DashboardTagIdFilter("tags", datamodel).apply(query, value)
             elif column == "owners" and operator == "rel_m_m":
                 query = query.filter(Dashboard.owners.any(id=int(value)))
