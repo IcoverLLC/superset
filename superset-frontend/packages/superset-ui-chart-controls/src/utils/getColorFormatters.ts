@@ -41,6 +41,17 @@ const DEFAULT_RED_WHITE_GREEN_COLORS = ['#D14343', '#FFFFFF', '#2E8B57'] as cons
 const clamp = (value: number, min = 0, max = 1) =>
   Math.min(max, Math.max(min, value));
 
+const isEmptyValue = (value: unknown) =>
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  (typeof value === 'number' && Number.isNaN(value));
+
+const getNumericValues = (values: Array<number | string>) =>
+  values.filter(
+    (value): value is number => typeof value === 'number' && !Number.isNaN(value),
+  );
+
 const normalizeHexColor = (color: string) => {
   if (!color.startsWith('#')) {
     return null;
@@ -242,7 +253,7 @@ export const getColorFunction = (
     midpoint,
     colorScheme,
   }: ConditionalFormattingConfig,
-  columnValues: number[],
+  columnValues: Array<number | string>,
   alpha?: boolean,
   theme?: Record<string, any>,
 ) => {
@@ -250,9 +261,11 @@ export const getColorFunction = (
   const maxOpacity = MAX_OPACITY;
 
   let comparatorFunction: (
-    value: number,
-    allValues: number[],
-  ) => false | { cutoffValue: number; extremeValue: number };
+    value: number | string,
+    allValues: Array<number | string>,
+  ) => false | { cutoffValue: number | string; extremeValue: number | string };
+  const numericColumnValues = getNumericValues(columnValues);
+
   if (operator === undefined || colorScheme === undefined) {
     return () => undefined;
   }
@@ -272,51 +285,94 @@ export const getColorFunction = (
   switch (operator) {
     case Comparator.None:
       minOpacity = MIN_OPACITY_UNBOUNDED;
-      comparatorFunction = (value: number, allValues: number[]) => {
-        const cutoffValue = Math.min(...allValues);
-        const extremeValue = Math.max(...allValues);
+      comparatorFunction = (
+        value: number | string,
+        allValues: Array<number | string>,
+      ) => {
+        if (isEmptyValue(value)) {
+          return false;
+        }
+        if (typeof value === 'string') {
+          return { cutoffValue: value, extremeValue: value };
+        }
+        const numericValues = getNumericValues(allValues);
+        if (!numericValues.length) {
+          return false;
+        }
+        const cutoffValue = Math.min(...numericValues);
+        const extremeValue = Math.max(...numericValues);
         return value >= cutoffValue && value <= extremeValue
           ? { cutoffValue, extremeValue }
           : false;
       };
       break;
     case Comparator.GreaterThan:
-      comparatorFunction = (value: number, allValues: number[]) =>
-        value > targetValue!
-          ? { cutoffValue: targetValue!, extremeValue: Math.max(...allValues) }
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        typeof targetValue === 'number' &&
+        value > targetValue
+          ? {
+              cutoffValue: targetValue,
+              extremeValue: Math.max(...numericColumnValues),
+            }
           : false;
       break;
     case Comparator.LessThan:
-      comparatorFunction = (value: number, allValues: number[]) =>
-        value < targetValue!
-          ? { cutoffValue: targetValue!, extremeValue: Math.min(...allValues) }
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        typeof targetValue === 'number' &&
+        value < targetValue
+          ? {
+              cutoffValue: targetValue,
+              extremeValue: Math.min(...numericColumnValues),
+            }
           : false;
       break;
     case Comparator.GreaterOrEqual:
-      comparatorFunction = (value: number, allValues: number[]) =>
-        value >= targetValue!
-          ? { cutoffValue: targetValue!, extremeValue: Math.max(...allValues) }
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        typeof targetValue === 'number' &&
+        value >= targetValue
+          ? {
+              cutoffValue: targetValue,
+              extremeValue: Math.max(...numericColumnValues),
+            }
           : false;
       break;
     case Comparator.LessOrEqual:
-      comparatorFunction = (value: number, allValues: number[]) =>
-        value <= targetValue!
-          ? { cutoffValue: targetValue!, extremeValue: Math.min(...allValues) }
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        typeof targetValue === 'number' &&
+        value <= targetValue
+          ? {
+              cutoffValue: targetValue,
+              extremeValue: Math.min(...numericColumnValues),
+            }
           : false;
       break;
     case Comparator.Equal:
-      comparatorFunction = (value: number) =>
-        value === targetValue!
+      comparatorFunction = (value: number | string) =>
+        !isEmptyValue(value) && value === targetValue
           ? { cutoffValue: targetValue!, extremeValue: targetValue! }
           : false;
       break;
     case Comparator.NotEqual:
-      comparatorFunction = (value: number, allValues: number[]) => {
-        if (value === targetValue!) {
+      comparatorFunction = (
+        value: number | string,
+        allValues: Array<number | string>,
+      ) => {
+        if (isEmptyValue(value) || value === targetValue) {
           return false;
         }
-        const max = Math.max(...allValues);
-        const min = Math.min(...allValues);
+        if (typeof value === 'string' || typeof targetValue === 'string') {
+          return {
+            cutoffValue: targetValue!,
+            extremeValue: targetValue!,
+          };
+        }
+        const numericValues = getNumericValues(allValues);
+        const max = Math.max(...numericValues);
+        const min = Math.min(...numericValues);
         return {
           cutoffValue: targetValue!,
           extremeValue:
@@ -327,26 +383,34 @@ export const getColorFunction = (
       };
       break;
     case Comparator.Between:
-      comparatorFunction = (value: number) =>
-        value > targetValueLeft! && value < targetValueRight!
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        value > targetValueLeft! &&
+        value < targetValueRight!
           ? { cutoffValue: targetValueLeft!, extremeValue: targetValueRight! }
           : false;
       break;
     case Comparator.BetweenOrEqual:
-      comparatorFunction = (value: number) =>
-        value >= targetValueLeft! && value <= targetValueRight!
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        value >= targetValueLeft! &&
+        value <= targetValueRight!
           ? { cutoffValue: targetValueLeft!, extremeValue: targetValueRight! }
           : false;
       break;
     case Comparator.BetweenOrLeftEqual:
-      comparatorFunction = (value: number) =>
-        value >= targetValueLeft! && value < targetValueRight!
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        value >= targetValueLeft! &&
+        value < targetValueRight!
           ? { cutoffValue: targetValueLeft!, extremeValue: targetValueRight! }
           : false;
       break;
     case Comparator.BetweenOrRightEqual:
-      comparatorFunction = (value: number) =>
-        value > targetValueLeft! && value <= targetValueRight!
+      comparatorFunction = (value: number | string) =>
+        typeof value === 'number' &&
+        value > targetValueLeft! &&
+        value <= targetValueRight!
           ? { cutoffValue: targetValueLeft!, extremeValue: targetValueRight! }
           : false;
       break;
@@ -355,11 +419,16 @@ export const getColorFunction = (
       break;
   }
 
-  return (value: number) => {
+  return (value: number | string) => {
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
-    const gradientColors = getGradientColors(colorScheme, theme);
+    const gradientColors =
+      typeof value === 'number' &&
+      typeof cutoffValue === 'number' &&
+      typeof extremeValue === 'number'
+        ? getGradientColors(colorScheme, theme)
+        : null;
 
     if (gradientColors) {
       return getGradientColor(
@@ -413,7 +482,7 @@ export const getColorFormatters = memoizeOne(
             column: config?.column,
             getColorFromValue: getColorFunction(
               { ...config, colorScheme: resolvedColorScheme },
-              data.map(row => row[config.column!] as number),
+              data.map(row => row[config.column!] as number | string),
               alpha,
               theme,
             ),

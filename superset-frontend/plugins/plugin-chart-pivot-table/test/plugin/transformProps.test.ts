@@ -18,6 +18,7 @@
  */
 
 import { ChartProps, QueryFormData, supersetTheme } from '@superset-ui/core';
+import { Comparator } from '@superset-ui/chart-controls';
 import transformProps from '../../src/plugin/transformProps';
 import { MetricsLayoutEnum } from '../../src/types';
 
@@ -90,11 +91,44 @@ describe('PivotTableChart transformProps', () => {
       verboseMap: {},
       metricsLayout: MetricsLayoutEnum.COLUMNS,
       metricColorFormatters: [],
+      headerColorFormatters: [],
       dateFormatters: {},
       emitCrossFilters: false,
       columnFormats: {},
       currencyFormats: {},
       currencyFormat: { symbol: 'USD', symbolPosition: 'prefix' },
     });
+  });
+
+  it('should split metric and header conditional formatting', () => {
+    const propsWithConditionalFormatting = new ChartProps<QueryFormData>({
+      ...chartProps,
+      formData: {
+        ...formData,
+        conditionalFormatting: [
+          {
+            column: 'metric1',
+            operator: Comparator.None,
+            colorScheme: '#FF0000',
+          },
+          {
+            column: 'row1',
+            operator: Comparator.Equal,
+            targetValue: 'Hulk',
+            colorScheme: '#00FF00',
+          },
+        ],
+      },
+    });
+
+    const transformedProps = transformProps(propsWithConditionalFormatting);
+
+    expect(transformedProps.metricColorFormatters).toHaveLength(1);
+    expect(transformedProps.headerColorFormatters).toHaveLength(1);
+    expect(transformedProps.metricColorFormatters[0].column).toEqual('metric1');
+    expect(transformedProps.headerColorFormatters[0].column).toEqual('row1');
+    expect(
+      transformedProps.headerColorFormatters[0].getColorFromValue('Hulk'),
+    ).toEqual('#00FF00FF');
   });
 });

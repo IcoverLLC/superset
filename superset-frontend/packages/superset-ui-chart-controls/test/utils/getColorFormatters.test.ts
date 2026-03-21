@@ -32,6 +32,8 @@ const mockData = [
   { count: 100, sum: 400 },
 ];
 const countValues = mockData.map(row => row.count);
+const stringData = [{ publisher: 'Nintendo' }, { publisher: 'Sega' }];
+const publisherValues = stringData.map(row => row.publisher);
 const mockTheme = {
   colorError: '#FF0000',
   colorWarning: '#FFFF00',
@@ -151,6 +153,20 @@ test('getColorFunction EQUAL', () => {
   expect(colorFunction(100)).toEqual('#FF0000FF');
 });
 
+test('getColorFunction EQUAL for string values', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.Equal,
+      targetValue: 'Nintendo',
+      colorScheme: '#FF0000',
+      column: 'publisher',
+    },
+    publisherValues,
+  );
+  expect(colorFunction('Nintendo')).toEqual('#FF0000FF');
+  expect(colorFunction('Sega')).toBeUndefined();
+});
+
 test('getColorFunction NOT_EQUAL', () => {
   let colorFunction = getColorFunction(
     {
@@ -177,6 +193,20 @@ test('getColorFunction NOT_EQUAL', () => {
   expect(colorFunction(90)).toBeUndefined();
   expect(colorFunction(100)).toEqual('#FF00004A');
   expect(colorFunction(50)).toEqual('#FF0000FF');
+});
+
+test('getColorFunction NOT_EQUAL for string values', () => {
+  const colorFunction = getColorFunction(
+    {
+      operator: Comparator.NotEqual,
+      targetValue: 'Nintendo',
+      colorScheme: '#FF0000',
+      column: 'publisher',
+    },
+    publisherValues,
+  );
+  expect(colorFunction('Nintendo')).toBeUndefined();
+  expect(colorFunction('Sega')).toEqual('#FF0000FF');
 });
 
 test('getColorFunction BETWEEN', () => {

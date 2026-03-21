@@ -21,6 +21,7 @@ import {
   DataRecord,
   extractTimegrain,
   GenericDataType,
+  getColumnLabel,
   getTimeFormatter,
   getTimeFormatterForGranularity,
   QueryFormData,
@@ -143,8 +144,25 @@ export default function transformProps(chartProps: ChartProps<QueryFormData>) {
       },
       {},
     );
+  const metricColumns = new Set(
+    metrics.map(metric =>
+      typeof metric === 'string' ? metric : String(metric.label),
+    ),
+  );
+  const headerColumns = new Set(
+    [...groupbyRows, ...groupbyColumns].map(column => getColumnLabel(column)),
+  );
   const metricColorFormatters = getColorFormatters(
-    conditionalFormatting,
+    conditionalFormatting?.filter(config =>
+      metricColumns.has(config.column ?? ''),
+    ),
+    data,
+    theme,
+  );
+  const headerColorFormatters = getColorFormatters(
+    conditionalFormatting?.filter(config =>
+      headerColumns.has(config.column ?? ''),
+    ),
     data,
     theme,
   );
@@ -179,6 +197,7 @@ export default function transformProps(chartProps: ChartProps<QueryFormData>) {
     currencyFormats,
     metricsLayout,
     metricColorFormatters,
+    headerColorFormatters,
     dateFormatters,
     onContextMenu,
     timeGrainSqla,

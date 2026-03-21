@@ -28,12 +28,16 @@ import {
   Button,
   Form,
   FormItem,
+  Input,
   InputNumber,
   Col,
   Row,
   type FormProps,
 } from '@superset-ui/core/components';
-import { ConditionalFormattingConfig } from './types';
+import {
+  ConditionalFormattingColumnOption,
+  ConditionalFormattingConfig,
+} from './types';
 
 // TODO: tangled redefinition that aligns with @superset-ui/plugin-chart-table
 // used to be imported but main app shouldn't depend on plugins...
@@ -43,6 +47,10 @@ export enum ColorSchemeEnum {
 }
 
 const FullWidthInputNumber = styled(InputNumber)`
+  width: 100%;
+`;
+
+const FullWidthInput = styled(Input)`
   width: 100%;
 `;
 
@@ -90,6 +98,12 @@ const operatorOptions = [
   { value: Comparator.BetweenOrEqual, label: '≤ x ≤' },
   { value: Comparator.BetweenOrLeftEqual, label: '≤ x <' },
   { value: Comparator.BetweenOrRightEqual, label: '< x ≤' },
+];
+
+const stringOperatorOptions = [
+  { value: Comparator.None, label: t('None') },
+  { value: Comparator.Equal, label: '=' },
+  { value: Comparator.NotEqual, label: Comparator.NotEqual },
 ];
 
 const targetValueValidator =
@@ -154,6 +168,7 @@ const shouldFormItemUpdate = (
   prevValues: ConditionalFormattingConfig,
   currentValues: ConditionalFormattingConfig,
 ) =>
+  prevValues.column !== currentValues.column ||
   isOperatorNone(prevValues.operator) !==
     isOperatorNone(currentValues.operator) ||
   isOperatorMultiValue(prevValues.operator) !==
@@ -166,24 +181,45 @@ const shouldMidpointUpdate = (
   prevValues.colorScheme !== currentValues.colorScheme ||
   prevValues.operator !== currentValues.operator;
 
-const renderOperator = ({ showOnlyNone }: { showOnlyNone?: boolean } = {}) => (
-  <FormItem
-    name="operator"
-    label={t('Operator')}
-    rules={rulesRequired}
-    initialValue={operatorOptions[0].value}
-  >
-    <Select
-      ariaLabel={t('Operator')}
-      options={showOnlyNone ? [operatorOptions[0]] : operatorOptions}
-    />
-  </FormItem>
-);
+const getColumnDataType = (
+  columns: ConditionalFormattingColumnOption[],
+  column?: string,
+) => columns.find(option => option.value === column)?.dataType ?? 'number';
 
-const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
-  isOperatorNone(getFieldValue('operator')) ? (
+const renderOperator = ({
+  showOnlyNone,
+  isStringColumn,
+}: {
+  showOnlyNone?: boolean;
+  isStringColumn?: boolean;
+} = {}) => {
+  const options = isStringColumn ? stringOperatorOptions : operatorOptions;
+
+  return (
+    <FormItem
+      name="operator"
+      label={t('Operator')}
+      rules={rulesRequired}
+      initialValue={options[0].value}
+    >
+      <Select
+        ariaLabel={t('Operator')}
+        options={showOnlyNone ? [options[0]] : options}
+      />
+    </FormItem>
+  );
+};
+
+const renderOperatorFields = ({
+  getFieldValue,
+  columns,
+}: GetFieldValue & { columns: ConditionalFormattingColumnOption[] }) => {
+  const isStringColumn =
+    getColumnDataType(columns, getFieldValue('column')) === 'string';
+
+  return isOperatorNone(getFieldValue('operator')) ? (
     <Row gutter={12}>
-      <Col span={6}>{renderOperator()}</Col>
+      <Col span={6}>{renderOperator({ isStringColumn })}</Col>
     </Row>
   ) : isOperatorMultiValue(getFieldValue('operator')) ? (
     <Row gutter={12}>
@@ -199,7 +235,7 @@ const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
           <FullWidthInputNumber />
         </FormItem>
       </Col>
-      <Col span={6}>{renderOperator()}</Col>
+      <Col span={6}>{renderOperator({ isStringColumn })}</Col>
       <Col span={9}>
         <FormItem
           name="targetValueRight"
@@ -215,18 +251,19 @@ const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
     </Row>
   ) : (
     <Row gutter={12}>
-      <Col span={6}>{renderOperator()}</Col>
+      <Col span={6}>{renderOperator({ isStringColumn })}</Col>
       <Col span={18}>
         <FormItem
           name="targetValue"
           label={t('Target value')}
           rules={rulesRequired}
         >
-          <FullWidthInputNumber />
+          {isStringColumn ? <FullWidthInput /> : <FullWidthInputNumber />}
         </FormItem>
       </Col>
     </Row>
   );
+};
 
 export const FormattingPopoverContent = ({
   config,
@@ -236,9 +273,10 @@ export const FormattingPopoverContent = ({
 }: {
   config?: ConditionalFormattingConfig;
   onChange: (config: ConditionalFormattingConfig) => void;
-  columns: { label: string; value: string }[];
+  columns: ConditionalFormattingColumnOption[];
   extraColorChoices?: { label: string; value: string }[];
 }) => {
+  const [form] = Form.useForm<ConditionalFormattingConfig>();
   const colorScheme = colorSchemeOptions();
   const [showOperatorFields, setShowOperatorFields] = useState(
     config === undefined ||
@@ -253,6 +291,7 @@ export const FormattingPopoverContent = ({
 
   return (
     <Form
+      form={form}
       onFinish={onChange}
       initialValues={config}
       requiredMark="optional"
@@ -266,7 +305,26 @@ export const FormattingPopoverContent = ({
             rules={rulesRequired}
             initialValue={columns[0]?.value}
           >
-            <Select ariaLabel={t('Select column')} options={columns} />
+            <Select
+              ariaLabel={t('Select column')}
+              options={columns}
+              onChange={value => {
+                const isStringColumn = getColumnDataType(columns, value) === 'string';
+                const currentOperator = form.getFieldValue('operator');
+                const allowedOperators = (
+                  isStringColumn ? stringOperatorOptions : operatorOptions
+                ).map(option => option.value);
+
+                if (!allowedOperators.includes(currentOperator)) {
+                  form.setFieldsValue({
+                    operator: Comparator.None,
+                    targetValue: undefined,
+                    targetValueLeft: undefined,
+                    targetValueRight: undefined,
+                  });
+                }
+              }}
+            />
           </FormItem>
         </Col>
         <Col span={12}>
@@ -286,10 +344,17 @@ export const FormattingPopoverContent = ({
       </Row>
       <FormItem noStyle shouldUpdate={shouldFormItemUpdate}>
         {showOperatorFields ? (
-          renderOperatorFields
+          formValues => renderOperatorFields({ ...formValues, columns })
         ) : (
           <Row gutter={12}>
-            <Col span={6}>{renderOperator({ showOnlyNone: true })}</Col>
+            <Col span={6}>
+              {renderOperator({
+                showOnlyNone: true,
+                isStringColumn:
+                  getColumnDataType(columns, form.getFieldValue('column')) ===
+                  'string',
+              })}
+            </Col>
           </Row>
         )}
       </FormItem>

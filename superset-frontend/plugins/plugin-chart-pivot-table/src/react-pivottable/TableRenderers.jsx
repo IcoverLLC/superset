@@ -60,6 +60,60 @@ const getConditionalFormattingTextColor = ({ backgroundColor, isDarkTheme }) => 
   );
 };
 
+const getConditionalFormattingBackgroundColor = (
+  formatters,
+  column,
+  value,
+) => {
+  let backgroundColor;
+
+  formatters
+    ?.filter(formatter => formatter.column === column)
+    .forEach(formatter => {
+      if (backgroundColor) {
+        return;
+      }
+      const formatterResult = formatter.getColorFromValue(value);
+      if (formatterResult) {
+        backgroundColor = formatterResult;
+      }
+    });
+
+  return backgroundColor;
+};
+
+const getHeaderConditionalFormattingStyle = ({
+  formatters,
+  column,
+  value,
+  isDarkTheme,
+  themeBackgroundColor,
+}) => {
+  const backgroundColor = getConditionalFormattingBackgroundColor(
+    formatters,
+    column,
+    value,
+  );
+
+  if (!backgroundColor) {
+    return undefined;
+  }
+
+  const adaptiveBackgroundColor = getAdaptiveConditionalFormattingBackground({
+    backgroundColor,
+    isDarkTheme,
+    themeBackgroundColor,
+  });
+
+  return {
+    backgroundColor: adaptiveBackgroundColor,
+    color: getConditionalFormattingTextColor({
+      backgroundColor: adaptiveBackgroundColor,
+      isDarkTheme,
+    }),
+  };
+};
+
 const parseLabel = value => {
   if (typeof value === 'string') {
     if (value === 'metric') return t('metric');
@@ -574,7 +628,10 @@ export class TableRenderer extends Component {
       highlightHeaderCellsOnHover,
       omittedHighlightHeaderGroups = [],
       highlightedHeaderCells,
+      headerColorFormatters,
       dateFormatters,
+      isDarkTheme,
+      themeBackgroundColor,
     } = this.props.tableOptions;
 
     const spaceCell =
@@ -661,6 +718,13 @@ export class TableRenderer extends Component {
           typeof dateFormatters[attrName] === 'function'
             ? dateFormatters[attrName](colKey[attrIdx])
             : colKey[attrIdx];
+        const headerCellStyle = getHeaderConditionalFormattingStyle({
+          formatters: headerColorFormatters,
+          column: colAttrs[attrIdx],
+          value: colKey[attrIdx],
+          isDarkTheme,
+          themeBackgroundColor,
+        });
         attrValueCells.push(
           <th
             className={colLabelClass}
@@ -669,6 +733,7 @@ export class TableRenderer extends Component {
             rowSpan={rowSpan}
             data-header-row={attrIdx}
             role="columnheader button"
+            style={headerCellStyle}
             onClick={this.clickHeaderHandler(
               pivotData,
               colKey,
@@ -861,6 +926,7 @@ export class TableRenderer extends Component {
       omittedHighlightHeaderGroups = [],
       highlightedHeaderCells,
       cellColorFormatters,
+      headerColorFormatters,
       dateFormatters,
       isDarkTheme,
       themeBackgroundColor,
@@ -907,6 +973,13 @@ export class TableRenderer extends Component {
           dateFormatters && dateFormatters[rowAttrs[i]]
             ? dateFormatters[rowAttrs[i]](r)
             : r;
+        const headerCellStyle = getHeaderConditionalFormattingStyle({
+          formatters: headerColorFormatters,
+          column: rowAttrs[i],
+          value: r,
+          isDarkTheme,
+          themeBackgroundColor,
+        });
         const hoveredCellKey = `row-header-${i}`;
         return (
           <th
@@ -927,6 +1000,7 @@ export class TableRenderer extends Component {
                 : undefined
             }
             role="columnheader button"
+            style={headerCellStyle}
             onClick={this.clickHeaderHandler(
               pivotData,
               rowKey,
