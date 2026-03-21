@@ -210,15 +210,11 @@ git log --no-merges --oneline origin/6.0.0..prod
 - модуль `superset/dashboards/welcome_top.py`
 - celery-задачи:
   - `welcome_dashboard_top.refresh_snapshots`
-  - `welcome_dashboard_top.warmup_thumbnails`
 - конфиги:
   - `WELCOME_DASHBOARD_TOP_LIMIT`
   - `WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS`
   - `WELCOME_DASHBOARD_TOP_IDS`
   - `WELCOME_DASHBOARD_TOP_SNAPSHOT_LIMIT`
-  - `WELCOME_DASHBOARD_THUMBNAIL_WARMUP_ENABLED`
-  - `WELCOME_DASHBOARD_THUMBNAIL_WARMUP_LIMIT`
-  - `WELCOME_DASHBOARD_THUMBNAIL_WARMUP_USER_LIMIT`
 
 Ключевые файлы:
 

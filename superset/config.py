@@ -1170,10 +1170,6 @@ class CeleryConfig:  # pylint: disable=too-few-public-methods
         #     "task": "slack.cache_channels",
         #     "schedule": crontab(minute="0", hour="*"),
         # },
-        "welcome_dashboard_top.warmup_thumbnails": {
-            "task": "welcome_dashboard_top.warmup_thumbnails",
-            "schedule": crontab(minute="*/30"),
-        },
     }
 
 
@@ -2074,15 +2070,12 @@ WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, An
 
 # Welcome dashboard catalogue configuration.
 # TOP dashboards are primarily resolved from snapshot rows stored in metadata DB.
-# Welcome requests only read snapshot rows; writes and thumbnail warm-up should
-# happen via the corresponding Celery tasks.
+# Welcome requests only read snapshot rows; writes should happen via the
+# corresponding Celery task.
 WELCOME_DASHBOARD_TOP_LIMIT = 8
 WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
 WELCOME_DASHBOARD_TOP_IDS: list[int] = []
 WELCOME_DASHBOARD_TOP_SNAPSHOT_LIMIT = 50
-WELCOME_DASHBOARD_THUMBNAIL_WARMUP_ENABLED = False
-WELCOME_DASHBOARD_THUMBNAIL_WARMUP_LIMIT = None
-WELCOME_DASHBOARD_THUMBNAIL_WARMUP_USER_LIMIT = 200
 
 # Max allowed size for a zipped file
 ZIPPED_FILE_MAX_SIZE = 100 * 1024 * 1024  # 100MB
