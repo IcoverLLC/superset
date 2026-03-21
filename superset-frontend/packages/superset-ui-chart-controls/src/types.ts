@@ -477,7 +477,7 @@ export const CustomConditionalFormattingColorScheme = {
 
 export type ConditionalFormattingConfig = {
   operator?: Comparator;
-  targetValue?: number | string;
+  targetValue?: number;
   targetValueLeft?: number;
   targetValueRight?: number;
   midpoint?: number;
@@ -487,7 +487,7 @@ export type ConditionalFormattingConfig = {
 
 export type ColorFormatters = {
   column: string;
-  getColorFromValue: (value: number | string) => string | undefined;
+  getColorFromValue: (value: number) => string | undefined;
 }[];
 
 export default {};

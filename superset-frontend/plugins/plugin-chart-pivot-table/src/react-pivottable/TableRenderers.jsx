@@ -60,60 +60,6 @@ const getConditionalFormattingTextColor = ({ backgroundColor, isDarkTheme }) => 
   );
 };
 
-const getConditionalFormattingBackgroundColor = (
-  formatters,
-  column,
-  value,
-) => {
-  let backgroundColor;
-
-  formatters
-    ?.filter(formatter => formatter.column === column)
-    .forEach(formatter => {
-      if (backgroundColor) {
-        return;
-      }
-      const formatterResult = formatter.getColorFromValue(value);
-      if (formatterResult) {
-        backgroundColor = formatterResult;
-      }
-    });
-
-  return backgroundColor;
-};
-
-const getHeaderConditionalFormattingStyle = ({
-  formatters,
-  column,
-  value,
-  isDarkTheme,
-  themeBackgroundColor,
-}) => {
-  const backgroundColor = getConditionalFormattingBackgroundColor(
-    formatters,
-    column,
-    value,
-  );
-
-  if (!backgroundColor) {
-    return undefined;
-  }
-
-  const adaptiveBackgroundColor = getAdaptiveConditionalFormattingBackground({
-    backgroundColor,
-    isDarkTheme,
-    themeBackgroundColor,
-  });
-
-  return {
-    backgroundColor: adaptiveBackgroundColor,
-    color: getConditionalFormattingTextColor({
-      backgroundColor: adaptiveBackgroundColor,
-      isDarkTheme,
-    }),
-  };
-};
-
 const parseLabel = value => {
   if (typeof value === 'string') {
     if (value === 'metric') return t('metric');
@@ -179,6 +125,8 @@ export class TableRenderer extends Component {
     this.tableRef = null;
     this.resizeObserver = null;
     this.layoutFrame = null;
+    this.hoverFrame = null;
+    this.pendingHoverState = null;
 
     this.clickHeaderHandler = this.clickHeaderHandler.bind(this);
     this.clickHandler = this.clickHandler.bind(this);
@@ -186,6 +134,8 @@ export class TableRenderer extends Component {
     this.setTableRef = this.setTableRef.bind(this);
     this.scheduleStickyLayout = this.scheduleStickyLayout.bind(this);
     this.syncStickyLayout = this.syncStickyLayout.bind(this);
+    this.scheduleHoverState = this.scheduleHoverState.bind(this);
+    this.flushHoverState = this.flushHoverState.bind(this);
   }
 
   componentDidMount() {
@@ -204,6 +154,9 @@ export class TableRenderer extends Component {
     }
     if (this.layoutFrame && typeof cancelAnimationFrame === 'function') {
       cancelAnimationFrame(this.layoutFrame);
+    }
+    if (this.hoverFrame && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.hoverFrame);
     }
   }
 
@@ -234,6 +187,56 @@ export class TableRenderer extends Component {
     this.layoutFrame = requestAnimationFrame(() => {
       this.layoutFrame = null;
       this.syncStickyLayout();
+    });
+  }
+
+  scheduleHoverState(nextHoverState) {
+    this.pendingHoverState = nextHoverState;
+
+    if (this.hoverFrame) {
+      return;
+    }
+
+    if (typeof requestAnimationFrame !== 'function') {
+      this.flushHoverState();
+      return;
+    }
+
+    this.hoverFrame = requestAnimationFrame(() => {
+      this.hoverFrame = null;
+      this.flushHoverState();
+    });
+  }
+
+  flushHoverState() {
+    const nextHoverState = this.pendingHoverState;
+    this.pendingHoverState = null;
+
+    if (!nextHoverState) {
+      return;
+    }
+
+    this.setState(state => {
+      const hoveredRowKey =
+        nextHoverState.hoveredRowKey === undefined
+          ? state.hoveredRowKey
+          : nextHoverState.hoveredRowKey;
+      const hoveredCellKey =
+        nextHoverState.hoveredCellKey === undefined
+          ? state.hoveredCellKey
+          : nextHoverState.hoveredCellKey;
+
+      if (
+        state.hoveredRowKey === hoveredRowKey &&
+        state.hoveredCellKey === hoveredCellKey
+      ) {
+        return null;
+      }
+
+      return {
+        hoveredRowKey,
+        hoveredCellKey,
+      };
     });
   }
 
@@ -461,23 +464,28 @@ export class TableRenderer extends Component {
 
   handleRowMouseEnter(flatRowKey) {
     return () => {
-      this.setState({ hoveredRowKey: flatRowKey });
+      this.scheduleHoverState({
+        hoveredRowKey: flatRowKey,
+      });
     };
   }
 
   handleRowMouseLeave(flatRowKey) {
     return () => {
-      this.setState(state =>
-        state.hoveredRowKey === flatRowKey
-          ? { hoveredRowKey: null, hoveredCellKey: null }
-          : null,
-      );
+      this.pendingHoverState = null;
+      this.setState(state => {
+        if (state.hoveredRowKey !== flatRowKey) {
+          return null;
+        }
+
+        return { hoveredRowKey: null, hoveredCellKey: null };
+      });
     };
   }
 
   handleCellMouseEnter(flatRowKey, hoveredCellKey) {
     return () => {
-      this.setState({
+      this.scheduleHoverState({
         hoveredRowKey: flatRowKey,
         hoveredCellKey,
       });
@@ -628,10 +636,7 @@ export class TableRenderer extends Component {
       highlightHeaderCellsOnHover,
       omittedHighlightHeaderGroups = [],
       highlightedHeaderCells,
-      headerColorFormatters,
       dateFormatters,
-      isDarkTheme,
-      themeBackgroundColor,
     } = this.props.tableOptions;
 
     const spaceCell =
@@ -718,13 +723,6 @@ export class TableRenderer extends Component {
           typeof dateFormatters[attrName] === 'function'
             ? dateFormatters[attrName](colKey[attrIdx])
             : colKey[attrIdx];
-        const headerCellStyle = getHeaderConditionalFormattingStyle({
-          formatters: headerColorFormatters,
-          column: colAttrs[attrIdx],
-          value: colKey[attrIdx],
-          isDarkTheme,
-          themeBackgroundColor,
-        });
         attrValueCells.push(
           <th
             className={colLabelClass}
@@ -733,7 +731,6 @@ export class TableRenderer extends Component {
             rowSpan={rowSpan}
             data-header-row={attrIdx}
             role="columnheader button"
-            style={headerCellStyle}
             onClick={this.clickHeaderHandler(
               pivotData,
               colKey,
@@ -926,7 +923,6 @@ export class TableRenderer extends Component {
       omittedHighlightHeaderGroups = [],
       highlightedHeaderCells,
       cellColorFormatters,
-      headerColorFormatters,
       dateFormatters,
       isDarkTheme,
       themeBackgroundColor,
@@ -973,13 +969,6 @@ export class TableRenderer extends Component {
           dateFormatters && dateFormatters[rowAttrs[i]]
             ? dateFormatters[rowAttrs[i]](r)
             : r;
-        const headerCellStyle = getHeaderConditionalFormattingStyle({
-          formatters: headerColorFormatters,
-          column: rowAttrs[i],
-          value: r,
-          isDarkTheme,
-          themeBackgroundColor,
-        });
         const hoveredCellKey = `row-header-${i}`;
         return (
           <th
@@ -1000,7 +989,6 @@ export class TableRenderer extends Component {
                 : undefined
             }
             role="columnheader button"
-            style={headerCellStyle}
             onClick={this.clickHeaderHandler(
               pivotData,
               rowKey,

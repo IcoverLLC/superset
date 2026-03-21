@@ -46,7 +46,6 @@ const formData: PivotTableQueryFormData = {
   columnFormats: {},
   currencyFormats: {},
   metricColorFormatters: [],
-  headerColorFormatters: [],
   dateFormatters: {},
   setDataMask: () => {},
   legacy_order_by: 'count',

@@ -25,10 +25,8 @@ import {
 } from '@superset-ui/chart-controls';
 import {
   ensureIsArray,
-  getColumnLabel,
   isAdhocColumn,
   isPhysicalColumn,
-  QueryFormColumn,
   QueryFormMetric,
   SMART_DATE_ID,
   t,
@@ -418,62 +416,34 @@ const config: ControlPanelConfig = {
               type: 'ConditionalFormattingControl',
               renderTrigger: true,
               label: t('Conditional formatting'),
-              description: t(
-                'Apply conditional color formatting to metrics and pivot headers',
-              ),
+              description: t('Apply conditional color formatting to metrics'),
               mapStateToProps(explore, _, chart) {
-                const metricValues =
+                const values =
                   (explore?.controls?.metrics?.value as QueryFormMetric[]) ??
                   [];
-                const rowValues = ensureIsArray(
-                  explore?.controls?.groupbyRows?.value,
-                );
-                const columnValues = ensureIsArray(
-                  explore?.controls?.groupbyColumns?.value,
-                );
                 const verboseMap = explore?.datasource?.hasOwnProperty(
                   'verbose_map',
                 )
                   ? (explore?.datasource as Dataset)?.verbose_map
                   : (explore?.datasource?.columns ?? {});
                 const chartStatus = chart?.chartStatus;
-                const isPivotHeaderColumn = (
-                  value: unknown,
-                ): value is QueryFormColumn =>
-                  typeof value === 'string' ||
-                  isPhysicalColumn(value) ||
-                  isAdhocColumn(value);
-                const metricColumn = metricValues.map(value => {
+                const metricColumn = values.map(value => {
                   if (typeof value === 'string') {
                     return {
                       value,
                       label: Array.isArray(verboseMap)
                         ? value
                         : verboseMap[value],
-                      dataType: 'number' as const,
                     };
                   }
                   return {
                     value: value.label,
                     label: value.label,
-                    dataType: 'number' as const,
                   };
                 });
-                const headerColumns = [...rowValues, ...columnValues]
-                  .filter(isPivotHeaderColumn)
-                  .map(value => {
-                    const label = getColumnLabel(value);
-                    return {
-                      value: label,
-                      label: Array.isArray(verboseMap)
-                        ? label
-                        : verboseMap[label] || label,
-                      dataType: 'string' as const,
-                    };
-                  });
                 return {
                   removeIrrelevantConditions: chartStatus === 'success',
-                  columnOptions: [...metricColumn, ...headerColumns],
+                  columnOptions: metricColumn,
                   verboseMap,
                 };
               },

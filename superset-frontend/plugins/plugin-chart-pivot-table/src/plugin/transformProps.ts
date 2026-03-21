@@ -18,11 +18,9 @@
  */
 import {
   ChartProps,
-  QueryFormMetric,
   DataRecord,
   extractTimegrain,
   GenericDataType,
-  getColumnLabel,
   getTimeFormatter,
   getTimeFormatterForGranularity,
   QueryFormData,
@@ -30,7 +28,6 @@ import {
   TimeFormats,
 } from '@superset-ui/core';
 import { getColorFormatters } from '@superset-ui/chart-controls';
-import type { ConditionalFormattingConfig } from '@superset-ui/chart-controls';
 import { DateFormatter } from '../types';
 
 const { DATABASE_DATETIME } = TimeFormats;
@@ -146,25 +143,8 @@ export default function transformProps(chartProps: ChartProps<QueryFormData>) {
       },
       {},
     );
-  const metricColumns = new Set(
-    metrics.map((metric: QueryFormMetric) =>
-      typeof metric === 'string' ? metric : String(metric.label),
-    ),
-  );
-  const headerColumns = new Set(
-    [...groupbyRows, ...groupbyColumns].map(column => getColumnLabel(column)),
-  );
   const metricColorFormatters = getColorFormatters(
-    conditionalFormatting?.filter((config: ConditionalFormattingConfig) =>
-      metricColumns.has(config.column ?? ''),
-    ),
-    data,
-    theme,
-  );
-  const headerColorFormatters = getColorFormatters(
-    conditionalFormatting?.filter((config: ConditionalFormattingConfig) =>
-      headerColumns.has(config.column ?? ''),
-    ),
+    conditionalFormatting,
     data,
     theme,
   );
@@ -199,7 +179,6 @@ export default function transformProps(chartProps: ChartProps<QueryFormData>) {
     currencyFormats,
     metricsLayout,
     metricColorFormatters,
-    headerColorFormatters,
     dateFormatters,
     onContextMenu,
     timeGrainSqla,

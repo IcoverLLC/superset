@@ -21,15 +21,9 @@ import { ReactNode } from 'react';
 import { PopoverProps } from '@superset-ui/core/components/Popover';
 import { Comparator, ControlComponentProps } from '@superset-ui/chart-controls';
 
-export type ConditionalFormattingColumnOption = {
-  label: string;
-  value: string;
-  dataType?: 'number' | 'string';
-};
-
 export type ConditionalFormattingConfig = {
   operator?: Comparator;
-  targetValue?: number | string;
+  targetValue?: number;
   targetValueLeft?: number;
   targetValueRight?: number;
   midpoint?: number;
@@ -40,7 +34,7 @@ export type ConditionalFormattingConfig = {
 export type ConditionalFormattingControlProps = ControlComponentProps<
   ConditionalFormattingConfig[]
 > & {
-  columnOptions: ConditionalFormattingColumnOption[];
+  columnOptions: { label: string; value: string }[];
   removeIrrelevantConditions: boolean;
   verboseMap: Record<string, string>;
   label: string;
@@ -49,7 +43,7 @@ export type ConditionalFormattingControlProps = ControlComponentProps<
 };
 
 export type FormattingPopoverProps = PopoverProps & {
-  columns: ConditionalFormattingColumnOption[];
+  columns: { label: string; value: string }[];
   onChange: (value: ConditionalFormattingConfig) => void;
   config?: ConditionalFormattingConfig;
   title: string;
