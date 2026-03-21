@@ -480,25 +480,27 @@ function DashboardWelcome({
         layout === 'top' ? TopCardContainer : WelcomeCardContainer;
       return (
         <Container showThumbnails={showThumbnails}>
-        {dashboards.map(dashboard => (
-          <DashboardCard
-            key={dashboard.id}
-            dashboard={dashboard}
-            description={getRecentlyViewedDescription(
-              welcomeData?.recently_viewed_at?.[String(dashboard.id)],
-            )}
-            hasPerm={hasPerm}
-            bulkSelectEnabled={false}
-            showThumbnails={showThumbnails}
-            userId={user.userId}
-            loading={false}
-            openDashboardEditModal={setDashboardToEdit}
-            saveFavoriteStatus={saveFavoriteStatus}
-            favoriteStatus={currentFavoriteStatus[dashboard.id]}
-            handleBulkDashboardExport={handleBulkDashboardExport}
-            onDelete={setDashboardToDelete}
-          />
-        ))}
+          {dashboards.map(dashboard => (
+            <DashboardCard
+              key={dashboard.id}
+              dashboard={dashboard}
+              description={getRecentlyViewedDescription(
+                welcomeData?.recently_viewed_at?.[String(dashboard.id)],
+              )}
+              hasPerm={hasPerm}
+              bulkSelectEnabled={false}
+              showThumbnails={showThumbnails}
+              thumbnailLoadBehavior="deferred"
+              thumbnailLoadDelayMs={layout === 'top' ? 0 : 600}
+              userId={user.userId}
+              loading={false}
+              openDashboardEditModal={setDashboardToEdit}
+              saveFavoriteStatus={saveFavoriteStatus}
+              favoriteStatus={currentFavoriteStatus[dashboard.id]}
+              handleBulkDashboardExport={handleBulkDashboardExport}
+              onDelete={setDashboardToDelete}
+            />
+          ))}
         </Container>
       );
     },
@@ -590,6 +592,7 @@ function DashboardWelcome({
         items={[
           {
             key: 'all_dashboards',
+            forceRender: true,
             label:
               section?.count == null
                 ? t(
