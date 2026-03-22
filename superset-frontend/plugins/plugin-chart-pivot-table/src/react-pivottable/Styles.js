@@ -150,22 +150,30 @@ export const Styles = styled.div`
       text-align: right;
     }
 
-    table.pvtTable tbody tr.pvtRowHovered > th,
-    table.pvtTable tbody tr.pvtRowHovered > td {
-      background-color: ${theme.colorFillTertiary};
-      color: ${theme.colorText};
+    /* Keep hover purely in CSS to avoid rerendering the full pivot table
+     * on every mouse move across large datasets. */
+    table.pvtTable tbody tr:hover > th,
+    table.pvtTable tbody tr:hover > td {
+      background-color: ${theme.colorFillTertiary} !important;
+      color: ${theme.colorText} !important;
     }
 
-    table.pvtTable tbody tr.pvtRowHovered > th.pvtCellHovered,
-    table.pvtTable tbody tr.pvtRowHovered > td.pvtCellHovered {
-      background-color: ${theme.colorPrimaryBg};
-      color: ${theme.colorText};
+    table.pvtTable tbody tr:hover > th:hover,
+    table.pvtTable tbody tr:hover > td:hover {
+      background-color: ${theme.colorPrimaryBg} !important;
+      color: ${theme.colorText} !important;
     }
 
     table.pvtTable tbody tr.pvtRowSelected > th,
     table.pvtTable tbody tr.pvtRowSelected > td {
-      background-color: ${theme.colorPrimaryBg};
-      color: ${theme.colorText};
+      background-color: ${theme.colorPrimaryBg} !important;
+      color: ${theme.colorText} !important;
+    }
+
+    table.pvtTable tbody tr.pvtRowSelected > th:hover,
+    table.pvtTable tbody tr.pvtRowSelected > td:hover {
+      background-color: ${theme.colorPrimaryBg} !important;
+      color: ${theme.colorText} !important;
     }
 
     table.pvtTable tbody tr th.pvtRowLabel {

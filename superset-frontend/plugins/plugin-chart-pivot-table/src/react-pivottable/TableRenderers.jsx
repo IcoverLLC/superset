@@ -118,15 +118,11 @@ export class TableRenderer extends Component {
     this.state = {
       collapsedRows: {},
       collapsedCols: {},
-      hoveredRowKey: null,
-      hoveredCellKey: null,
       selectedRowKey: null,
     };
     this.tableRef = null;
     this.resizeObserver = null;
     this.layoutFrame = null;
-    this.hoverFrame = null;
-    this.pendingHoverState = null;
 
     this.clickHeaderHandler = this.clickHeaderHandler.bind(this);
     this.clickHandler = this.clickHandler.bind(this);
@@ -134,8 +130,6 @@ export class TableRenderer extends Component {
     this.setTableRef = this.setTableRef.bind(this);
     this.scheduleStickyLayout = this.scheduleStickyLayout.bind(this);
     this.syncStickyLayout = this.syncStickyLayout.bind(this);
-    this.scheduleHoverState = this.scheduleHoverState.bind(this);
-    this.flushHoverState = this.flushHoverState.bind(this);
   }
 
   componentDidMount() {
@@ -154,9 +148,6 @@ export class TableRenderer extends Component {
     }
     if (this.layoutFrame && typeof cancelAnimationFrame === 'function') {
       cancelAnimationFrame(this.layoutFrame);
-    }
-    if (this.hoverFrame && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.hoverFrame);
     }
   }
 
@@ -187,56 +178,6 @@ export class TableRenderer extends Component {
     this.layoutFrame = requestAnimationFrame(() => {
       this.layoutFrame = null;
       this.syncStickyLayout();
-    });
-  }
-
-  scheduleHoverState(nextHoverState) {
-    this.pendingHoverState = nextHoverState;
-
-    if (this.hoverFrame) {
-      return;
-    }
-
-    if (typeof requestAnimationFrame !== 'function') {
-      this.flushHoverState();
-      return;
-    }
-
-    this.hoverFrame = requestAnimationFrame(() => {
-      this.hoverFrame = null;
-      this.flushHoverState();
-    });
-  }
-
-  flushHoverState() {
-    const nextHoverState = this.pendingHoverState;
-    this.pendingHoverState = null;
-
-    if (!nextHoverState) {
-      return;
-    }
-
-    this.setState(state => {
-      const hoveredRowKey =
-        nextHoverState.hoveredRowKey === undefined
-          ? state.hoveredRowKey
-          : nextHoverState.hoveredRowKey;
-      const hoveredCellKey =
-        nextHoverState.hoveredCellKey === undefined
-          ? state.hoveredCellKey
-          : nextHoverState.hoveredCellKey;
-
-      if (
-        state.hoveredRowKey === hoveredRowKey &&
-        state.hoveredCellKey === hoveredCellKey
-      ) {
-        return null;
-      }
-
-      return {
-        hoveredRowKey,
-        hoveredCellKey,
-      };
     });
   }
 
@@ -460,36 +401,6 @@ export class TableRenderer extends Component {
         isSubtotal,
         isGrandTotal,
       );
-  }
-
-  handleRowMouseEnter(flatRowKey) {
-    return () => {
-      this.scheduleHoverState({
-        hoveredRowKey: flatRowKey,
-      });
-    };
-  }
-
-  handleRowMouseLeave(flatRowKey) {
-    return () => {
-      this.pendingHoverState = null;
-      this.setState(state => {
-        if (state.hoveredRowKey !== flatRowKey) {
-          return null;
-        }
-
-        return { hoveredRowKey: null, hoveredCellKey: null };
-      });
-    };
-  }
-
-  handleCellMouseEnter(flatRowKey, hoveredCellKey) {
-    return () => {
-      this.scheduleHoverState({
-        hoveredRowKey: flatRowKey,
-        hoveredCellKey,
-      });
-    };
   }
 
   handleRowActivation(flatRowKey) {
@@ -926,13 +837,8 @@ export class TableRenderer extends Component {
       dateFormatters,
       isDarkTheme,
       themeBackgroundColor,
-      rowHoverBackgroundColor,
-      hoveredCellBackgroundColor,
-      rowSelectedBackgroundColor,
-      rowHighlightTextColor,
     } = this.props.tableOptions;
     const flatRowKey = flatKey(rowKey);
-    const isHoveredRow = this.state.hoveredRowKey === flatRowKey;
     const isSelectedRow = this.state.selectedRowKey === flatRowKey;
 
     const colIncrSpan = colAttrs.length !== 0 ? 1 : 0;
@@ -969,15 +875,10 @@ export class TableRenderer extends Component {
           dateFormatters && dateFormatters[rowAttrs[i]]
             ? dateFormatters[rowAttrs[i]](r)
             : r;
-        const hoveredCellKey = `row-header-${i}`;
         return (
           <th
             key={`rowKeyLabel-${i}`}
-            className={`${valueCellClassName}${
-              isHoveredRow && this.state.hoveredCellKey === hoveredCellKey
-                ? ' pvtCellHovered'
-                : ''
-            }`}
+            className={valueCellClassName}
             rowSpan={rowSpan}
             colSpan={colSpan}
             data-sticky-start={pinRowsBlock ? i : undefined}
@@ -996,7 +897,6 @@ export class TableRenderer extends Component {
               i,
               this.props.tableOptions.clickRowHeaderCallback,
             )}
-            onMouseEnter={this.handleCellMouseEnter(flatRowKey, hoveredCellKey)}
             onContextMenu={handleContextMenu}
           >
             {displayHeaderCell(
@@ -1018,11 +918,7 @@ export class TableRenderer extends Component {
     const attrValuePaddingCell =
       rowKey.length < rowAttrs.length ? (
         <th
-          className={`pvtRowLabel pvtSubtotalLabel${
-            isHoveredRow && this.state.hoveredCellKey === 'row-subtotal'
-              ? ' pvtCellHovered'
-              : ''
-          }`}
+          className="pvtRowLabel pvtSubtotalLabel"
           key="rowKeyBuffer"
           colSpan={rowAttrs.length - rowKey.length + colIncrSpan}
           rowSpan={1}
@@ -1037,7 +933,6 @@ export class TableRenderer extends Component {
             this.props.tableOptions.clickRowHeaderCallback,
             true,
           )}
-          onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-subtotal')}
         >
           {t('Subtotal')}
         </th>
@@ -1076,36 +971,22 @@ export class TableRenderer extends Component {
         isDarkTheme,
         themeBackgroundColor,
       });
-      const rowBackgroundColor = isSelectedRow
-        ? rowSelectedBackgroundColor
-        : isHoveredRow
-          ? rowHoverBackgroundColor
-          : adaptiveBackgroundColor;
-      const isHoveredCell = isHoveredRow && this.state.hoveredCellKey === flatColKey;
-      const effectiveBackgroundColor =
-        isSelectedRow || !isHoveredCell
-          ? rowBackgroundColor
-          : hoveredCellBackgroundColor;
 
       const style = {
         ...(agg.isSubtotal ? { fontWeight: 'bold' } : {}),
-        backgroundColor: effectiveBackgroundColor,
-        color:
-          isHoveredRow || isSelectedRow
-            ? rowHighlightTextColor
-            : getConditionalFormattingTextColor({
-                backgroundColor: adaptiveBackgroundColor,
-                isDarkTheme,
-              }),
+        backgroundColor: adaptiveBackgroundColor,
+        color: getConditionalFormattingTextColor({
+          backgroundColor: adaptiveBackgroundColor,
+          isDarkTheme,
+        }),
       };
 
       return (
         <td
           role="gridcell"
-          className={`pvtVal${isHoveredCell ? ' pvtCellHovered' : ''}`}
+          className="pvtVal"
           key={`pvtVal-${flatColKey}`}
           onClick={rowClickHandlers[flatColKey]}
-          onMouseEnter={this.handleCellMouseEnter(flatRowKey, flatColKey)}
           onContextMenu={e => this.props.onContextMenu(e, colKey, rowKey)}
           style={style}
         >
@@ -1122,13 +1003,8 @@ export class TableRenderer extends Component {
         <td
           role="gridcell"
           key="total"
-          className={`pvtTotal${
-            isHoveredRow && this.state.hoveredCellKey === 'row-total'
-              ? ' pvtCellHovered'
-              : ''
-          }`}
+          className="pvtTotal"
           onClick={rowTotalCallbacks[flatRowKey]}
-          onMouseEnter={this.handleCellMouseEnter(flatRowKey, 'row-total')}
           onContextMenu={e => this.props.onContextMenu(e, undefined, rowKey)}
         >
           {displayCell(agg.format(aggValue), allowRenderHtml)}
@@ -1146,15 +1022,8 @@ export class TableRenderer extends Component {
     return (
       <tr
         key={`keyRow-${flatRowKey}`}
-        className={[
-          isHoveredRow ? 'pvtRowHovered' : '',
-          isSelectedRow ? 'pvtRowSelected' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        className={isSelectedRow ? 'pvtRowSelected' : ''}
         onClick={this.handleRowActivation(flatRowKey)}
-        onMouseEnter={this.handleRowMouseEnter(flatRowKey)}
-        onMouseLeave={this.handleRowMouseLeave(flatRowKey)}
       >
         {rowCells}
       </tr>

@@ -480,10 +480,6 @@ export default function PivotTableChart(props: PivotTableProps) {
       isDarkTheme: tinycolor(theme.colorBgContainer).isDark(),
       themeBackgroundColor: theme.colorBgContainer,
       pinRowsBlock,
-      rowHoverBackgroundColor: theme.colorFillTertiary,
-      hoveredCellBackgroundColor: theme.colorPrimaryBg,
-      rowSelectedBackgroundColor: theme.colorPrimaryBg,
-      rowHighlightTextColor: theme.colorText,
     }),
     [
       colTotals,
