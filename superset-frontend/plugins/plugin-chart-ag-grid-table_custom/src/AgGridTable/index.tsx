@@ -274,11 +274,48 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     }, [hasServerPageLengthChanged]);
 
+    const sizeColumnsToContentWhenPossible = useCallback(
+      (api: GridApi) => {
+        const resize = () => {
+          const displayedColumns = api.getAllDisplayedColumns();
+          if (!displayedColumns.length) {
+            return;
+          }
+
+          api.autoSizeColumns(displayedColumns.map(column => column.getColId()));
+
+          const availableWidth = containerRef.current?.clientWidth ?? width;
+          if (!availableWidth) {
+            return;
+          }
+
+          const totalColumnsWidth = api
+            .getAllDisplayedColumns()
+            .reduce((sum, column) => sum + column.getActualWidth(), 0);
+
+          if (totalColumnsWidth > availableWidth) {
+            api.sizeColumnsToFit();
+          }
+        };
+
+        if (
+          typeof window !== 'undefined' &&
+          typeof window.requestAnimationFrame === 'function'
+        ) {
+          window.requestAnimationFrame(resize);
+          return;
+        }
+
+        resize();
+      },
+      [width],
+    );
+
     useEffect(() => {
       if (gridRef.current?.api && !hasStoredColumnState.current) {
-        gridRef.current.api.sizeColumnsToFit();
+        sizeColumnsToContentWhenPossible(gridRef.current.api);
       }
-    }, [width]);
+    }, [sizeColumnsToContentWhenPossible, width]);
 
     const applyStoredColumnState = useCallback(
       (api: GridApi) => {
@@ -335,8 +372,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       const restoredState = applyStoredColumnState(params.api);
       hasStoredColumnState.current = restoredState;
       if (!restoredState) {
-        // This will make columns fill the grid width
-        params.api.sizeColumnsToFit();
+        sizeColumnsToContentWhenPossible(params.api);
       }
     };
 
@@ -431,7 +467,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             columnDefs={colDefsFromProps}
             defaultColDef={defaultColDef}
             components={gridComponents}
-            onColumnGroupOpened={params => params.api.sizeColumnsToFit()}
+            onColumnGroupOpened={params =>
+              sizeColumnsToContentWhenPossible(params.api)
+            }
             rowSelection="multiple"
             animateRows
             rowBuffer={rowBuffer}
