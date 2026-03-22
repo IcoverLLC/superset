@@ -231,7 +231,7 @@ class TestWebDriverPlaywright(SupersetTestCase):
 
         args, kwargs = page.wait_for_function.call_args
         assert "window.__supersetPlaywrightScreenshotState" in args[0]
-        assert args[1] == 1000
+        assert kwargs["arg"] == 1000
         assert kwargs["timeout"] == 15000
         assert kwargs["polling"] == 200
 

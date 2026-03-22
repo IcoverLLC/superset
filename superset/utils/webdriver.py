@@ -179,7 +179,7 @@ class WebDriverPlaywright(WebDriverProxy):
                     return now - state.readySince >= quietWindowMs;
                 }
                 """,
-                1000,
+                arg=1000,
                 timeout=load_wait * 1000,
                 polling=200,
             )
