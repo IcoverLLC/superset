@@ -131,6 +131,26 @@ class WebDriverPlaywright(WebDriverProxy):
             page.wait_for_function(
                 """
                 quietWindowMs => {
+                    const root =
+                      document.querySelector('.standalone') || document.body;
+                    if (
+                      root &&
+                      !window.__supersetPlaywrightDashboardObserverInstalled
+                    ) {
+                      window.__supersetPlaywrightLastDashboardMutationAt = Date.now();
+                      const observer = new MutationObserver(() => {
+                        window.__supersetPlaywrightLastDashboardMutationAt =
+                          Date.now();
+                      });
+                      observer.observe(root, {
+                        subtree: true,
+                        childList: true,
+                        attributes: true,
+                        characterData: true,
+                      });
+                      window.__supersetPlaywrightDashboardObserverInstalled = true;
+                    }
+
                     const isVisible = selector =>
                       Array.from(document.querySelectorAll(selector)).some(el => {
                         const rect = el.getBoundingClientRect();
@@ -158,6 +178,8 @@ class WebDriverPlaywright(WebDriverProxy):
                         readySince: 0,
                       });
                     const now = Date.now();
+                    const lastMutationAt =
+                      window.__supersetPlaywrightLastDashboardMutationAt || now;
 
                     if (!hasStandalone || !hasContent || hasLoadingElements) {
                       state.href = currentHref;
@@ -176,10 +198,13 @@ class WebDriverPlaywright(WebDriverProxy):
                       return false;
                     }
 
-                    return now - state.readySince >= quietWindowMs;
+                    return (
+                      now - state.readySince >= quietWindowMs &&
+                      now - lastMutationAt >= quietWindowMs
+                    );
                 }
                 """,
-                arg=1000,
+                arg=2000,
                 timeout=load_wait * 1000,
                 polling=200,
             )
