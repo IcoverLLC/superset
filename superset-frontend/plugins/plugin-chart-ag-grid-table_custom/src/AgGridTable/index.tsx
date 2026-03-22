@@ -546,7 +546,11 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             onColumnGroupOpened={params =>
               sizeColumnsToContentWhenPossible(params.api)
             }
-            rowSelection={{ mode: 'multiRow' }}
+            rowSelection={{
+              mode: 'multiRow',
+              checkboxes: false,
+              headerCheckbox: false,
+            }}
             animateRows
             rowBuffer={rowBuffer}
             onCellClicked={handleCrossFilter}
