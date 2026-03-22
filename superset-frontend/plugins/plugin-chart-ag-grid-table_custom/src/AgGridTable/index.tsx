@@ -96,6 +96,7 @@ export interface AgGridTableProps {
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
 
 const isSearchFocused = new Map<string, boolean>();
+const TOTALS_WIDTH_BUFFER = 16;
 
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
@@ -283,19 +284,86 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           }
 
           api.autoSizeColumns(displayedColumns.map(column => column.getColId()));
+          const columnSizing = displayedColumns.map((column, index) => {
+            const colId = column.getColId();
+            const totalValue = cleanedTotals?.[colId];
+            const hasTotalValue =
+              index === 0 || (totalValue !== undefined && totalValue !== null);
+            const totalsBuffer =
+              showTotals && hasTotalValue ? TOTALS_WIDTH_BUFFER : 0;
+            const minWidth =
+              (column.getColDef().minWidth ??
+                (typeof defaultColDef.minWidth === 'number'
+                  ? defaultColDef.minWidth
+                  : 100)) + totalsBuffer;
+            const preferredWidth = Math.max(
+              column.getActualWidth() + totalsBuffer,
+              minWidth,
+            );
+
+            return {
+              colId,
+              minWidth,
+              preferredWidth,
+            };
+          });
 
           const availableWidth = containerRef.current?.clientWidth ?? width;
           if (!availableWidth) {
+            api.applyColumnState({
+              state: columnSizing.map(({ colId, preferredWidth }) => ({
+                colId,
+                width: preferredWidth,
+              })),
+              applyOrder: false,
+            });
             return;
           }
 
-          const totalColumnsWidth = api
-            .getAllDisplayedColumns()
-            .reduce((sum, column) => sum + column.getActualWidth(), 0);
+          const totalPreferredWidth = columnSizing.reduce(
+            (sum, column) => sum + column.preferredWidth,
+            0,
+          );
+          const totalMinWidth = columnSizing.reduce(
+            (sum, column) => sum + column.minWidth,
+            0,
+          );
 
-          if (totalColumnsWidth > availableWidth) {
-            api.sizeColumnsToFit();
+          if (totalPreferredWidth <= availableWidth) {
+            api.applyColumnState({
+              state: columnSizing.map(({ colId, preferredWidth }) => ({
+                colId,
+                width: preferredWidth,
+              })),
+              applyOrder: false,
+            });
+            return;
           }
+
+          if (totalMinWidth >= availableWidth) {
+            api.applyColumnState({
+              state: columnSizing.map(({ colId, minWidth }) => ({
+                colId,
+                width: minWidth,
+              })),
+              applyOrder: false,
+            });
+            return;
+          }
+
+          const shrinkRatio =
+            (availableWidth - totalMinWidth) /
+            (totalPreferredWidth - totalMinWidth);
+
+          api.applyColumnState({
+            state: columnSizing.map(({ colId, minWidth, preferredWidth }) => ({
+              colId,
+              width: Math.floor(
+                minWidth + (preferredWidth - minWidth) * shrinkRatio,
+              ),
+            })),
+            applyOrder: false,
+          });
         };
 
         if (
@@ -308,14 +376,21 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
         resize();
       },
-      [width],
+      [cleanedTotals, defaultColDef.minWidth, showTotals, width],
     );
 
     useEffect(() => {
       if (gridRef.current?.api && !hasStoredColumnState.current) {
         sizeColumnsToContentWhenPossible(gridRef.current.api);
       }
-    }, [sizeColumnsToContentWhenPossible, width]);
+    }, [
+      cleanedTotals,
+      colDefsFromProps,
+      rowData,
+      showTotals,
+      sizeColumnsToContentWhenPossible,
+      width,
+    ]);
 
     const applyStoredColumnState = useCallback(
       (api: GridApi) => {
@@ -445,7 +520,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
                       serverPagination ? searchValue : quickFilterText || ''
                     }
                     type="text"
-                    id="filter-text-box"
+                    id={searchId}
+                    name={searchId}
                     placeholder="Search"
                     onInput={onFilterTextBoxChanged}
                     onFocus={handleSearchFocus}
@@ -470,7 +546,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             onColumnGroupOpened={params =>
               sizeColumnsToContentWhenPossible(params.api)
             }
-            rowSelection="multiple"
+            rowSelection={{ mode: 'multiRow' }}
             animateRows
             rowBuffer={rowBuffer}
             onCellClicked={handleCrossFilter}

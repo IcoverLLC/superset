@@ -161,11 +161,7 @@ export const useColDefs = ({
   const isDarkTheme = useIsDark();
 
   const getCommonColProps = useCallback(
-    (
-      col: InputColumn,
-    ): ColDef & {
-      isMain: boolean;
-    } => {
+    (col: InputColumn): ColDef => {
       const {
         config,
         isMetric,
@@ -224,7 +220,7 @@ export const useColDefs = ({
 
       const filter = getFilterType(col);
 
-      const colDef: ColDef & { isMain: boolean } = {
+      const colDef: ColDef = {
         field: colId,
         headerName: getHeaderLabel(col),
         valueFormatter: (p: ValueFormatterParams) => valueFormatter(p, col),
@@ -302,6 +298,10 @@ export const useColDefs = ({
           isPercentMetric,
           isNumeric,
           hideSummary: config?.hideSummary,
+          isMain,
+          ...(originalLabel && {
+            timeComparisonKey: originalLabel,
+          }),
         },
         lockPinned: !allowRearrangeColumns,
         sortable: !serverPagination || !isPercentMetric,
@@ -312,14 +312,10 @@ export const useColDefs = ({
             slice_id,
           },
         }),
-        isMain,
         ...(!isMain &&
           originalLabel && {
             columnGroupShow: 'open' as const,
           }),
-        ...(originalLabel && {
-          timeComparisonKey: originalLabel,
-        }),
         // Keep auto-height enabled so hovered truncated cells can expand to multiple lines
         // and show full text instead of staying clipped to a fixed row height.
         wrapText: true,

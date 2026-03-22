@@ -209,17 +209,14 @@ export interface CustomHeaderParams extends IHeaderParams {
   slice_id: number;
 }
 
-export interface UserProvidedColDef extends ColDef {
-  isMain?: boolean;
-  timeComparisonKey?: string;
-}
-
 export interface CustomColDef extends ColDef {
   context?: {
     isMetric?: boolean;
     isPercentMetric?: boolean;
     isNumeric?: boolean;
     hideSummary?: boolean;
+    isMain?: boolean;
+    timeComparisonKey?: string;
   };
 }
 

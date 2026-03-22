@@ -103,8 +103,7 @@ export const valueFormatter = (
 };
 
 export const valueGetter = (params: ValueGetterParams, col: InputColumn) => {
-  // @ts-ignore
-  if (params?.colDef?.isMain) {
+  if (params?.colDef?.context?.isMain) {
     const modifiedColId = `Main ${params.column.getColId()}`;
     return params.data[modifiedColId];
   }

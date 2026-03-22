@@ -28,7 +28,6 @@ import {
   CustomColDef,
   CustomHeaderParams,
   SortState,
-  UserProvidedColDef,
 } from '../../types';
 import CustomPopover from './CustomPopover';
 import {
@@ -64,7 +63,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const { initialSortState, onColumnHeaderClicked } = context;
   const colId = column?.getColId();
   const colDef = column?.getColDef() as CustomColDef;
-  const userColDef = column.getUserProvidedColDef() as UserProvidedColDef;
   const isPercentMetric = colDef?.context?.isPercentMetric;
 
   const [isFilterVisible, setFilterVisible] = useState(false);
@@ -73,8 +71,8 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const isFilterActive = column?.isFilterActive();
 
   const currentSort = initialSortState?.[0];
-  const isMain = userColDef?.isMain;
-  const isTimeComparison = !isMain && userColDef?.timeComparisonKey;
+  const isMain = colDef?.context?.isMain;
+  const isTimeComparison = !isMain && colDef?.context?.timeComparisonKey;
   const sortKey = isMain ? colId.replace('Main', '').trim() : colId;
   const sortIcon = getSortIcon(initialSortState, colId);
 
