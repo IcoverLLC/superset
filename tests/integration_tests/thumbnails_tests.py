@@ -37,7 +37,11 @@ from superset.utils.screenshots import (
     ScreenshotCachePayload,
 )
 from superset.utils.urls import get_url_path
-from superset.utils.webdriver import WebDriverSelenium
+from superset.utils.webdriver import (
+    PlaywrightTimeout,
+    WebDriverPlaywright,
+    WebDriverSelenium,
+)
 from tests.integration_tests.base_tests import SupersetTestCase
 from tests.integration_tests.conftest import with_feature_flags
 from tests.integration_tests.constants import ADMIN_USERNAME, ALPHA_USERNAME
@@ -186,6 +190,50 @@ class TestWebDriverSelenium(SupersetTestCase):
         app.config["SCREENSHOT_SELENIUM_ANIMATION_WAIT"] = 4
         webdriver.get_screenshot(url, "chart-container", user=user)
         assert mock_sleep.call_args_list[1] == call(4)
+
+
+class TestWebDriverPlaywright(SupersetTestCase):
+    def test_wait_for_dashboard_to_draw_falls_back_to_grid_container(self):
+        page = MagicMock()
+        chart_locator = MagicMock()
+        chart_container = MagicMock()
+        chart_locator.nth.return_value = chart_container
+        chart_container.wait_for.side_effect = PlaywrightTimeout("timed out")
+
+        grid_locator = MagicMock()
+        grid_container = MagicMock()
+        grid_locator.nth.return_value = grid_container
+
+        page.locator.side_effect = lambda selector: {
+            ".chart-container": chart_locator,
+            ".grid-container": grid_locator,
+        }[selector]
+
+        WebDriverPlaywright._wait_for_dashboard_to_draw(page, "http://example", 12)
+
+        chart_container.wait_for.assert_called_once_with(
+            state="visible",
+            timeout=12000,
+        )
+        grid_container.wait_for.assert_called_once_with(
+            state="visible",
+            timeout=12000,
+        )
+
+    def test_wait_for_dashboard_to_stabilize_uses_quiet_window(self):
+        page = MagicMock()
+
+        WebDriverPlaywright._wait_for_dashboard_to_stabilize(
+            page,
+            "http://example",
+            15,
+        )
+
+        args, kwargs = page.wait_for_function.call_args
+        assert "window.__supersetPlaywrightScreenshotState" in args[0]
+        assert args[1] == 1000
+        assert kwargs["timeout"] == 15000
+        assert kwargs["polling"] == 200
 
 
 class TestThumbnails(SupersetTestCase):
