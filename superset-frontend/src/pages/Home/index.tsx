@@ -148,6 +148,14 @@ export const LoadingCards = ({ cover }: LoadingProps) => (
   </CardContainer>
 );
 
+function getHomeThumbnailsLabel(locale: string) {
+  const translatedLabel = t('Thumbnails');
+  return locale.toLowerCase().startsWith('ru') &&
+    translatedLabel === 'Thumbnails'
+    ? '\u041c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b'
+    : translatedLabel;
+}
+
 function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   const canReadSavedQueries = userHasPermission(user, 'SavedQuery', 'can_read');
   const userid = user.userId;
@@ -187,6 +195,9 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   );
   const useDashboardCatalogWelcome = isFeatureEnabled(
     FeatureFlag.WelcomeDashboardCatalog,
+  );
+  const thumbnailsLabel = getHomeThumbnailsLabel(
+    bootstrapData.common.locale || 'en',
   );
 
   const [otherTabTitle, otherTabFilters] = useMemo(() => {
@@ -344,7 +355,7 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
           <WelcomeNav>
             <div className="switch">
               <Switch checked={checked} onClick={handleToggle} />
-              <span>{t('Thumbnails')}</span>
+              <span>{thumbnailsLabel}</span>
             </div>
           </WelcomeNav>
         ),
