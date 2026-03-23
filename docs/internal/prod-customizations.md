@@ -1,6 +1,6 @@
 # `prod` vs `origin/6.0.0`: карта кастомизаций
 
-Последнее обновление: 2026-03-21
+Последнее обновление: 2026-03-23
 
 ## Назначение
 
@@ -14,9 +14,9 @@
 - База: `origin/6.0.0`
 - Целевая ветка: `prod`
 - На момент фиксации:
-  - `git diff --stat origin/6.0.0...prod` показывает `115 files changed, 12059 insertions(+), 400 deletions(-)`
-  - `git log origin/6.0.0..prod` содержит `393` коммита
-  - из них `154` merge PR, `14` merge branch, `45` revert-коммитов
+  - `git diff --stat origin/6.0.0...prod` показывает `117 files changed, 12526 insertions(+), 417 deletions(-)`
+  - `git log origin/6.0.0..prod` содержит `404` коммита
+  - из них `154` merge PR, `14` merge branch, `46` revert-коммитов
 
 Для этой карты использовались:
 
@@ -246,6 +246,9 @@ git log --no-merges --oneline origin/6.0.0..prod
   - chart thumbnail endpoints возвращают `404`
   - авто-триггер генерации chart thumbnail после изменения chart отключается
   - dashboard thumbnails при этом не ломаются
+- `WebDriverPlaywright` доработан под более устойчивое построение dashboard screenshot:
+  - ждёт видимый `.chart-container`, а если не дождался, пробует `.grid-container`
+  - для dashboard screenshot ждёт не только исчезновения loading-state, но и стабилизации DOM через quiet-window на `MutationObserver`
 - `ImageLoader` умеет повторять загрузку thumbnail после `202 Accepted`
 - `DashboardCard` умеет deferred loading thumbnails
 
@@ -253,6 +256,7 @@ git log --no-merges --oneline origin/6.0.0..prod
 
 - `superset/charts/api.py`
 - `superset/models/slice.py`
+- `superset/utils/webdriver.py`
 - `superset-frontend/packages/superset-ui-core/src/components/ListViewCard/ImageLoader.tsx`
 - `superset-frontend/src/features/dashboards/DashboardCard.tsx`
 - `tests/integration_tests/thumbnails_tests.py`
@@ -268,6 +272,7 @@ git log --no-merges --oneline origin/6.0.0..prod
 - не изменилась ли логика async screenshot endpoints
 - не появился ли upstream способ отключать chart thumbnails без локального patch
 - не сломается ли повторная загрузка при изменении response semantics `202`
+- не поменялись ли в upstream CSS-селекторы/этапы рендера dashboard page, от которых зависит `superset/utils/webdriver.py`
 
 ### 6. Docker/build и инфраструктурные правки
 
@@ -438,6 +443,7 @@ git log --no-merges --oneline origin/6.0.0..prod
 
 - `superset/charts/api.py`
 - `superset/models/slice.py`
+- `superset/utils/webdriver.py`
 - `tests/integration_tests/thumbnails_tests.py`
 - `tests/unit_tests/models/slice_test.py`
 
