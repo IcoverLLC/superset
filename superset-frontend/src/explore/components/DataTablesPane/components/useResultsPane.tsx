@@ -52,17 +52,37 @@ type AdhocMetricLike = {
   label?: string;
 };
 
+type QueryFormDataWithMetrics = ResultsPaneProps['queryFormData'] & {
+  metric?: unknown;
+  metrics?: unknown[];
+  metric_b?: unknown;
+  metrics_b?: unknown[];
+  metric_2?: unknown;
+  metrics_2?: unknown[];
+  queries?: QueryFormDataWithMetrics[];
+};
+
+const getMetricsFromFormData = (
+  formData: QueryFormDataWithMetrics,
+): unknown[] => [
+  formData.metric,
+  ...(Array.isArray(formData.metrics) ? formData.metrics : []),
+  formData.metric_b,
+  ...(Array.isArray(formData.metrics_b) ? formData.metrics_b : []),
+  formData.metric_2,
+  ...(Array.isArray(formData.metrics_2) ? formData.metrics_2 : []),
+];
+
 const getColumnValueKeyMap = (
   queryFormData: ResultsPaneProps['queryFormData'],
 ): Record<string, string> => {
-  const formData = queryFormData as ResultsPaneProps['queryFormData'] & {
-    metric?: unknown;
-    metrics?: unknown[];
-  };
-  const metrics = [
-    formData.metric,
-    ...(Array.isArray(formData.metrics) ? formData.metrics : []),
-  ].filter(Boolean);
+  const formData = queryFormData as QueryFormDataWithMetrics;
+  const queryMetrics = Array.isArray(formData.queries)
+    ? formData.queries.flatMap(query => getMetricsFromFormData(query))
+    : [];
+  const metrics = [...getMetricsFromFormData(formData), ...queryMetrics].filter(
+    Boolean,
+  );
 
   return metrics.reduce<Record<string, string>>((acc, metric) => {
     const adhocMetric = metric as AdhocMetricLike;
@@ -73,7 +93,7 @@ const getColumnValueKeyMap = (
       adhocMetric.hasCustomLabel &&
       adhocMetric.label
     ) {
-      const defaultLabel = new AdhocMetric(metric).getDefaultLabel();
+      const defaultLabel = new AdhocMetric(metric).translateToSql();
       if (defaultLabel && defaultLabel !== adhocMetric.label) {
         acc[adhocMetric.label] = defaultLabel;
       }
