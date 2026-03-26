@@ -256,18 +256,42 @@ export const useFilteredTableData = (
 
 const timeFormatter = getTimeFormatter(TimeFormats.DATABASE_DATETIME);
 
+const getTableCellKeys = (
+  key: string,
+  columnValueKeyMap?: Record<string, string>,
+) => {
+  const fallbackKey = columnValueKeyMap?.[key];
+  return [key, fallbackKey].reduce<string[]>((acc, candidate) => {
+    if (!candidate) {
+      return acc;
+    }
+    acc.push(candidate);
+    const keyWithoutDots = candidate.replace(/\./g, '');
+    if (keyWithoutDots !== candidate) {
+      acc.push(keyWithoutDots);
+    }
+    return acc;
+  }, []);
+};
+
+const hasTableCellKey = (
+  row: Record<string, any>,
+  key: string,
+  columnValueKeyMap?: Record<string, string>,
+) =>
+  getTableCellKeys(key, columnValueKeyMap).some(
+    candidate => row[candidate] !== undefined,
+  );
+
 const getTableCellValue = (
   row: Record<string, any>,
   key: string,
   columnValueKeyMap?: Record<string, string>,
 ) => {
-  const fallbackKey = columnValueKeyMap?.[key];
-
-  if (row[key] !== undefined) {
-    return row[key];
-  }
-  if (fallbackKey && row[fallbackKey] !== undefined) {
-    return row[fallbackKey];
+  for (const candidate of getTableCellKeys(key, columnValueKeyMap)) {
+    if (row[candidate] !== undefined) {
+      return row[candidate];
+    }
   }
   return undefined;
 };
@@ -323,8 +347,7 @@ export const useTableColumns = (
         ? colnames
             .filter(
               (column: string) =>
-                (Object.keys(data[0]).includes(column) ||
-                  Object.keys(data[0]).includes(columnValueKeyMap?.[column] || '')) &&
+                hasTableCellKey(data[0], column, columnValueKeyMap) &&
                 !column.endsWith('__inherit'),
             )
             .map((key, index) => {
