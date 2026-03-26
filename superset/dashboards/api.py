@@ -716,19 +716,39 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     "for welcome dashboards",
                     exc_info=True,
                 )
-            if load_sections and dashboards:
+            missing_top_dashboard_ids = [
+                dashboard_id
+                for dashboard_id in top_dashboard_ids
+                if str(dashboard_id) not in recently_viewed_at
+            ]
+            if missing_top_dashboard_ids:
                 try:
                     recently_viewed_at.update(
-                        self._get_recently_viewed_at(
-                            [dashboard.id for dashboard in dashboards]
-                        )
+                        self._get_recently_viewed_at(missing_top_dashboard_ids)
                     )
                 except Exception:  # pylint: disable=broad-except
                     logger.warning(
                         "Failed to load live recently_viewed_at "
-                        "for welcome dashboard section",
+                        "for top welcome dashboards",
                         exc_info=True,
                     )
+            if load_sections and dashboards:
+                section_dashboard_ids = [
+                    dashboard.id
+                    for dashboard in dashboards
+                    if str(dashboard.id) not in recently_viewed_at
+                ]
+                if section_dashboard_ids:
+                    try:
+                        recently_viewed_at.update(
+                            self._get_recently_viewed_at(section_dashboard_ids)
+                        )
+                    except Exception:  # pylint: disable=broad-except
+                        logger.warning(
+                            "Failed to load live recently_viewed_at "
+                            "for welcome dashboard section",
+                            exc_info=True,
+                        )
 
         result = {
             "top_mode": top_mode,
