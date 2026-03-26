@@ -256,6 +256,22 @@ export const useFilteredTableData = (
 
 const timeFormatter = getTimeFormatter(TimeFormats.DATABASE_DATETIME);
 
+const getTableCellValue = (
+  row: Record<string, any>,
+  key: string,
+  columnValueKeyMap?: Record<string, string>,
+) => {
+  const fallbackKey = columnValueKeyMap?.[key];
+
+  if (row[key] !== undefined) {
+    return row[key];
+  }
+  if (fallbackKey && row[fallbackKey] !== undefined) {
+    return row[fallbackKey];
+  }
+  return undefined;
+};
+
 export const useTableColumns = (
   colnames?: string[],
   coltypes?: GenericDataType[],
@@ -264,6 +280,7 @@ export const useTableColumns = (
   isVisible?: boolean,
   moreConfigs?: { [key: string]: Partial<Column> },
   allowHTML?: boolean,
+  columnValueKeyMap?: Record<string, string>,
 ) => {
   const [originalFormattedTimeColumns, setOriginalFormattedTimeColumns] =
     useState<string[]>(getTimeColumns(datasourceId));
@@ -306,12 +323,17 @@ export const useTableColumns = (
         ? colnames
             .filter(
               (column: string) =>
-                Object.keys(data[0]).includes(column) &&
+                (Object.keys(data[0]).includes(column) ||
+                  Object.keys(data[0]).includes(columnValueKeyMap?.[column] || '')) &&
                 !column.endsWith('__inherit'),
             )
             .map((key, index) => {
               const colType = coltypes?.[index];
-              const firstValue = data[0][key];
+              const firstValue = getTableCellValue(
+                data[0],
+                key,
+                columnValueKeyMap,
+              );
               const originalFormattedTimeColumnIndex =
                 colType === GenericDataType.Temporal
                   ? originalFormattedTimeColumns.indexOf(key)
@@ -321,7 +343,8 @@ export const useTableColumns = (
               return {
                 // react-table requires a non-empty id, therefore we introduce a fallback value in case the key is empty
                 id: key || index,
-                accessor: (row: Record<string, any>) => row[key],
+                accessor: (row: Record<string, any>) =>
+                  getTableCellValue(row, key, columnValueKeyMap),
                 Header:
                   colType === GenericDataType.Temporal &&
                   typeof firstValue !== 'string' ? (
@@ -367,6 +390,7 @@ export const useTableColumns = (
       datasourceId,
       moreConfigs,
       originalFormattedTimeColumns,
+      columnValueKeyMap,
     ],
   );
 };

@@ -25,6 +25,7 @@ import {
   getChartMetadataRegistry,
   getClientErrorObject,
 } from '@superset-ui/core';
+import AdhocMetric from 'src/explore/components/controls/MetricControl/AdhocMetric';
 import { EmptyState, Loading } from '@superset-ui/core/components';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
 import { ResultsPaneProps, QueryResultInterface } from '../types';
@@ -45,6 +46,42 @@ const StyledDiv = styled.div`
 
 const cache = new WeakMap();
 
+type AdhocMetricLike = {
+  expressionType?: string;
+  hasCustomLabel?: boolean;
+  label?: string;
+};
+
+const getColumnValueKeyMap = (
+  queryFormData: ResultsPaneProps['queryFormData'],
+): Record<string, string> => {
+  const formData = queryFormData as ResultsPaneProps['queryFormData'] & {
+    metric?: unknown;
+    metrics?: unknown[];
+  };
+  const metrics = [
+    formData.metric,
+    ...(Array.isArray(formData.metrics) ? formData.metrics : []),
+  ].filter(Boolean);
+
+  return metrics.reduce<Record<string, string>>((acc, metric) => {
+    const adhocMetric = metric as AdhocMetricLike;
+    if (
+      typeof metric === 'object' &&
+      metric &&
+      adhocMetric.expressionType === 'SIMPLE' &&
+      adhocMetric.hasCustomLabel &&
+      adhocMetric.label
+    ) {
+      const defaultLabel = new AdhocMetric(metric).getDefaultLabel();
+      if (defaultLabel && defaultLabel !== adhocMetric.label) {
+        acc[adhocMetric.label] = defaultLabel;
+      }
+    }
+    return acc;
+  }, {});
+};
+
 export const useResultsPane = ({
   isRequest,
   queryFormData,
@@ -63,6 +100,7 @@ export const useResultsPane = ({
   const [resultResp, setResultResp] = useState<QueryResultInterface[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [responseError, setResponseError] = useState<string>('');
+  const columnValueKeyMap = getColumnValueKeyMap(queryFormData);
   const queryCount = metadata?.queryObjectCount ?? 1;
   const isQueryCountDynamic = metadata?.dynamicQueryObjectCount;
 
@@ -164,6 +202,7 @@ export const useResultsPane = ({
         datasourceId={queryFormData.datasource}
         isVisible={isVisible}
         canDownload={canDownload}
+        columnValueKeyMap={columnValueKeyMap}
       />
     </StyledDiv>
   ));

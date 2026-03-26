@@ -37,6 +37,7 @@ export const SingleQueryResultPane = ({
   rowcount,
   datasourceId,
   dataSize = 50,
+  columnValueKeyMap,
   isVisible,
   canDownload,
 }: SingleQueryResultPaneProp) => {
@@ -52,6 +53,7 @@ export const SingleQueryResultPane = ({
     isVisible,
     {}, // moreConfig
     true, // allowHTML
+    columnValueKeyMap,
   );
   const filteredData = useFilteredTableData(filterText, data);
 
