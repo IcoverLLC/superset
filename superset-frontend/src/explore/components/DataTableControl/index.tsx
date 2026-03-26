@@ -296,6 +296,9 @@ const getTableCellValue = (
   return undefined;
 };
 
+const getTableColumnId = (key: string, index: number) =>
+  key && !key.includes('.') ? key : `__table_col_${index}`;
+
 export const useTableColumns = (
   colnames?: string[],
   coltypes?: GenericDataType[],
@@ -364,8 +367,9 @@ export const useTableColumns = (
               const isOriginalTimeColumn =
                 originalFormattedTimeColumns.includes(key);
               return {
-                // react-table requires a non-empty id, therefore we introduce a fallback value in case the key is empty
-                id: key || index,
+                // TableCollection treats dots in column ids as nested paths,
+                // so dotted labels need a safe internal id.
+                id: getTableColumnId(key, index),
                 accessor: (row: Record<string, any>) =>
                   getTableCellValue(row, key, columnValueKeyMap),
                 Header:
