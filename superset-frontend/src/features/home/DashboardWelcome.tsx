@@ -444,6 +444,17 @@ function DashboardWelcome({
     if (!initialData || loadVersion !== welcomeLoadVersionRef.current) {
       return;
     }
+    const sectionsData = await fetchWelcomeData(
+      0,
+      false,
+      true,
+      false,
+      true,
+      loadVersion,
+    );
+    if (!sectionsData || loadVersion !== welcomeLoadVersionRef.current) {
+      return;
+    }
     void fetchWelcomeData(0, false, true, true, true, loadVersion);
   }, [fetchWelcomeData]);
 

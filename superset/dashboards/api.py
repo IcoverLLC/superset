@@ -733,15 +733,31 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                         exc_info=True,
                     )
             if load_sections and dashboards:
-                section_dashboard_ids = [
+                section_dashboard_ids = [dashboard.id for dashboard in dashboards]
+                try:
+                    recently_viewed_at.update(
+                        get_welcome_snapshot_recently_viewed_at(
+                            section_dashboard_ids,
+                            get_user_id(),
+                        )
+                    )
+                except Exception:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Failed to load snapshot-based recently_viewed_at "
+                        "for welcome dashboard section",
+                        exc_info=True,
+                    )
+                missing_section_dashboard_ids = [
                     dashboard.id
                     for dashboard in dashboards
                     if str(dashboard.id) not in recently_viewed_at
                 ]
-                if section_dashboard_ids:
+                if missing_section_dashboard_ids:
                     try:
                         recently_viewed_at.update(
-                            self._get_recently_viewed_at(section_dashboard_ids)
+                            self._get_recently_viewed_at(
+                                missing_section_dashboard_ids
+                            )
                         )
                     except Exception:  # pylint: disable=broad-except
                         logger.warning(
