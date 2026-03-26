@@ -705,16 +705,30 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             )
         recently_viewed_at: dict[str, str] = {}
         if load_recently_viewed_at:
-            recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
-                top_dashboard_ids,
-                get_user_id(),
-            )
-            if load_sections and dashboards:
-                recently_viewed_at.update(
-                    self._get_recently_viewed_at(
-                        [dashboard.id for dashboard in dashboards]
-                    )
+            try:
+                recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
+                    top_dashboard_ids,
+                    get_user_id(),
                 )
+            except Exception:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to load snapshot-based recently_viewed_at "
+                    "for welcome dashboards",
+                    exc_info=True,
+                )
+            if load_sections and dashboards:
+                try:
+                    recently_viewed_at.update(
+                        self._get_recently_viewed_at(
+                            [dashboard.id for dashboard in dashboards]
+                        )
+                    )
+                except Exception:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Failed to load live recently_viewed_at "
+                        "for welcome dashboard section",
+                        exc_info=True,
+                    )
 
         result = {
             "top_mode": top_mode,

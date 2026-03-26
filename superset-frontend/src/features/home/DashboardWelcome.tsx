@@ -56,7 +56,6 @@ import {
 import type { InternalFilter } from 'src/components/ListView/types';
 import { findPermission } from 'src/utils/findPermission';
 import type { User, UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
-import type { RecentActivity } from 'src/features/home/types';
 
 const SECTION_PAGE_SIZE = 24;
 const WELCOME_FILTER_KEYS = ['search', 'tags', 'favorite'] as const;
@@ -213,10 +212,6 @@ function getRecentlyViewedDescription(viewedAt?: string) {
   );
 }
 
-function normalizeDashboardUrl(url?: string) {
-  return (url || '').replace(/\/+$/, '');
-}
-
 function DashboardWelcome({
   user,
   showThumbnails,
@@ -291,7 +286,6 @@ function DashboardWelcome({
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
   const [sectionExpanded, setSectionExpanded] = useState(false);
   const welcomeLoadVersionRef = useRef(0);
-  const recentlyViewedRequestKeyRef = useRef('');
 
   const { hasPerm } = useListViewResource<Dashboard>(
     'dashboard',
@@ -436,121 +430,26 @@ function DashboardWelcome({
     [addDangerToast, apiFilters],
   );
 
-  const fetchRecentActivityViewedAt = useCallback(
-    async (dashboards: Dashboard[], loadVersion = welcomeLoadVersionRef.current) => {
-      if (!dashboards.length || loadVersion !== welcomeLoadVersionRef.current) {
-        return;
-      }
-
-      const dashboardIdByUrl = new Map<string, string>();
-      dashboards.forEach(dashboard => {
-        const normalizedUrl = normalizeDashboardUrl(dashboard.url);
-        if (normalizedUrl) {
-          dashboardIdByUrl.set(normalizedUrl, String(dashboard.id));
-        }
-      });
-
-      const queryParams = rison.encode_uri({
-        actions: ['mount_dashboard'],
-        distinct: false,
-        page: 0,
-        page_size: Math.max(200, dashboards.length * 16),
-      });
-
-      try {
-        const { json = {} } = await SupersetClient.get({
-          endpoint: `/api/v1/log/recent_activity/?q=${queryParams}`,
-        });
-        if (loadVersion !== welcomeLoadVersionRef.current) {
-          return;
-        }
-        const recentlyViewedAt: Record<string, string> = {};
-        (json.result as RecentActivity[]).forEach(record => {
-          if (record.item_type !== 'dashboard') {
-            return;
-          }
-
-          const dashboardId = dashboardIdByUrl.get(
-            normalizeDashboardUrl(record.item_url),
-          );
-          if (dashboardId && !recentlyViewedAt[dashboardId]) {
-            recentlyViewedAt[dashboardId] = new Date(record.time).toISOString();
-          }
-        });
-
-        setWelcomeData(current =>
-          current && loadVersion === welcomeLoadVersionRef.current
-            ? {
-                ...current,
-                recently_viewed_at: {
-                  ...(current.recently_viewed_at || {}),
-                  ...recentlyViewedAt,
-                },
-              }
-            : current,
-        );
-      } catch {
-        // Keep the page responsive even if recent-activity hydration fails.
-      }
-    },
-    [],
-  );
-
   const fetchInitialWelcomeData = useCallback(async () => {
     const loadVersion = welcomeLoadVersionRef.current + 1;
     welcomeLoadVersionRef.current = loadVersion;
-    recentlyViewedRequestKeyRef.current = '';
     const initialData = await fetchWelcomeData(
       0,
       false,
       false,
-      false,
+      true,
       false,
       loadVersion,
     );
     if (!initialData || loadVersion !== welcomeLoadVersionRef.current) {
       return;
     }
-    void fetchWelcomeData(0, false, true, false, true, loadVersion);
+    void fetchWelcomeData(0, false, true, true, true, loadVersion);
   }, [fetchWelcomeData]);
 
   useEffect(() => {
     void fetchInitialWelcomeData();
   }, [fetchInitialWelcomeData]);
-
-  const recentlyViewedRequestKey = useMemo(() => {
-    if (!allDashboards.length) {
-      return '';
-    }
-    return allDashboards
-      .map(dashboard => `${dashboard.id}:${normalizeDashboardUrl(dashboard.url)}`)
-      .join('|');
-  }, [allDashboards]);
-
-  useEffect(() => {
-    const waitingForSectionStructure =
-      !!section && section.count == null && !sectionDashboards.length;
-
-    if (
-      waitingForSectionStructure ||
-      !recentlyViewedRequestKey ||
-      recentlyViewedRequestKeyRef.current === recentlyViewedRequestKey
-    ) {
-      return;
-    }
-
-    recentlyViewedRequestKeyRef.current = recentlyViewedRequestKey;
-    void fetchRecentActivityViewedAt(
-      allDashboards,
-      welcomeLoadVersionRef.current,
-    );
-  }, [
-    allDashboards,
-    fetchRecentActivityViewedAt,
-    recentlyViewedRequestKey,
-    section,
-    sectionDashboards.length,
-  ]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
     setPreparingExport(true);
@@ -778,7 +677,7 @@ function DashboardWelcome({
                               section.page + 1,
                               true,
                               true,
-                              false,
+                              true,
                             );
                           }
                         }}
