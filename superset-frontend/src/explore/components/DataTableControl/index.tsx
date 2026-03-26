@@ -304,7 +304,11 @@ export const useTableColumns = (
     () =>
       colnames && data?.length
         ? colnames
-            .filter((column: string) => Object.keys(data[0]).includes(column))
+            .filter(
+              (column: string) =>
+                Object.keys(data[0]).includes(column) &&
+                !column.endsWith('__inherit'),
+            )
             .map((key, index) => {
               const colType = coltypes?.[index];
               const firstValue = data[0][key];
