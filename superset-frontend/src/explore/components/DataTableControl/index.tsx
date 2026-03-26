@@ -256,48 +256,21 @@ export const useFilteredTableData = (
 
 const timeFormatter = getTimeFormatter(TimeFormats.DATABASE_DATETIME);
 
-const getTableCellKeys = (
-  key: string,
-  columnValueKeyMap?: Record<string, string>,
-) => {
-  const fallbackKey = columnValueKeyMap?.[key];
-  return [key, fallbackKey].reduce<string[]>((acc, candidate) => {
-    if (!candidate) {
-      return acc;
-    }
-    acc.push(candidate);
-    const keyWithoutDots = candidate.replace(/\./g, '');
-    if (keyWithoutDots !== candidate) {
-      acc.push(keyWithoutDots);
-    }
-    return acc;
-  }, []);
-};
-
-const hasTableCellKey = (
-  row: Record<string, any>,
-  key: string,
-  columnValueKeyMap?: Record<string, string>,
-) =>
-  getTableCellKeys(key, columnValueKeyMap).some(
-    candidate => row[candidate] !== undefined,
-  );
-
 const getTableCellValue = (
   row: Record<string, any>,
   key: string,
   columnValueKeyMap?: Record<string, string>,
 ) => {
-  for (const candidate of getTableCellKeys(key, columnValueKeyMap)) {
-    if (row[candidate] !== undefined) {
-      return row[candidate];
-    }
+  const fallbackKey = columnValueKeyMap?.[key];
+
+  if (row[key] !== undefined) {
+    return row[key];
+  }
+  if (fallbackKey && row[fallbackKey] !== undefined) {
+    return row[fallbackKey];
   }
   return undefined;
 };
-
-const getTableColumnId = (key: string, index: number) =>
-  key && !key.includes('.') ? key : `__table_col_${index}`;
 
 export const useTableColumns = (
   colnames?: string[],
@@ -350,7 +323,10 @@ export const useTableColumns = (
         ? colnames
             .filter(
               (column: string) =>
-                hasTableCellKey(data[0], column, columnValueKeyMap) &&
+                (Object.keys(data[0]).includes(column) ||
+                  Object.keys(data[0]).includes(
+                    columnValueKeyMap?.[column] || '',
+                  )) &&
                 !column.endsWith('__inherit'),
             )
             .map((key, index) => {
@@ -367,9 +343,8 @@ export const useTableColumns = (
               const isOriginalTimeColumn =
                 originalFormattedTimeColumns.includes(key);
               return {
-                // TableCollection treats dots in column ids as nested paths,
-                // so dotted labels need a safe internal id.
-                id: getTableColumnId(key, index),
+                // react-table requires a non-empty id, therefore we introduce a fallback value in case the key is empty
+                id: key || index,
                 accessor: (row: Record<string, any>) =>
                   getTableCellValue(row, key, columnValueKeyMap),
                 Header:
