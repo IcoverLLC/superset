@@ -28,6 +28,7 @@ from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import gettext, ngettext
 from marshmallow import ValidationError
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload, selectinload
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
@@ -109,9 +110,9 @@ from superset.dashboards.schemas import (
 )
 from superset.exceptions import ScreenshotImageNotAvailableException
 from superset.extensions import event_logger
+from superset.models.core import Log
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
-from superset.models.welcome_dashboard_last_view import WelcomeDashboardLastView
 from superset.security.guest_token import GuestUser
 from superset.tasks.thumbnails import (
     cache_dashboard_screenshot,
@@ -619,14 +620,17 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         recent_threshold = datetime.utcnow() - timedelta(hours=24)
         viewed_rows = (
             db.session.query(
-                WelcomeDashboardLastView.dashboard_id.label("dashboard_id"),
-                WelcomeDashboardLastView.last_viewed_at.label("last_viewed_at"),
+                Log.dashboard_id.label("dashboard_id"),
+                func.max(Log.dttm).label("last_viewed_at"),
             )
             .filter(
-                WelcomeDashboardLastView.user_id == user_id,
-                WelcomeDashboardLastView.dashboard_id.in_(dashboard_ids),
-                WelcomeDashboardLastView.last_viewed_at >= recent_threshold,
+                Log.action == "log",
+                Log.user_id == user_id,
+                Log.dashboard_id.in_(dashboard_ids),
+                Log.dttm >= recent_threshold,
+                Log.json.contains('"event_name": "mount_dashboard"'),
             )
+            .group_by(Log.dashboard_id)
             .all()
         )
         return {
