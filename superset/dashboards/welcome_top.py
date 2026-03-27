@@ -30,6 +30,7 @@ from superset.models.welcome_dashboard_rank import WelcomeDashboardRank
 
 MOUNT_DASHBOARD_EVENT = '"event_name": "mount_dashboard"'
 GLOBAL_PARTITION_KEY = "global"
+MOSCOW_OFFSET = timedelta(hours=3)
 
 
 def get_welcome_top_lookback_window(lookback_days: int) -> tuple[datetime, datetime]:
@@ -53,6 +54,10 @@ def get_welcome_snapshot_limit() -> int:
 
 def get_welcome_rank_partition_key(user_id: int | None) -> str:
     return GLOBAL_PARTITION_KEY if user_id is None else f"user:{user_id}"
+
+
+def _to_moscow_iso(dt: datetime) -> str:
+    return (dt + MOSCOW_OFFSET).isoformat()
 
 
 def _base_log_query(
@@ -401,7 +406,7 @@ def get_welcome_snapshot_recently_viewed_at(
         .all()
     )
     return {
-        str(dashboard_id): last_viewed_at.isoformat()
+        str(dashboard_id): _to_moscow_iso(last_viewed_at)
         for dashboard_id, last_viewed_at in rows
         if dashboard_id is not None and last_viewed_at is not None
     }

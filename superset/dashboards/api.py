@@ -144,6 +144,7 @@ from superset.views.filters import (
 )
 
 logger = logging.getLogger(__name__)
+MOSCOW_OFFSET = timedelta(hours=3)
 
 get_welcome_dashboards_schema = {
     "type": "object",
@@ -180,6 +181,10 @@ WELCOME_DASHBOARD_RESPONSE_FIELDS = (
     "tags",
     "changed_on_humanized",
 )
+
+
+def _to_moscow_iso(dt: datetime) -> str:
+    return (dt + MOSCOW_OFFSET).isoformat()
 
 
 def with_dashboard(
@@ -634,7 +639,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             .all()
         )
         return {
-            str(dashboard_id): last_viewed_at.isoformat()
+            str(dashboard_id): _to_moscow_iso(last_viewed_at)
             for dashboard_id, last_viewed_at in viewed_rows
             if dashboard_id is not None and last_viewed_at is not None
         }
