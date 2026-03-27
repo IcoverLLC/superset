@@ -617,25 +617,76 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         if user_id is None or not dashboard_ids:
             return {}
 
+        unique_dashboard_ids = list(dict.fromkeys(dashboard_ids))
+        dashboard_ids_set = set(unique_dashboard_ids)
+        # Mirror the standard home recent-activity strategy: inspect only
+        # a very small tail of the user's latest dashboard mounts.
+        recent_log_limit = 24
         viewed_rows = (
             db.session.query(
                 Log.dashboard_id.label("dashboard_id"),
-                func.max(Log.dttm).label("last_viewed_at"),
+                Log.dttm.label("last_viewed_at"),
             )
             .filter(
                 Log.action == "log",
                 Log.user_id == user_id,
-                Log.dashboard_id.in_(dashboard_ids),
+                Log.dashboard_id.isnot(None),
                 Log.json.contains('"event_name": "mount_dashboard"'),
             )
-            .group_by(Log.dashboard_id)
+            .order_by(Log.dttm.desc())
+            .limit(recent_log_limit)
             .all()
         )
-        return {
-            str(dashboard_id): last_viewed_at.isoformat()
-            for dashboard_id, last_viewed_at in viewed_rows
-            if dashboard_id is not None and last_viewed_at is not None
-        }
+
+        recently_viewed_at: dict[str, str] = {}
+        for dashboard_id, last_viewed_at in viewed_rows:
+            if (
+                dashboard_id is None
+                or dashboard_id not in dashboard_ids_set
+                or last_viewed_at is None
+            ):
+                continue
+            dashboard_id_str = str(dashboard_id)
+            if dashboard_id_str in recently_viewed_at:
+                continue
+            recently_viewed_at[dashboard_id_str] = last_viewed_at.isoformat()
+            if len(recently_viewed_at) >= len(dashboard_ids_set):
+                break
+        return recently_viewed_at
+
+    def _load_recently_viewed_at(
+        self,
+        dashboard_ids: list[int],
+    ) -> dict[str, str]:
+        unique_dashboard_ids = list(dict.fromkeys(dashboard_ids))
+        if not unique_dashboard_ids:
+            return {}
+
+        try:
+            recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
+                unique_dashboard_ids,
+                get_user_id(),
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to load snapshot-based recently_viewed_at "
+                "for welcome dashboards",
+                exc_info=True,
+            )
+            recently_viewed_at = {}
+
+        try:
+            recently_viewed_at.update(
+                self._get_recently_viewed_at(unique_dashboard_ids)
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to load live recently_viewed_at "
+                "for welcome dashboards",
+                exc_info=True,
+            )
+
+        return recently_viewed_at
 
     @expose("/welcome/", methods=("GET",))
     @protect()
@@ -705,66 +756,12 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             )
         recently_viewed_at: dict[str, str] = {}
         if load_recently_viewed_at:
-            try:
-                recently_viewed_at = get_welcome_snapshot_recently_viewed_at(
-                    top_dashboard_ids,
-                    get_user_id(),
-                )
-            except Exception:  # pylint: disable=broad-except
-                logger.warning(
-                    "Failed to load snapshot-based recently_viewed_at "
-                    "for welcome dashboards",
-                    exc_info=True,
-                )
-            missing_top_dashboard_ids = [
-                dashboard_id
-                for dashboard_id in top_dashboard_ids
-                if str(dashboard_id) not in recently_viewed_at
+            visible_dashboard_ids = top_dashboard_ids + [
+                dashboard.id for dashboard in dashboards
             ]
-            if missing_top_dashboard_ids:
-                try:
-                    recently_viewed_at.update(
-                        self._get_recently_viewed_at(missing_top_dashboard_ids)
-                    )
-                except Exception:  # pylint: disable=broad-except
-                    logger.warning(
-                        "Failed to load live recently_viewed_at "
-                        "for top welcome dashboards",
-                        exc_info=True,
-                    )
-            if load_sections and dashboards:
-                section_dashboard_ids = [dashboard.id for dashboard in dashboards]
-                try:
-                    recently_viewed_at.update(
-                        get_welcome_snapshot_recently_viewed_at(
-                            section_dashboard_ids,
-                            get_user_id(),
-                        )
-                    )
-                except Exception:  # pylint: disable=broad-except
-                    logger.warning(
-                        "Failed to load snapshot-based recently_viewed_at "
-                        "for welcome dashboard section",
-                        exc_info=True,
-                    )
-                missing_section_dashboard_ids = [
-                    dashboard.id
-                    for dashboard in dashboards
-                    if str(dashboard.id) not in recently_viewed_at
-                ]
-                if missing_section_dashboard_ids:
-                    try:
-                        recently_viewed_at.update(
-                            self._get_recently_viewed_at(
-                                missing_section_dashboard_ids
-                            )
-                        )
-                    except Exception:  # pylint: disable=broad-except
-                        logger.warning(
-                            "Failed to load live recently_viewed_at "
-                            "for welcome dashboard section",
-                            exc_info=True,
-                        )
+            recently_viewed_at = self._load_recently_viewed_at(
+                visible_dashboard_ids
+            )
 
         result = {
             "top_mode": top_mode,
