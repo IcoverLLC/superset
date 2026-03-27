@@ -19,5 +19,6 @@ from . import (  # noqa: F401
     dynamic_plugins,
     sql_lab,
     user_attributes,
+    welcome_dashboard_last_view,
     welcome_dashboard_rank,
 )

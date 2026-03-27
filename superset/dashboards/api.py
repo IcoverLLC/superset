@@ -17,7 +17,7 @@
 # pylint: disable=too-many-lines
 import functools
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Any, Callable, cast
 from zipfile import is_zipfile, ZipFile
@@ -28,7 +28,6 @@ from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import gettext, ngettext
 from marshmallow import ValidationError
-from sqlalchemy import func
 from sqlalchemy.orm import joinedload, selectinload
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
@@ -110,9 +109,9 @@ from superset.dashboards.schemas import (
 )
 from superset.exceptions import ScreenshotImageNotAvailableException
 from superset.extensions import event_logger
-from superset.models.core import Log
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
+from superset.models.welcome_dashboard_last_view import WelcomeDashboardLastView
 from superset.security.guest_token import GuestUser
 from superset.tasks.thumbnails import (
     cache_dashboard_screenshot,
@@ -609,7 +608,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             "mode": "empty",
         }
 
-    def _get_recently_viewed_at(
+    def _get_recently_viewed_at_recent(
         self,
         dashboard_ids: list[int],
     ) -> dict[str, str]:
@@ -617,18 +616,17 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         if user_id is None or not dashboard_ids:
             return {}
 
+        recent_threshold = datetime.utcnow() - timedelta(hours=24)
         viewed_rows = (
             db.session.query(
-                Log.dashboard_id.label("dashboard_id"),
-                func.max(Log.dttm).label("last_viewed_at"),
+                WelcomeDashboardLastView.dashboard_id.label("dashboard_id"),
+                WelcomeDashboardLastView.last_viewed_at.label("last_viewed_at"),
             )
             .filter(
-                Log.action == "log",
-                Log.user_id == user_id,
-                Log.dashboard_id.in_(dashboard_ids),
-                Log.json.contains('"event_name": "mount_dashboard"'),
+                WelcomeDashboardLastView.user_id == user_id,
+                WelcomeDashboardLastView.dashboard_id.in_(dashboard_ids),
+                WelcomeDashboardLastView.last_viewed_at >= recent_threshold,
             )
-            .group_by(Log.dashboard_id)
             .all()
         )
         return {
@@ -716,19 +714,14 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     "for welcome dashboards",
                     exc_info=True,
                 )
-            missing_top_dashboard_ids = [
-                dashboard_id
-                for dashboard_id in top_dashboard_ids
-                if str(dashboard_id) not in recently_viewed_at
-            ]
-            if missing_top_dashboard_ids:
+            if top_dashboard_ids:
                 try:
                     recently_viewed_at.update(
-                        self._get_recently_viewed_at(missing_top_dashboard_ids)
+                        self._get_recently_viewed_at_recent(top_dashboard_ids)
                     )
                 except Exception:  # pylint: disable=broad-except
                     logger.warning(
-                        "Failed to load live recently_viewed_at "
+                        "Failed to load recent live recently_viewed_at "
                         "for top welcome dashboards",
                         exc_info=True,
                     )
@@ -747,21 +740,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                         "for welcome dashboard section",
                         exc_info=True,
                     )
-                missing_section_dashboard_ids = [
-                    dashboard.id
-                    for dashboard in dashboards
-                    if str(dashboard.id) not in recently_viewed_at
-                ]
-                if missing_section_dashboard_ids:
+                if section_dashboard_ids:
                     try:
                         recently_viewed_at.update(
-                            self._get_recently_viewed_at(
-                                missing_section_dashboard_ids
+                            self._get_recently_viewed_at_recent(
+                                section_dashboard_ids
                             )
                         )
                     except Exception:  # pylint: disable=broad-except
                         logger.warning(
-                            "Failed to load live recently_viewed_at "
+                            "Failed to load recent live recently_viewed_at "
                             "for welcome dashboard section",
                             exc_info=True,
                         )

@@ -369,6 +369,131 @@ def get_event_logger_from_cfg_value(cfg_value: Any) -> AbstractEventLogger:
 class DBEventLogger(AbstractEventLogger):
     """Event logger that commits logs to Superset DB"""
 
+    @staticmethod
+    @functools.lru_cache(maxsize=8)
+    def _has_last_view_table(bind_key: str) -> bool:
+        # pylint: disable=import-outside-toplevel
+        import sqlalchemy as sqla
+
+        from superset import db
+
+        bind = db.session.get_bind()
+        if bind is None:
+            return False
+
+        try:
+            return sqla.inspect(bind).has_table("welcome_dashboard_last_view")
+        except SQLAlchemyError:
+            return False
+
+    @staticmethod
+    def _collect_last_views(
+        action: str,
+        user_id: int | None,
+        dashboard_id: int | None,
+        records: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        if action != "log" or user_id is None:
+            return []
+
+        now = datetime.utcnow()
+        latest_by_dashboard: dict[int, datetime] = {}
+        for record in records:
+            if record.get("event_name") != "mount_dashboard":
+                continue
+
+            record_dashboard_id = to_int(record.get("dashboard_id")) or dashboard_id
+            if record_dashboard_id is None:
+                continue
+
+            latest_by_dashboard[record_dashboard_id] = now
+
+        return [
+            {
+                "user_id": user_id,
+                "dashboard_id": dashboard_id,
+                "last_viewed_at": last_viewed_at,
+                "updated_at": now,
+            }
+            for dashboard_id, last_viewed_at in latest_by_dashboard.items()
+        ]
+
+    @staticmethod
+    def _upsert_last_views(last_views: list[dict[str, Any]]) -> None:
+        if not last_views:
+            return
+
+        # pylint: disable=import-outside-toplevel
+        from superset import db
+        from superset.models.welcome_dashboard_last_view import WelcomeDashboardLastView
+
+        bind = db.session.get_bind()
+        dialect_name = bind.dialect.name if bind is not None else ""
+        bind_key = str(bind.engine.url) if bind is not None else "default"
+        if not DBEventLogger._has_last_view_table(f"{dialect_name}:{bind_key}"):
+            return
+
+        table = WelcomeDashboardLastView.__table__
+
+        if dialect_name == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+
+            stmt = postgresql_insert(table).values(last_views)
+            stmt = stmt.on_conflict_do_update(
+                constraint="uq_welcome_dashboard_last_view_user_dashboard",
+                set_={
+                    "last_viewed_at": stmt.excluded.last_viewed_at,
+                    "updated_at": stmt.excluded.updated_at,
+                },
+            )
+            db.session.execute(stmt)
+            db.session.commit()  # pylint: disable=consider-using-transaction
+            return
+
+        if dialect_name == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+            stmt = sqlite_insert(table).values(last_views)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "dashboard_id"],
+                set_={
+                    "last_viewed_at": stmt.excluded.last_viewed_at,
+                    "updated_at": stmt.excluded.updated_at,
+                },
+            )
+            db.session.execute(stmt)
+            db.session.commit()  # pylint: disable=consider-using-transaction
+            return
+
+        if dialect_name in {"mysql", "mariadb"}:
+            from sqlalchemy.dialects.mysql import insert as mysql_insert
+
+            stmt = mysql_insert(table).values(last_views)
+            stmt = stmt.on_duplicate_key_update(
+                last_viewed_at=stmt.inserted.last_viewed_at,
+                updated_at=stmt.inserted.updated_at,
+            )
+            db.session.execute(stmt)
+            db.session.commit()  # pylint: disable=consider-using-transaction
+            return
+
+        for row in last_views:
+            existing = (
+                db.session.query(WelcomeDashboardLastView)
+                .filter(
+                    WelcomeDashboardLastView.user_id == row["user_id"],
+                    WelcomeDashboardLastView.dashboard_id == row["dashboard_id"],
+                )
+                .one_or_none()
+            )
+            if existing is None:
+                db.session.add(WelcomeDashboardLastView(**row))
+            else:
+                existing.last_viewed_at = row["last_viewed_at"]
+                existing.updated_at = row["updated_at"]
+
+        db.session.commit()  # pylint: disable=consider-using-transaction
+
     def log(  # pylint: disable=too-many-arguments,too-many-locals
         self,
         user_id: int | None,
@@ -385,6 +510,7 @@ class DBEventLogger(AbstractEventLogger):
         from superset.models.core import Log
 
         records = kwargs.get("records", [])
+        last_views = self._collect_last_views(action, user_id, dashboard_id, records)
         logs = []
         for record in records:
             json_string: str | None
@@ -418,6 +544,22 @@ class DBEventLogger(AbstractEventLogger):
                 # If rollback also fails, just continue - don't let issues crash the app
                 logging.error(
                     "DBEventLogger failed to rollback the session after failure"
+                )
+            return
+
+        if not last_views:
+            return
+
+        try:
+            self._upsert_last_views(last_views)
+        except SQLAlchemyError as ex:
+            logging.error("DBEventLogger failed to update welcome last-view cache")
+            logging.exception(ex)
+            try:
+                db.session.rollback()
+            except Exception:  # pylint: disable=broad-except
+                logging.error(
+                    "DBEventLogger failed to rollback welcome last-view cache update"
                 )
 
 
