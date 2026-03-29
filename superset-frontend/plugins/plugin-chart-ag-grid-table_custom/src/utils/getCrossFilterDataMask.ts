@@ -25,6 +25,8 @@ import {
   TimeGranularity,
 } from '@superset-ui/core';
 
+const MAX_CROSS_FILTER_VALUES = 10;
+
 type GetCrossFilterDataMaskProps = {
   key: string;
   value: DataRecordValue;
@@ -54,7 +56,7 @@ export const getCrossFilterDataMask = ({
     updatedFilters = {
       [key]: isCurrentValueSelected
         ? currentValues.filter(currentValue => currentValue !== value)
-        : [...currentValues, value],
+        : [...currentValues, value].slice(0, MAX_CROSS_FILTER_VALUES),
     };
   } else if (isCurrentValueSelected && currentValues.length === 1) {
     updatedFilters = {};
