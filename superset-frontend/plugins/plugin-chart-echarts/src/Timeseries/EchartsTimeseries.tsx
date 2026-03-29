@@ -37,6 +37,7 @@ import { formatSeriesName } from '../utils/series';
 import { ExtraControls } from '../components/ExtraControls';
 
 const TIMER_DURATION = 300;
+const MAX_CROSS_FILTER_VALUES = 10;
 
 export default function EchartsTimeseries({
   formData,
@@ -113,11 +114,17 @@ export default function EchartsTimeseries({
   };
 
   const getCrossFilterDataMask = useCallback(
-    (value: string) => {
+    (value: string, altPressed = false) => {
       const selected: string[] = Object.values(selectedValues);
+      const isCurrentValueSelected = selected.includes(value);
       let values: string[];
-      if (selected.includes(value)) {
-        values = selected.filter(v => v !== value);
+
+      if (altPressed) {
+        values = isCurrentValueSelected
+          ? selected.filter(v => v !== value)
+          : [...selected, value].slice(0, MAX_CROSS_FILTER_VALUES);
+      } else if (isCurrentValueSelected && selected.length === 1) {
+        values = [];
       } else {
         values = [value];
       }
@@ -148,18 +155,18 @@ export default function EchartsTimeseries({
             selectedValues: values.length ? values : null,
           },
         },
-        isCurrentValueSelected: selected.includes(value),
+        isCurrentValueSelected,
       };
     },
     [groupby, labelMap, selectedValues],
   );
 
   const handleChange = useCallback(
-    (value: string) => {
+    (value: string, altPressed = false) => {
       if (!emitCrossFilters) {
         return;
       }
-      setDataMask(getCrossFilterDataMask(value).dataMask);
+      setDataMask(getCrossFilterDataMask(value, altPressed).dataMask);
     },
     [emitCrossFilters, setDataMask, getCrossFilterDataMask],
   );
@@ -175,7 +182,7 @@ export default function EchartsTimeseries({
       // Ensure that double-click events do not trigger single click event. So we put it in the timer.
       clickTimer.current = setTimeout(() => {
         const { seriesName: name } = props;
-        handleChange(name);
+        handleChange(name, Boolean(props.event?.event?.altKey));
       }, TIMER_DURATION);
     },
     mouseout: () => {

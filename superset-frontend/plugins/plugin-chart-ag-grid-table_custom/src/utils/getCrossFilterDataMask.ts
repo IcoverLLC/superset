@@ -25,11 +25,14 @@ import {
   TimeGranularity,
 } from '@superset-ui/core';
 
+const MAX_CROSS_FILTER_VALUES = 10;
+
 type GetCrossFilterDataMaskProps = {
   key: string;
   value: DataRecordValue;
   filters?: DataRecordFilters;
   timeGrain?: TimeGranularity;
+  altPressed?: boolean;
   isActiveFilterValue: (key: string, val: DataRecordValue) => boolean;
   timestampFormatter: (value: DataRecordValue) => string;
 };
@@ -39,11 +42,23 @@ export const getCrossFilterDataMask = ({
   value,
   filters,
   timeGrain,
+  altPressed = false,
   isActiveFilterValue,
   timestampFormatter,
 }: GetCrossFilterDataMaskProps) => {
+  const currentColumn = Object.keys(filters || {})[0];
   let updatedFilters = { ...(filters || {}) };
-  if (filters && isActiveFilterValue(key, value)) {
+  const currentValues = ensureIsArray(updatedFilters[key]);
+  const isCurrentValueSelected =
+    currentColumn === key && isActiveFilterValue(key, value);
+
+  if (altPressed && currentColumn === key) {
+    updatedFilters = {
+      [key]: isCurrentValueSelected
+        ? currentValues.filter(currentValue => currentValue !== value)
+        : [...currentValues, value].slice(0, MAX_CROSS_FILTER_VALUES),
+    };
+  } else if (isCurrentValueSelected && currentValues.length === 1) {
     updatedFilters = {};
   } else {
     updatedFilters = {
@@ -98,6 +113,6 @@ export const getCrossFilterDataMask = ({
             : null,
       },
     },
-    isCurrentValueSelected: isActiveFilterValue(key, value),
+    isCurrentValueSelected,
   };
 };

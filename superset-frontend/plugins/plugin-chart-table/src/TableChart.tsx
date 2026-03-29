@@ -107,6 +107,8 @@ const ACTION_KEYS = {
   space: ' ',
 };
 
+const MAX_CROSS_FILTER_VALUES = 10;
+
 const getComparisonKeyPortion = (columnKey: string) => {
   if (columnKey.startsWith('Main ')) {
     return columnKey.substring('Main'.length);
@@ -463,9 +465,24 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   const getCrossFilterDataMask = useCallback(
-    (key: string, value: DataRecordValue) => {
+    (
+      key: string,
+      value: DataRecordValue,
+      altPressed: boolean = false,
+    ) => {
+      const currentColumn = Object.keys(filters || {})[0];
       let updatedFilters = { ...(filters || {}) };
-      if (filters && isActiveFilterValue(key, value)) {
+      const currentValues = ensureIsArray(updatedFilters[key]);
+      const isCurrentValueSelected =
+        currentColumn === key && isActiveFilterValue(key, value);
+
+      if (altPressed && currentColumn === key) {
+        updatedFilters = {
+          [key]: isCurrentValueSelected
+            ? currentValues.filter(currentValue => currentValue !== value)
+            : [...currentValues, value].slice(0, MAX_CROSS_FILTER_VALUES),
+        };
+      } else if (isCurrentValueSelected && currentValues.length === 1) {
         updatedFilters = {};
       } else {
         updatedFilters = {
@@ -525,18 +542,22 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 : null,
           },
         },
-        isCurrentValueSelected: isActiveFilterValue(key, value),
+        isCurrentValueSelected,
       };
     },
     [filters, isActiveFilterValue, timestampFormatter, timeGrain],
   );
 
   const toggleFilter = useCallback(
-    function toggleFilter(key: string, val: DataRecordValue) {
+    function toggleFilter(
+      key: string,
+      val: DataRecordValue,
+      altPressed: boolean = false,
+    ) {
       if (!emitCrossFilters) {
         return;
       }
-      setDataMask(getCrossFilterDataMask(key, val).dataMask);
+      setDataMask(getCrossFilterDataMask(key, val, altPressed).dataMask);
     },
     [emitCrossFilters, getCrossFilterDataMask, setDataMask],
   );
@@ -1064,10 +1085,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             title: typeof value === 'number' ? String(value) : undefined,
             onClick:
               emitCrossFilters && !valueRange && !isMetric
-                ? () => {
+                ? (event: MouseEvent) => {
                     // allow selecting text in a cell
                     if (!getSelectedText()) {
-                      toggleFilter(key, value);
+                      toggleFilter(key, value, event.altKey);
                     }
                   }
                 : undefined,
