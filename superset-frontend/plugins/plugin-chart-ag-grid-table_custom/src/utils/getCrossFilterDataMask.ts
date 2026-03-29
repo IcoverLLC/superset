@@ -30,7 +30,7 @@ type GetCrossFilterDataMaskProps = {
   value: DataRecordValue;
   filters?: DataRecordFilters;
   timeGrain?: TimeGranularity;
-  shiftPressed?: boolean;
+  altPressed?: boolean;
   isActiveFilterValue: (key: string, val: DataRecordValue) => boolean;
   timestampFormatter: (value: DataRecordValue) => string;
 };
@@ -40,7 +40,7 @@ export const getCrossFilterDataMask = ({
   value,
   filters,
   timeGrain,
-  shiftPressed = false,
+  altPressed = false,
   isActiveFilterValue,
   timestampFormatter,
 }: GetCrossFilterDataMaskProps) => {
@@ -50,7 +50,7 @@ export const getCrossFilterDataMask = ({
   const isCurrentValueSelected =
     currentColumn === key && isActiveFilterValue(key, value);
 
-  if (shiftPressed && currentColumn === key) {
+  if (altPressed && currentColumn === key) {
     updatedFilters = {
       [key]: isCurrentValueSelected
         ? currentValues.filter(currentValue => currentValue !== value)

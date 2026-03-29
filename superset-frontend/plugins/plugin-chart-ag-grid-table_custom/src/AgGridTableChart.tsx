@@ -173,19 +173,19 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           event.column.getColDef().context?.isPercentMetric
         )
       ) {
-        const shiftPressed = Boolean(
+        const altPressed = Boolean(
           'event' in event &&
             event.event &&
             typeof event.event === 'object' &&
-            'shiftKey' in event.event &&
-            event.event.shiftKey,
+            'altKey' in event.event &&
+            event.event.altKey,
         );
         const crossFilterProps = {
           key: event.column.getColId(),
           value: event.value,
           filters,
           timeGrain,
-          shiftPressed,
+          altPressed,
           isActiveFilterValue,
           timestampFormatter,
         };
