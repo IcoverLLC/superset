@@ -252,7 +252,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
           buttonStyle="link"
           onClick={() => setLeftMonth(leftMonth.subtract(1, 'month'))}
         >
-          <Icons.LeftOutlined />
+          <Icons.CaretLeftOutlined />
         </NavButton>
         <div className="section-title">{t('Calendar')}</div>
         <NavButton
