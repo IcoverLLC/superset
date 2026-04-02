@@ -385,7 +385,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         {validTimeRange && (
           variant === 'v2' ? (
             <div className="selected-range">
-              <span className="selected-range-label">{t('Selected:')}</span>
+              <span className="selected-range-label">{t('Выбрано:')}</span>
               <span className="selected-range-value">{selectedDisplayValue}</span>
             </div>
           ) : (

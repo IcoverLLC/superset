@@ -54,7 +54,7 @@ const MonthsGrid = styled.div`
   ${({ theme }) => css`
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: ${theme.sizeUnit * 4}px;
+    gap: ${theme.sizeUnit * 2}px;
   `}
 `;
 
@@ -68,7 +68,7 @@ const MonthTitle = styled.div`
     font-size: 15px;
     font-weight: ${theme.fontWeightStrong};
     line-height: 24px;
-    margin-bottom: ${theme.sizeUnit * 3}px;
+    margin-bottom: ${theme.sizeUnit * 2}px;
     text-align: center;
   `}
 `;
@@ -76,7 +76,7 @@ const MonthTitle = styled.div`
 const WeekdaysGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  margin-bottom: ${({ theme }) => theme.sizeUnit * 2}px;
+  margin-bottom: ${({ theme }) => theme.sizeUnit}px;
 `;
 
 const Weekday = styled.div`
@@ -91,7 +91,7 @@ const Weekday = styled.div`
 const DaysGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
+  gap: 1px;
 `;
 
 const getDayBorderRadius = (
@@ -150,7 +150,7 @@ const DayCell = styled.button<{
     cursor: pointer;
     display: inline-flex;
     font: inherit;
-    height: 34px;
+    height: 28px;
     justify-content: center;
     line-height: 20px;
     padding: 0;
@@ -167,7 +167,7 @@ const DayCell = styled.button<{
 `;
 
 const EmptyDayCell = styled.div`
-  height: 34px;
+  height: 28px;
 `;
 
 const getCalendarStartOffset = (month: Dayjs) => {
