@@ -76,6 +76,17 @@ export type CalendarRangeValue = {
   matchedFlag: boolean;
 };
 
+export const getDefaultCalendarRange = () => {
+  const end = extendedDayjs().startOf('day').subtract(1, 'day');
+  const start = end.subtract(6, 'day');
+  return { start, end };
+};
+
+export const getDefaultCalendarRangeValue = () => {
+  const { start, end } = getDefaultCalendarRange();
+  return encodeCalendarRange(start, end);
+};
+
 export const parseCalendarRange = (timeRange: string): CalendarRangeValue => {
   const { customRange, matchedFlag } = customTimeRangeDecode(timeRange);
 

@@ -122,8 +122,9 @@ const DayCell = styled.button<{
   inRange: boolean;
   rangeStart: boolean;
   rangeEnd: boolean;
+  weekend: boolean;
 }>`
-  ${({ theme, muted, selected, inRange, rangeStart, rangeEnd }) => css`
+  ${({ theme, muted, selected, inRange, rangeStart, rangeEnd, weekend }) => css`
     align-items: center;
     appearance: none;
     background: ${selected
@@ -143,7 +144,9 @@ const DayCell = styled.button<{
       ? theme.colorWhite
       : muted
         ? theme.colorTextDisabled
-        : theme.colorText};
+        : weekend
+          ? theme.colorError
+          : theme.colorText};
     cursor: pointer;
     display: inline-flex;
     font: inherit;
@@ -163,15 +166,27 @@ const DayCell = styled.button<{
   `}
 `;
 
-const getCalendarStart = (month: Dayjs) => {
+const EmptyDayCell = styled.div`
+  height: 34px;
+`;
+
+const getCalendarStartOffset = (month: Dayjs) => {
   const firstDayOfMonth = month.startOf('month');
-  const startOffset = (firstDayOfMonth.day() + 6) % 7;
-  return firstDayOfMonth.subtract(startOffset, 'day');
+  return (firstDayOfMonth.day() + 6) % 7;
 };
 
 const buildMonthDays = (month: Dayjs) => {
-  const start = getCalendarStart(month);
-  return Array.from({ length: 42 }, (_, index) => start.add(index, 'day'));
+  const daysInMonth = month.daysInMonth();
+  const startOffset = getCalendarStartOffset(month);
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  return Array.from({ length: totalCells }, (_, index) => {
+    const dayNumber = index - startOffset + 1;
+    if (dayNumber < 1 || dayNumber > daysInMonth) {
+      return null;
+    }
+    return month.date(dayNumber);
+  });
 };
 
 const capitalize = (value: string) =>
@@ -274,7 +289,15 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               ))}
             </WeekdaysGrid>
             <DaysGrid>
-              {buildMonthDays(month).map(day => {
+              {buildMonthDays(month).map((day, index) => {
+                if (!day) {
+                  return (
+                    <EmptyDayCell
+                      key={`${month.format('YYYY-MM')}-empty-${index}`}
+                    />
+                  );
+                }
+
                 const selected =
                   (!!rangeStart && day.isSame(rangeStart, 'day')) ||
                   (!!rangeEnd && day.isSame(rangeEnd, 'day'));
@@ -288,11 +311,12 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                   <DayCell
                     key={day.format('YYYY-MM-DD')}
                     type="button"
-                    muted={!day.isSame(month, 'month')}
+                    muted={false}
                     selected={selected}
                     inRange={inRange}
                     rangeStart={!!rangeStart && day.isSame(rangeStart, 'day')}
                     rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
+                    weekend={day.day() === 0 || day.day() === 6}
                     onClick={() => onSelectDay(day)}
                   >
                     {day.date()}

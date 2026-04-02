@@ -59,6 +59,7 @@ import {
 import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
 import {
   formatCalendarRangeLabel,
+  getDefaultCalendarRangeValue,
   parseCalendarRange,
 } from './utils/dateFilterUtils';
 
@@ -295,7 +296,11 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   }
 
   function onOpen() {
-    setTimeRangeValue(value);
+    setTimeRangeValue(
+      variant === 'v2' && value === NO_TIME_RANGE
+        ? getDefaultCalendarRangeValue()
+        : value,
+    );
     setFrame(guessedFrame);
     setShow(true);
     onOpenPopover();
@@ -319,6 +324,8 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   function onChangeFrame(value: FrameType) {
     if (value === NO_TIME_RANGE) {
       setTimeRangeValue(NO_TIME_RANGE);
+    } else if (value === 'CalendarV2' && timeRangeValue === NO_TIME_RANGE) {
+      setTimeRangeValue(getDefaultCalendarRangeValue());
     }
     setFrame(value);
   }
