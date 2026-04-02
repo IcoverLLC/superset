@@ -16,21 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { css, styled, t } from '@superset-ui/core';
-import { Button, Loading, Select } from '@superset-ui/core/components';
+import { KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { css, customTimeRangeDecode, styled, t } from '@superset-ui/core';
+import { Button, Input, Loading, Select } from '@superset-ui/core/components';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import { Dayjs } from 'dayjs';
 import { useLocale } from 'src/hooks/useLocale';
+import { CustomFrame } from './CustomFrame';
+import { DateFilterTestKey, customTimeRangeEncode } from '../utils';
 import {
-  DateFilterTestKey,
-} from '../utils';
-import { FrameComponentProps, SelectOptionType } from '../types';
-import {
-  encodeCalendarRange,
-  parseCalendarRange,
-} from '../utils/dateFilterUtils';
+  CustomRangeType,
+  FrameComponentProps,
+  SelectOptionType,
+} from '../types';
+import { encodeCalendarRange, parseCalendarRange } from '../utils/dateFilterUtils';
+
+type QuickFrameType = 'Common' | 'Calendar' | 'Current';
+type CalendarMode = 'day' | 'month' | 'custom';
 
 const Wrapper = styled.div`
   ${({ theme }) => css`
@@ -40,20 +43,35 @@ const Wrapper = styled.div`
   `}
 `;
 
+const TopInputsGrid = styled.div`
+  ${({ theme }) => css`
+    display: grid;
+    gap: ${theme.sizeUnit * 5}px;
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+    width: fit-content;
+  `}
+`;
+
 const Header = styled.div`
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
 `;
 
-const NavButton = styled(Button)`
+const HeaderCenter = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${theme.sizeUnit * 3}px;
+  `}
+`;
+
+const NavButton = styled(Button)<{ $hidden?: boolean }>`
   padding: 0;
   min-width: auto;
   height: auto;
-`;
-
-const HeaderTitle = styled.div`
-  justify-self: center;
+  visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
 `;
 
 const HeaderActions = styled.div`
@@ -64,7 +82,13 @@ const HeaderActions = styled.div`
   `}
 `;
 
-const PanelToggleButton = styled(Button)`
+const HeaderActionButton = styled(Button)`
+  padding: 0;
+  min-width: auto;
+  height: auto;
+`;
+
+const ModeButton = styled(Button)`
   padding: 0;
   min-width: auto;
   height: auto;
@@ -80,6 +104,9 @@ const CalendarLayout = styled.div`
 `;
 
 const CalendarContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.sizeUnit * 4}px;
   width: fit-content;
 `;
 
@@ -130,81 +157,13 @@ const DaysGrid = styled.div`
   gap: 2px;
 `;
 
-const getDayBorderRadius = (
-  borderRadius: number,
-  selected: boolean,
-  inRange: boolean,
-  rangeStart: boolean,
-  rangeEnd: boolean,
-) => {
-  if (selected) {
-    return `${borderRadius}px`;
-  }
-  if (rangeStart) {
-    return `${borderRadius}px 0 0 ${borderRadius}px`;
-  }
-  if (rangeEnd) {
-    return `0 ${borderRadius}px ${borderRadius}px 0`;
-  }
-  if (inRange) {
-    return '0';
-  }
-  return `${borderRadius}px`;
-};
-
-const DayCell = styled.button<{
-  muted: boolean;
-  selected: boolean;
-  inRange: boolean;
-  rangeStart: boolean;
-  rangeEnd: boolean;
-  weekend: boolean;
-}>`
-  ${({ theme, muted, selected, inRange, rangeStart, rangeEnd, weekend }) => css`
-    align-items: center;
-    appearance: none;
-    background: ${selected
-      ? theme.colorPrimary
-      : inRange
-        ? theme.colorFillSecondary
-        : 'transparent'};
-    border: 0;
-    border-radius: ${getDayBorderRadius(
-      theme.borderRadius,
-      selected,
-      inRange,
-      rangeStart,
-      rangeEnd,
-    )};
-    color: ${selected
-      ? theme.colorWhite
-      : muted
-        ? theme.colorTextDisabled
-        : weekend
-          ? theme.colorError
-          : theme.colorText};
-    cursor: pointer;
-    display: inline-flex;
-    font: inherit;
-    height: 32px;
+const MonthsOfYearGrid = styled.div`
+  ${({ theme }) => css`
+    display: grid;
+    grid-template-columns: repeat(3, 76px);
+    gap: ${theme.sizeUnit * 2}px;
     justify-content: center;
-    line-height: 20px;
-    padding: 0;
-    width: 34px;
-
-    &:hover {
-      background: ${selected
-        ? theme.colorPrimaryHover
-        : inRange
-          ? theme.colorFill
-          : theme.colorFillTertiary};
-    }
   `}
-`;
-
-const EmptyDayCell = styled.div`
-  height: 32px;
-  width: 34px;
 `;
 
 const SidePanel = styled.aside`
@@ -256,7 +215,116 @@ const QuickOptionButton = styled.button<{ selected: boolean }>`
   `}
 `;
 
-type QuickFrameType = 'Common' | 'Calendar' | 'Current';
+const getRangeBorderRadius = (
+  borderRadius: number,
+  selected: boolean,
+  inRange: boolean,
+  rangeStart: boolean,
+  rangeEnd: boolean,
+) => {
+  if (selected) {
+    return `${borderRadius}px`;
+  }
+  if (rangeStart) {
+    return `${borderRadius}px 0 0 ${borderRadius}px`;
+  }
+  if (rangeEnd) {
+    return `0 ${borderRadius}px ${borderRadius}px 0`;
+  }
+  if (inRange) {
+    return '0';
+  }
+  return `${borderRadius}px`;
+};
+
+const DayCell = styled.button<{
+  selected: boolean;
+  inRange: boolean;
+  rangeStart: boolean;
+  rangeEnd: boolean;
+  weekend: boolean;
+}>`
+  ${({ theme, selected, inRange, rangeStart, rangeEnd, weekend }) => css`
+    align-items: center;
+    appearance: none;
+    background: ${selected
+      ? theme.colorPrimary
+      : inRange
+        ? theme.colorFillSecondary
+        : 'transparent'};
+    border: 0;
+    border-radius: ${getRangeBorderRadius(
+      theme.borderRadius,
+      selected,
+      inRange,
+      rangeStart,
+      rangeEnd,
+    )};
+    color: ${selected
+      ? theme.colorWhite
+      : weekend
+        ? theme.colorError
+        : theme.colorText};
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    height: 32px;
+    justify-content: center;
+    line-height: 20px;
+    padding: 0;
+    width: 34px;
+
+    &:hover {
+      background: ${selected
+        ? theme.colorPrimaryHover
+        : inRange
+          ? theme.colorFill
+          : theme.colorFillTertiary};
+    }
+  `}
+`;
+
+const EmptyDayCell = styled.div`
+  height: 32px;
+  width: 34px;
+`;
+
+const MonthValueCell = styled.button<{
+  selected: boolean;
+  inRange: boolean;
+  rangeStart: boolean;
+  rangeEnd: boolean;
+}>`
+  ${({ theme, selected, inRange, rangeStart, rangeEnd }) => css`
+    appearance: none;
+    background: ${selected
+      ? theme.colorPrimary
+      : inRange
+        ? theme.colorFillSecondary
+        : theme.colorFillTertiary};
+    border: 0;
+    border-radius: ${getRangeBorderRadius(
+      theme.borderRadius,
+      selected,
+      inRange,
+      rangeStart,
+      rangeEnd,
+    )};
+    color: ${selected ? theme.colorWhite : theme.colorText};
+    cursor: pointer;
+    font: inherit;
+    height: 36px;
+    padding: 0 ${theme.sizeUnit * 2}px;
+
+    &:hover {
+      background: ${selected
+        ? theme.colorPrimaryHover
+        : inRange
+          ? theme.colorFill
+          : theme.colorFill};
+    }
+  `}
+`;
 
 const QUICK_FRAME_OPTIONS: SelectOptionType[] = [
   { value: 'Common', label: t('Last') },
@@ -294,6 +362,46 @@ const QUICK_FRAME_DEFAULT_VALUES: Record<QuickFrameType, string> = {
   Common: 'Last week',
   Calendar: 'previous calendar week',
   Current: 'Current week',
+};
+
+const MODE_LINKS: Record<
+  CalendarMode,
+  Array<{ mode: CalendarMode; label: string }>
+> = {
+  day: [
+    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0447\u043d\u044b\u0439' },
+    {
+      mode: 'custom',
+      label: '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439',
+    },
+  ],
+  month: [
+    { mode: 'day', label: '\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c' },
+    {
+      mode: 'custom',
+      label: '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439',
+    },
+  ],
+  custom: [
+    { mode: 'day', label: '\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c' },
+    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0447\u043d\u044b\u0439' },
+  ],
+};
+
+const INITIAL_CUSTOM_RANGE: CustomRangeType = {
+  sinceMode: 'specific',
+  sinceDatetime: extendedDayjs().startOf('day').format('YYYY-MM-DD[T]HH:mm:ss'),
+  sinceGrain: 'day',
+  sinceGrainValue: 7,
+  untilMode: 'specific',
+  untilDatetime: extendedDayjs()
+    .startOf('day')
+    .add(1, 'day')
+    .format('YYYY-MM-DD[T]HH:mm:ss'),
+  untilGrain: 'day',
+  untilGrainValue: 0,
+  anchorMode: 'now',
+  anchorValue: 'now',
 };
 
 const getQuickFrame = (value: string): QuickFrameType => {
@@ -339,10 +447,78 @@ const capitalize = (value: string) =>
 const normalizeRange = (start: Dayjs, end: Dayjs) =>
   start.isAfter(end, 'day') ? [end, start] : [start, end];
 
+const formatInputDate = (value: Dayjs | null) =>
+  value ? value.format('DD.MM.YYYY') : '';
+
+const parseDateParts = (
+  year: number,
+  month: number,
+  day: number,
+): Dayjs | null => {
+  const candidate = extendedDayjs(
+    `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(
+      day,
+    ).padStart(2, '0')}`,
+  ).startOf('day');
+
+  if (
+    !candidate.isValid() ||
+    candidate.year() !== year ||
+    candidate.month() !== month - 1 ||
+    candidate.date() !== day
+  ) {
+    return null;
+  }
+
+  return candidate;
+};
+
+const parseUserDateInput = (value: string): Dayjs | null => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const russianMatch = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+  if (russianMatch) {
+    const day = Number(russianMatch[1]);
+    const month = Number(russianMatch[2]);
+    const year = Number(russianMatch[3]);
+    return parseDateParts(year < 100 ? 2000 + year : year, month, day);
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) {
+    return parseDateParts(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]),
+      Number(isoMatch[3]),
+    );
+  }
+
+  const fallback = extendedDayjs(trimmed).startOf('day');
+  return fallback.isValid() ? fallback : null;
+};
+
+const resolveInitialMode = (value: string): CalendarMode => {
+  if (!parseCalendarRange(value).matchedFlag && customTimeRangeDecode(value).matchedFlag) {
+    return 'custom';
+  }
+  return 'day';
+};
+
+const buildMonthSelectionValue = (start: Dayjs, end: Dayjs) =>
+  encodeCalendarRange(start.startOf('month'), end.endOf('month').startOf('day'));
+
 export function CalendarRangeFrame(props: FrameComponentProps) {
   const datePickerLocale = useLocale();
   const today = useMemo(() => extendedDayjs().startOf('day'), []);
   const parsedRange = useMemo(() => parseCalendarRange(props.value), [props.value]);
+  const decodedCustomRange = useMemo(
+    () => customTimeRangeDecode(props.value),
+    [props.value],
+  );
+  const [mode, setMode] = useState<CalendarMode>(() => resolveInitialMode(props.value));
   const [quickFrame, setQuickFrame] = useState<QuickFrameType>(() =>
     getQuickFrame(props.value),
   );
@@ -353,10 +529,19 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const [leftMonth, setLeftMonth] = useState(
     today.startOf('month').subtract(1, 'month'),
   );
+  const [leftYear, setLeftYear] = useState(today.year());
+  const [startInput, setStartInput] = useState('');
+  const [endInput, setEndInput] = useState('');
 
   useEffect(() => {
     setQuickFrame(getQuickFrame(props.value));
   }, [props.value]);
+
+  useEffect(() => {
+    if (!parsedRange.matchedFlag && decodedCustomRange.matchedFlag) {
+      setMode('custom');
+    }
+  }, [decodedCustomRange.matchedFlag, parsedRange.matchedFlag]);
 
   useEffect(() => {
     if (
@@ -374,11 +559,17 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setRangeEnd(parsedRange.end);
       setIsSelectingEnd(false);
       setLeftMonth(parsedRange.end.startOf('month').subtract(1, 'month'));
+      setLeftYear(parsedRange.start.year());
+      setStartInput(formatInputDate(parsedRange.start));
+      setEndInput(formatInputDate(parsedRange.end));
     } else {
       setRangeStart(null);
       setRangeEnd(null);
       setIsSelectingEnd(false);
       setLeftMonth(today.startOf('month').subtract(1, 'month'));
+      setLeftYear(today.year());
+      setStartInput('');
+      setEndInput('');
     }
   }, [isSelectingEnd, parsedRange, rangeStart, today]);
 
@@ -389,9 +580,30 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     );
   }, [datePickerLocale]);
 
-  const rightMonth = leftMonth.add(1, 'month');
-  const months = [leftMonth, rightMonth];
+  const visibleMonths = [leftMonth, leftMonth.add(1, 'month')];
+  const visibleYears = [leftYear, leftYear + 1];
   const selectedQuickValue = getQuickValue(quickFrame, props.value);
+
+  const applyParsedDates = (nextStartText: string, nextEndText: string) => {
+    const parsedStartValue = parseUserDateInput(nextStartText) ?? rangeStart;
+    const parsedEndValue = parseUserDateInput(nextEndText) ?? rangeEnd;
+
+    if (!parsedStartValue || !parsedEndValue) {
+      return;
+    }
+
+    const [start, end] = normalizeRange(parsedStartValue, parsedEndValue);
+    setMode('day');
+    props.onChange(encodeCalendarRange(start, end));
+  };
+
+  const onInputKeyDown =
+    (nextStartText: string, nextEndText: string) =>
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        applyParsedDates(nextStartText, nextEndText);
+      }
+    };
 
   const onSelectDay = (day: Dayjs) => {
     if (!rangeStart || (!isSelectingEnd && rangeEnd)) {
@@ -409,10 +621,44 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     props.onChange(encodeCalendarRange(start, end));
   };
 
+  const onSelectMonth = (month: Dayjs) => {
+    if (!rangeStart || (!isSelectingEnd && rangeEnd)) {
+      const monthStart = month.startOf('month');
+      setRangeStart(monthStart);
+      setRangeEnd(null);
+      setIsSelectingEnd(true);
+      props.onChange(buildMonthSelectionValue(monthStart, monthStart));
+      return;
+    }
+
+    const [startMonth, endMonth] = normalizeRange(
+      rangeStart.startOf('month'),
+      month.startOf('month'),
+    );
+    setRangeStart(startMonth);
+    setRangeEnd(endMonth.endOf('month').startOf('day'));
+    setIsSelectingEnd(false);
+    props.onChange(buildMonthSelectionValue(startMonth, endMonth));
+  };
+
   const onQuickFrameChange = (value: string) => {
     const nextFrame = value as QuickFrameType;
     setQuickFrame(nextFrame);
+    setMode('day');
     props.onChange(QUICK_FRAME_DEFAULT_VALUES[nextFrame]);
+  };
+
+  const onQuickOptionClick = (value: string) => {
+    setMode('day');
+    props.onChange(value);
+  };
+
+  const onOpenCustomMode = () => {
+    setMode('custom');
+
+    if (!decodedCustomRange.matchedFlag) {
+      props.onChange(customTimeRangeEncode(INITIAL_CUSTOM_RANGE));
+    }
   };
 
   if (datePickerLocale === null) {
@@ -421,28 +667,72 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   return (
     <Wrapper data-test={DateFilterTestKey.CalendarV2Frame}>
+      <TopInputsGrid>
+        <Input
+          value={startInput}
+          placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
+          onChange={event => setStartInput(event.target.value)}
+          onBlur={() => applyParsedDates(startInput, endInput)}
+          onKeyDown={onInputKeyDown(startInput, endInput)}
+        />
+        <Input
+          value={endInput}
+          placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
+          onChange={event => setEndInput(event.target.value)}
+          onBlur={() => applyParsedDates(startInput, endInput)}
+          onKeyDown={onInputKeyDown(startInput, endInput)}
+        />
+      </TopInputsGrid>
       <Header>
         <NavButton
           buttonStyle="link"
-          onClick={() => setLeftMonth(leftMonth.subtract(1, 'month'))}
+          $hidden={mode === 'custom'}
+          onClick={() => {
+            if (mode === 'month') {
+              setLeftYear(leftYear - 1);
+            } else {
+              setLeftMonth(leftMonth.subtract(1, 'month'));
+            }
+          }}
         >
           <Icons.CaretLeftOutlined />
         </NavButton>
-        <HeaderTitle className="section-title">
-          {t('\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c')}
-        </HeaderTitle>
+        <HeaderCenter>
+          {MODE_LINKS[mode].map(option => (
+            <ModeButton
+              key={option.mode}
+              buttonStyle="link"
+              onClick={() => {
+                if (option.mode === 'custom') {
+                  onOpenCustomMode();
+                } else {
+                  setMode(option.mode);
+                }
+              }}
+            >
+              {t(option.label)}
+            </ModeButton>
+          ))}
+        </HeaderCenter>
         <HeaderActions>
-          <PanelToggleButton
+          <HeaderActionButton
             buttonStyle="link"
             onClick={() => setShowSidePanel(current => !current)}
           >
             {showSidePanel
               ? t('\u0421\u043a\u0440\u044b\u0442\u044c \u0411\u044b\u0441\u0442\u0440\u044b\u0435')
               : t('\u0411\u044b\u0441\u0442\u0440\u044b\u0435')}
-          </PanelToggleButton>
+          </HeaderActionButton>
           <NavButton
             buttonStyle="link"
-            onClick={() => setLeftMonth(leftMonth.add(1, 'month'))}
+            $hidden={mode === 'custom'}
+            onClick={() => {
+              if (mode === 'month') {
+                setLeftYear(leftYear + 1);
+              } else {
+                setLeftMonth(leftMonth.add(1, 'month'));
+              }
+            }}
           >
             <Icons.RightOutlined />
           </NavButton>
@@ -450,56 +740,111 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       </Header>
       <CalendarLayout>
         <CalendarContent>
-          <MonthsGrid>
-            {months.map(month => (
-              <MonthSection key={month.format('YYYY-MM')}>
-                <MonthTitle>{capitalize(month.format('MMMM YYYY'))}</MonthTitle>
-                <WeekdaysGrid>
-                  {weekdays.map(weekday => (
-                    <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
-                      {weekday}
-                    </Weekday>
-                  ))}
-                </WeekdaysGrid>
-                <DaysGrid>
-                  {buildMonthDays(month).map((day, index) => {
-                    if (!day) {
+          {mode === 'day' && (
+            <MonthsGrid>
+              {visibleMonths.map(month => (
+                <MonthSection key={month.format('YYYY-MM')}>
+                  <MonthTitle>{capitalize(month.format('MMMM YYYY'))}</MonthTitle>
+                  <WeekdaysGrid>
+                    {weekdays.map(weekday => (
+                      <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
+                        {weekday}
+                      </Weekday>
+                    ))}
+                  </WeekdaysGrid>
+                  <DaysGrid>
+                    {buildMonthDays(month).map((day, index) => {
+                      if (!day) {
+                        return (
+                          <EmptyDayCell
+                            key={`${month.format('YYYY-MM')}-empty-${index}`}
+                          />
+                        );
+                      }
+
+                      const selected =
+                        (!!rangeStart && day.isSame(rangeStart, 'day')) ||
+                        (!!rangeEnd && day.isSame(rangeEnd, 'day'));
+                      const inRange =
+                        !!rangeStart &&
+                        !!rangeEnd &&
+                        day.isAfter(rangeStart, 'day') &&
+                        day.isBefore(rangeEnd, 'day');
+
                       return (
-                        <EmptyDayCell
-                          key={`${month.format('YYYY-MM')}-empty-${index}`}
-                        />
+                        <DayCell
+                          key={day.format('YYYY-MM-DD')}
+                          type="button"
+                          selected={selected}
+                          inRange={inRange}
+                          rangeStart={
+                            !!rangeStart && day.isSame(rangeStart, 'day')
+                          }
+                          rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
+                          weekend={day.day() === 0 || day.day() === 6}
+                          onClick={() => onSelectDay(day)}
+                        >
+                          {day.date()}
+                        </DayCell>
                       );
-                    }
+                    })}
+                  </DaysGrid>
+                </MonthSection>
+              ))}
+            </MonthsGrid>
+          )}
+          {mode === 'month' && (
+            <MonthsGrid>
+              {visibleYears.map(year => (
+                <MonthSection key={year}>
+                  <MonthTitle>{String(year)}</MonthTitle>
+                  <MonthsOfYearGrid>
+                    {Array.from({ length: 12 }, (_, index) =>
+                      extendedDayjs().year(year).month(index).startOf('month'),
+                    ).map(month => {
+                      const monthSelected =
+                        (!!rangeStart &&
+                          month.isSame(rangeStart.startOf('month'), 'month')) ||
+                        (!!rangeEnd &&
+                          month.isSame(rangeEnd.startOf('month'), 'month'));
+                      const monthInRange =
+                        !!rangeStart &&
+                        !!rangeEnd &&
+                        month.isAfter(rangeStart.startOf('month'), 'month') &&
+                        month.isBefore(rangeEnd.startOf('month'), 'month');
 
-                    const selected =
-                      (!!rangeStart && day.isSame(rangeStart, 'day')) ||
-                      (!!rangeEnd && day.isSame(rangeEnd, 'day'));
-                    const inRange =
-                      !!rangeStart &&
-                      !!rangeEnd &&
-                      day.isAfter(rangeStart, 'day') &&
-                      day.isBefore(rangeEnd, 'day');
-
-                    return (
-                      <DayCell
-                        key={day.format('YYYY-MM-DD')}
-                        type="button"
-                        muted={false}
-                        selected={selected}
-                        inRange={inRange}
-                        rangeStart={!!rangeStart && day.isSame(rangeStart, 'day')}
-                        rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
-                        weekend={day.day() === 0 || day.day() === 6}
-                        onClick={() => onSelectDay(day)}
-                      >
-                        {day.date()}
-                      </DayCell>
-                    );
-                  })}
-                </DaysGrid>
-              </MonthSection>
-            ))}
-          </MonthsGrid>
+                      return (
+                        <MonthValueCell
+                          key={month.format('YYYY-MM')}
+                          type="button"
+                          selected={monthSelected}
+                          inRange={monthInRange}
+                          rangeStart={
+                            !!rangeStart &&
+                            month.isSame(rangeStart.startOf('month'), 'month')
+                          }
+                          rangeEnd={
+                            !!rangeEnd &&
+                            month.isSame(rangeEnd.startOf('month'), 'month')
+                          }
+                          onClick={() => onSelectMonth(month)}
+                        >
+                          {capitalize(month.format('MMM'))}
+                        </MonthValueCell>
+                      );
+                    })}
+                  </MonthsOfYearGrid>
+                </MonthSection>
+              ))}
+            </MonthsGrid>
+          )}
+          {mode === 'custom' && (
+            <CustomFrame
+              value={props.value}
+              onChange={props.onChange}
+              isOverflowingFilterBar={props.isOverflowingFilterBar}
+            />
+          )}
         </CalendarContent>
         {showSidePanel && (
           <SidePanel>
@@ -516,7 +861,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                   key={option.value}
                   type="button"
                   selected={option.value === selectedQuickValue}
-                  onClick={() => props.onChange(option.value)}
+                  onClick={() => onQuickOptionClick(option.value)}
                 >
                   {option.label}
                 </QuickOptionButton>

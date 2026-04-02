@@ -44,7 +44,6 @@ import { DateFilterControlProps, FrameType } from './types';
 import {
   DateFilterTestKey,
   FRAME_OPTIONS,
-  FRAME_OPTIONS_V2,
   guessFrame,
   useDefaultTimeFilter,
 } from './utils';
@@ -65,10 +64,6 @@ import {
 
 const StyledRangeType = styled(Select)`
   width: 272px;
-`;
-
-const StyledRangeTypeV2 = styled(Select)`
-  width: 240px;
 `;
 
 const ContentStyleWrapper = styled.div`
@@ -342,57 +337,54 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     setValidTimeRange(true);
   }
 
-  const frameOptions = variant === 'v2' ? FRAME_OPTIONS_V2 : FRAME_OPTIONS;
+  const frameOptions = FRAME_OPTIONS;
 
   const overlayContent = (
     <ContentStyleWrapper>
-      <div className="control-label">{t('Range type')}</div>
-      {variant === 'v2' ? (
-        <StyledRangeTypeV2
-          ariaLabel={t('Range type')}
-          options={frameOptions}
-          value={frame}
-          onChange={onChangeFrame}
-        />
-      ) : (
-        <StyledRangeType
-          ariaLabel={t('Range type')}
-          options={frameOptions}
-          value={frame}
-          onChange={onChangeFrame}
-        />
+      {variant !== 'v2' && (
+        <>
+          <div className="control-label">{t('Range type')}</div>
+          <StyledRangeType
+            ariaLabel={t('Range type')}
+            options={frameOptions}
+            value={frame}
+            onChange={onChangeFrame}
+          />
+        </>
       )}
-      {frame !== 'No filter' && <Divider />}
-      {frame === 'CalendarV2' && (
+      {variant !== 'v2' && frame !== 'No filter' && <Divider />}
+      {variant === 'v2' && (
         <CalendarRangeFrame
           value={timeRangeValue}
           onChange={setTimeRangeValue}
           isOverflowingFilterBar={isOverflowingFilterBar}
         />
       )}
-      {frame === 'Common' && (
+      {variant !== 'v2' && frame === 'Common' && (
         <CommonFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Calendar' && (
+      {variant !== 'v2' && frame === 'Calendar' && (
         <CalendarFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Current' && (
+      {variant !== 'v2' && frame === 'Current' && (
         <CurrentCalendarFrame
           value={timeRangeValue}
           onChange={setTimeRangeValue}
         />
       )}
-      {frame === 'Advanced' && (
+      {variant !== 'v2' && frame === 'Advanced' && (
         <AdvancedFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Custom' && (
+      {variant !== 'v2' && frame === 'Custom' && (
         <CustomFrame
           value={timeRangeValue}
           onChange={setTimeRangeValue}
           isOverflowingFilterBar={isOverflowingFilterBar}
         />
       )}
-      {frame === 'No filter' && <div data-test={DateFilterTestKey.NoFilter} />}
+      {variant !== 'v2' && frame === 'No filter' && (
+        <div data-test={DateFilterTestKey.NoFilter} />
+      )}
       <Divider />
       <div>
         {validTimeRange && (
