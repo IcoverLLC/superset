@@ -36,12 +36,12 @@ import { CheckboxOptionType } from '@superset-ui/core/components/Radio';
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 
 export const FRAME_OPTIONS: SelectOptionType[] = [
-  { value: 'Common', label: t('Last') },
-  { value: 'Calendar', label: t('Previous') },
-  { value: 'Current', label: t('Current') },
-  { value: 'Custom', label: t('Custom') },
-  { value: 'Advanced', label: t('Advanced') },
-  { value: 'No filter', label: t('No filter') },
+  { value: 'Common', label: t('\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439') },
+  { value: 'Calendar', label: t('\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0438\u0439') },
+  { value: 'Current', label: t('\u0422\u0435\u043a\u0443\u0449\u0438\u0439') },
+  { value: 'Custom', label: t('\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439') },
+  { value: 'Advanced', label: t('\u041f\u0440\u043e\u0434\u0432\u0438\u043d\u0443\u0442\u0430\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430') },
+  { value: 'No filter', label: t('\u0411\u0435\u0437 \u0444\u0438\u043b\u044c\u0442\u0440\u0430\u0446\u0438\u0438') },
 ];
 
 export const FRAME_OPTIONS_V2: SelectOptionType[] = [
@@ -49,11 +49,11 @@ export const FRAME_OPTIONS_V2: SelectOptionType[] = [
     value: 'CalendarV2',
     label: t('\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c'),
   },
-  { value: 'Common', label: t('Last') },
-  { value: 'Calendar', label: t('Previous') },
-  { value: 'Current', label: t('Current') },
-  { value: 'Custom', label: t('Custom') },
-  { value: 'Advanced', label: t('Advanced') },
+  { value: 'Common', label: t('\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439') },
+  { value: 'Calendar', label: t('\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0438\u0439') },
+  { value: 'Current', label: t('\u0422\u0435\u043a\u0443\u0449\u0438\u0439') },
+  { value: 'Custom', label: t('\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439') },
+  { value: 'Advanced', label: t('\u041f\u0440\u043e\u0434\u0432\u0438\u043d\u0443\u0442\u0430\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430') },
 ];
 
 export const COMMON_RANGE_OPTIONS: CheckboxOptionType[] = [

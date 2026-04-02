@@ -330,9 +330,11 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     <ContentStyleWrapper>
       {variant !== 'v2' && (
         <>
-          <div className="control-label">{t('Range type')}</div>
+          <div className="control-label">
+            {t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
+          </div>
           <StyledRangeType
-            ariaLabel={t('Range type')}
+            ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
             options={frameOptions}
             value={frame}
             onChange={onChangeFrame}

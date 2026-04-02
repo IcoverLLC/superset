@@ -35,6 +35,31 @@ import { encodeCalendarRange, parseCalendarRange } from '../utils/dateFilterUtil
 type QuickFrameType = 'Common' | 'Calendar' | 'Current';
 type CalendarMode = 'day' | 'month' | 'custom';
 
+const WEEKDAY_LABELS_RU = [
+  '\u043f\u043d',
+  '\u0432\u0442',
+  '\u0441\u0440',
+  '\u0447\u0442',
+  '\u043f\u0442',
+  '\u0441\u0431',
+  '\u0432\u0441',
+];
+
+const MONTH_LABELS_SHORT_RU = [
+  '\u042f\u043d\u0432',
+  '\u0424\u0435\u0432',
+  '\u041c\u0430\u0440',
+  '\u0410\u043f\u0440',
+  '\u041c\u0430\u0439',
+  '\u0418\u044e\u043d',
+  '\u0418\u044e\u043b',
+  '\u0410\u0432\u0433',
+  '\u0421\u0435\u043d',
+  '\u041e\u043a\u0442',
+  '\u041d\u043e\u044f',
+  '\u0414\u0435\u043a',
+];
+
 const Wrapper = styled.div`
   ${({ theme }) => css`
     display: flex;
@@ -43,20 +68,25 @@ const Wrapper = styled.div`
   `}
 `;
 
-const QuickPanel = styled.div`
-  ${({ theme }) => css`
-    border: 1px solid ${theme.colorBorder};
-    border-radius: ${theme.borderRadius}px;
-    padding: ${theme.sizeUnit * 3}px;
-    width: 100%;
+const QuickPanel = styled.aside<{ $visible: boolean }>`
+  ${({ theme, $visible }) => css`
+    align-self: stretch;
+    border-left: 1px solid ${theme.colorBorder};
+    opacity: ${$visible ? 1 : 0};
+    padding-left: ${theme.sizeUnit * 3}px;
+    pointer-events: ${$visible ? 'auto' : 'none'};
+    transition: opacity ${theme.transitionTiming}px ease-in-out;
+    visibility: ${$visible ? 'visible' : 'hidden'};
+    width: 196px;
   `}
 `;
 
 const QuickPanelContent = styled.div`
   ${({ theme }) => css`
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: ${theme.sizeUnit * 4}px;
+    gap: ${theme.sizeUnit * 3}px;
     width: 100%;
   `}
 `;
@@ -105,9 +135,10 @@ const ModeButton = styled(Button)`
 
 const CalendarLayout = styled.div`
   ${({ theme }) => css`
-    display: flex;
+    display: grid;
     align-items: flex-start;
-    gap: ${theme.sizeUnit * 5}px;
+    column-gap: ${theme.sizeUnit * 4}px;
+    grid-template-columns: max-content 196px;
     width: fit-content;
   `}
 `;
@@ -177,9 +208,7 @@ const MonthsOfYearGrid = styled.div`
 `;
 
 const QuickPanelSection = styled.div`
-  ${({ theme }) => css`
-    min-width: 188px;
-  `}
+  width: 100%;
 `;
 
 const QuickPanelLabel = styled.div`
@@ -193,8 +222,8 @@ const QuickPanelLabel = styled.div`
 const QuickPanelDivider = styled.div`
   ${({ theme }) => css`
     background: ${theme.colorBorder};
-    min-height: 100%;
-    width: 1px;
+    height: 1px;
+    width: 100%;
   `}
 `;
 
@@ -351,9 +380,9 @@ const BottomInputsGrid = styled.div`
 `;
 
 const QUICK_FRAME_OPTIONS: SelectOptionType[] = [
-  { value: 'Common', label: t('Last') },
-  { value: 'Calendar', label: t('Previous') },
-  { value: 'Current', label: t('Current') },
+  { value: 'Common', label: t('\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439') },
+  { value: 'Calendar', label: t('\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0438\u0439') },
+  { value: 'Current', label: t('\u0422\u0435\u043a\u0443\u0449\u0438\u0439') },
 ];
 
 const QUICK_RANGE_OPTIONS: Record<
@@ -361,24 +390,24 @@ const QUICK_RANGE_OPTIONS: Record<
   Array<{ value: string; label: string }>
 > = {
   Common: [
-    { value: 'Last day', label: t('Day') },
-    { value: 'Last week', label: t('Week') },
-    { value: 'Last month', label: t('Month') },
-    { value: 'Last quarter', label: t('Quarter') },
-    { value: 'Last year', label: t('Year') },
+    { value: 'Last day', label: t('\u0414\u0435\u043d\u044c') },
+    { value: 'Last week', label: t('\u041d\u0435\u0434\u0435\u043b\u044f') },
+    { value: 'Last month', label: t('\u041c\u0435\u0441\u044f\u0446') },
+    { value: 'Last quarter', label: t('\u041a\u0432\u0430\u0440\u0442\u0430\u043b') },
+    { value: 'Last year', label: t('\u0413\u043e\u0434') },
   ],
   Calendar: [
-    { value: 'previous calendar week', label: t('Week') },
-    { value: 'previous calendar month', label: t('Month') },
-    { value: 'previous calendar quarter', label: t('Quarter') },
-    { value: 'previous calendar year', label: t('Year') },
+    { value: 'previous calendar week', label: t('\u041d\u0435\u0434\u0435\u043b\u044f') },
+    { value: 'previous calendar month', label: t('\u041c\u0435\u0441\u044f\u0446') },
+    { value: 'previous calendar quarter', label: t('\u041a\u0432\u0430\u0440\u0442\u0430\u043b') },
+    { value: 'previous calendar year', label: t('\u0413\u043e\u0434') },
   ],
   Current: [
-    { value: 'Current day', label: t('Day') },
-    { value: 'Current week', label: t('Week') },
-    { value: 'Current month', label: t('Month') },
-    { value: 'Current quarter', label: t('Quarter') },
-    { value: 'Current year', label: t('Year') },
+    { value: 'Current day', label: t('\u0414\u0435\u043d\u044c') },
+    { value: 'Current week', label: t('\u041d\u0435\u0434\u0435\u043b\u044f') },
+    { value: 'Current month', label: t('\u041c\u0435\u0441\u044f\u0446') },
+    { value: 'Current quarter', label: t('\u041a\u0432\u0430\u0440\u0442\u0430\u043b') },
+    { value: 'Current year', label: t('\u0413\u043e\u0434') },
   ],
 };
 
@@ -589,8 +618,9 @@ const buildMonthDays = (month: Dayjs) => {
   });
 };
 
-const capitalize = (value: string) =>
-  value.length ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+const formatMonthTitleRu = (value: Dayjs) =>
+  `${value.locale('ru').format('MMMM')} ${value.format('YYYY')}`
+    .replace(/^./, match => match.toUpperCase());
 
 const normalizeRange = (start: Dayjs, end: Dayjs) =>
   start.isAfter(end, 'day') ? [end, start] : [start, end];
@@ -724,12 +754,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     }
   }, [concreteRange, isSelectingEnd, rangeStart, today]);
 
-  const weekdays = useMemo(() => {
-    const monday = extendedDayjs('2024-01-01');
-    return Array.from({ length: 7 }, (_, index) =>
-      monday.add(index, 'day').format('dd'),
-    );
-  }, [datePickerLocale]);
+  const weekdays = useMemo(() => WEEKDAY_LABELS_RU, []);
 
   const visibleMonths = [leftMonth, leftMonth.add(1, 'month')];
   const visibleYears = [leftYear, leftYear + 1];
@@ -818,34 +843,6 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   return (
     <Wrapper data-test={DateFilterTestKey.CalendarV2Frame}>
-      {showSidePanel && (
-        <QuickPanel>
-          <QuickPanelContent>
-            <QuickPanelSection>
-              <QuickPanelLabel>{t('Range type')}</QuickPanelLabel>
-              <QuickPanelSelect
-                ariaLabel={t('Range type')}
-                options={QUICK_FRAME_OPTIONS}
-                value={quickFrame}
-                onChange={onQuickFrameChange}
-              />
-            </QuickPanelSection>
-            <QuickPanelDivider />
-            <QuickOptions>
-              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
-                <QuickOptionButton
-                  key={option.value}
-                  type="button"
-                  selected={option.value === selectedQuickValue}
-                  onClick={() => onQuickOptionClick(option.value)}
-                >
-                  {option.label}
-                </QuickOptionButton>
-              ))}
-            </QuickOptions>
-          </QuickPanelContent>
-        </QuickPanel>
-      )}
       <Header>
         <NavButton
           buttonStyle="link"
@@ -911,7 +908,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             <MonthsGrid>
               {visibleMonths.map(month => (
                 <MonthSection key={month.format('YYYY-MM')}>
-                  <MonthTitle>{capitalize(month.format('MMMM YYYY'))}</MonthTitle>
+                  <MonthTitle>{formatMonthTitleRu(month)}</MonthTitle>
                   <WeekdaysGrid>
                     {weekdays.map(weekday => (
                       <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
@@ -996,7 +993,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                           }
                           onClick={() => onSelectMonth(month)}
                         >
-                          {capitalize(month.format('MMM'))}
+                          {MONTH_LABELS_SHORT_RU[month.month()]}
                         </MonthValueCell>
                       );
                     })}
@@ -1029,6 +1026,32 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             />
           </BottomInputsGrid>
         </CalendarContent>
+        <QuickPanel $visible={showSidePanel}>
+          <QuickPanelContent>
+            <QuickPanelSection>
+              <QuickPanelLabel>{t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}</QuickPanelLabel>
+              <QuickPanelSelect
+                ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
+                options={QUICK_FRAME_OPTIONS}
+                value={quickFrame}
+                onChange={onQuickFrameChange}
+              />
+            </QuickPanelSection>
+            <QuickPanelDivider />
+            <QuickOptions>
+              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
+                <QuickOptionButton
+                  key={option.value}
+                  type="button"
+                  selected={option.value === selectedQuickValue}
+                  onClick={() => onQuickOptionClick(option.value)}
+                >
+                  {option.label}
+                </QuickOptionButton>
+              ))}
+            </QuickOptions>
+          </QuickPanelContent>
+        </QuickPanel>
       </CalendarLayout>
     </Wrapper>
   );
