@@ -24,6 +24,7 @@ export type SelectOptionType = {
 export type DateFilterControlVariant = 'default' | 'v2';
 
 export type FrameType =
+  | 'CalendarV2'
   | 'Common'
   | 'Calendar'
   | 'Current'

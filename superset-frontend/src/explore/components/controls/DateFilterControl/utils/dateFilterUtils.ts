@@ -22,14 +22,28 @@ import {
   customTimeRangeDecode,
 } from '@superset-ui/core';
 import { useSelector } from 'react-redux';
+import { extendedDayjs } from '@superset-ui/core/utils/dates';
+import { Dayjs } from 'dayjs';
 import {
   COMMON_RANGE_VALUES_SET,
   CALENDAR_RANGE_VALUES_SET,
   CURRENT_RANGE_VALUES_SET,
+  DAYJS_FORMAT,
 } from '.';
-import { FrameType } from '../types';
+import { DateFilterControlVariant, FrameType } from '../types';
 
-export const guessFrame = (timeRange: string): FrameType => {
+export const guessFrame = (
+  timeRange: string,
+  variant: DateFilterControlVariant = 'default',
+): FrameType => {
+  if (variant === 'v2') {
+    if (timeRange === NO_TIME_RANGE) {
+      return 'CalendarV2';
+    }
+    if (parseCalendarRange(timeRange).matchedFlag) {
+      return 'CalendarV2';
+    }
+  }
   if (COMMON_RANGE_VALUES_SET.has(timeRange)) {
     return 'Common';
   }
@@ -55,3 +69,63 @@ export function useDefaultTimeFilter() {
     ) ?? NO_TIME_RANGE
   );
 }
+
+export type CalendarRangeValue = {
+  start: Dayjs;
+  end: Dayjs;
+  matchedFlag: boolean;
+};
+
+export const parseCalendarRange = (timeRange: string): CalendarRangeValue => {
+  const { customRange, matchedFlag } = customTimeRangeDecode(timeRange);
+
+  if (
+    !matchedFlag ||
+    customRange.sinceMode !== 'specific' ||
+    customRange.untilMode !== 'specific'
+  ) {
+    return {
+      start: extendedDayjs().startOf('day'),
+      end: extendedDayjs().startOf('day'),
+      matchedFlag: false,
+    };
+  }
+
+  const start = extendedDayjs(customRange.sinceDatetime).startOf('day');
+  const until = extendedDayjs(customRange.untilDatetime).startOf('day');
+  const end = until.subtract(1, 'day').startOf('day');
+
+  if (
+    !start.isValid() ||
+    !until.isValid() ||
+    !until.isAfter(start) ||
+    end.isBefore(start)
+  ) {
+    return {
+      start: extendedDayjs().startOf('day'),
+      end: extendedDayjs().startOf('day'),
+      matchedFlag: false,
+    };
+  }
+
+  return { start, end, matchedFlag: true };
+};
+
+export const encodeCalendarRange = (start: Dayjs, end: Dayjs): string =>
+  `${start.startOf('day').format(DAYJS_FORMAT)} : ${end
+    .startOf('day')
+    .add(1, 'day')
+    .format(DAYJS_FORMAT)}`;
+
+const capitalize = (value: string) =>
+  value.length ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+
+export const formatCalendarRangeLabel = (
+  start: Dayjs,
+  end: Dayjs,
+): string => {
+  const startLabel = capitalize(start.format('D MMM YYYY'));
+  const endLabel = capitalize(end.format('D MMM YYYY'));
+
+  return start.isSame(end, 'day') ? startLabel : `${startLabel} - ${endLabel}`;
+};

@@ -109,3 +109,23 @@ test('DateFilter v2 hides title and shows selected range inline', () => {
   expect(screen.getByText('Selected:')).toBeInTheDocument();
   expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
 });
+
+test('DateFilter v2 opens calendar frame and shows reset button', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: NO_TIME_RANGE,
+      variant: 'v2',
+    }),
+  );
+
+  userEvent.click(screen.getByText(NO_TIME_RANGE));
+
+  expect(
+    screen.getByTestId(DateFilterTestKey.CalendarV2Frame),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByTestId(DateFilterTestKey.ResetButton),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
+});

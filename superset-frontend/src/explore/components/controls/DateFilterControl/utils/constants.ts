@@ -44,6 +44,15 @@ export const FRAME_OPTIONS: SelectOptionType[] = [
   { value: 'No filter', label: t('No filter') },
 ];
 
+export const FRAME_OPTIONS_V2: SelectOptionType[] = [
+  { value: 'CalendarV2', label: t('Calendar') },
+  { value: 'Common', label: t('Last') },
+  { value: 'Calendar', label: t('Previous') },
+  { value: 'Current', label: t('Current') },
+  { value: 'Custom', label: t('Custom') },
+  { value: 'Advanced', label: t('Advanced') },
+];
+
 export const COMMON_RANGE_OPTIONS: CheckboxOptionType[] = [
   { value: 'Last day', label: t('Last day') },
   { value: 'Last week', label: t('Last week') },
@@ -147,9 +156,11 @@ export const MIDNIGHT = extendedDayjs()
 
 export enum DateFilterTestKey {
   CommonFrame = 'common-frame',
+  CalendarV2Frame = 'calendar-v2-frame',
   ModalOverlay = 'modal-overlay',
   PopoverOverlay = 'time-range-trigger',
   NoFilter = 'no-filter',
+  ResetButton = 'reset-button',
   CancelButton = 'cancel-button',
   ApplyButton = 'date-filter-control__apply-button',
 }

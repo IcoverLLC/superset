@@ -44,17 +44,23 @@ import { DateFilterControlProps, FrameType } from './types';
 import {
   DateFilterTestKey,
   FRAME_OPTIONS,
+  FRAME_OPTIONS_V2,
   guessFrame,
   useDefaultTimeFilter,
 } from './utils';
 import {
   CommonFrame,
   CalendarFrame,
+  CalendarRangeFrame,
   CustomFrame,
   AdvancedFrame,
   DateLabel,
 } from './components';
 import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
+import {
+  formatCalendarRangeLabel,
+  parseCalendarRange,
+} from './utils/dateFilterUtils';
 
 const StyledRangeType = styled(Select)`
   width: 272px;
@@ -173,7 +179,10 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   const [actualTimeRange, setActualTimeRange] = useState<string>(value);
 
   const [show, setShow] = useState<boolean>(false);
-  const guessedFrame = useMemo(() => guessFrame(value), [value]);
+  const guessedFrame = useMemo(
+    () => guessFrame(value, variant),
+    [value, variant],
+  );
   const [frame, setFrame] = useState<FrameType>(guessedFrame);
   const [lastFetchedTimeRange, setLastFetchedTimeRange] = useState(value);
   const [timeRangeValue, setTimeRangeValue] = useState(value);
@@ -182,6 +191,19 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   const [tooltipTitle, setTooltipTitle] = useState<ReactNode | null>(value);
   const theme = useTheme();
   const [labelRef, labelIsTruncated] = useCSSTextTruncation<HTMLSpanElement>();
+  const selectedCalendarRange = useMemo(
+    () => parseCalendarRange(timeRangeValue),
+    [timeRangeValue],
+  );
+  const selectedDisplayValue =
+    variant === 'v2' && selectedCalendarRange.matchedFlag
+      ? formatCalendarRangeLabel(
+          selectedCalendarRange.start,
+          selectedCalendarRange.end,
+        )
+      : evalResponse === 'No filter'
+        ? t('No filter')
+        : evalResponse;
 
   useEffect(() => {
     if (value === NO_TIME_RANGE) {
@@ -207,7 +229,18 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           | tooltip      | ADR  | ADR      | HRT    | HRT      |   ADR     |
           +--------------+------+----------+--------+----------+-----------+
         */
-        if (
+        const calendarRange =
+          variant === 'v2' ? parseCalendarRange(value) : undefined;
+        if (calendarRange?.matchedFlag) {
+          const formattedRange = formatCalendarRangeLabel(
+            calendarRange.start,
+            calendarRange.end,
+          );
+          setActualTimeRange(formattedRange);
+          setTooltipTitle(
+            getTooltipTitle(labelIsTruncated, formattedRange, actualRange),
+          );
+        } else if (
           guessedFrame === 'Common' ||
           guessedFrame === 'Calendar' ||
           guessedFrame === 'Current' ||
@@ -228,7 +261,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       setLastFetchedTimeRange(value);
       setEvalResponse(actualRange || value);
     });
-  }, [guessedFrame, labelIsTruncated, labelRef, value]);
+  }, [guessedFrame, labelIsTruncated, labelRef, value, variant]);
 
   useDebouncedEffect(
     () => {
@@ -290,16 +323,33 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     setFrame(value);
   }
 
+  function onReset() {
+    setTimeRangeValue(NO_TIME_RANGE);
+    setFrame(variant === 'v2' ? 'CalendarV2' : 'No filter');
+    setEvalResponse(NO_TIME_RANGE);
+    setLastFetchedTimeRange(NO_TIME_RANGE);
+    setValidTimeRange(true);
+  }
+
+  const frameOptions = variant === 'v2' ? FRAME_OPTIONS_V2 : FRAME_OPTIONS;
+
   const overlayContent = (
     <ContentStyleWrapper>
       <div className="control-label">{t('Range type')}</div>
       <StyledRangeType
         ariaLabel={t('Range type')}
-        options={FRAME_OPTIONS}
+        options={frameOptions}
         value={frame}
         onChange={onChangeFrame}
       />
       {frame !== 'No filter' && <Divider />}
+      {frame === 'CalendarV2' && (
+        <CalendarRangeFrame
+          value={timeRangeValue}
+          onChange={setTimeRangeValue}
+          isOverflowingFilterBar={isOverflowingFilterBar}
+        />
+      )}
       {frame === 'Common' && (
         <CommonFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
@@ -329,9 +379,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           variant === 'v2' ? (
             <div className="selected-range">
               <span className="selected-range-label">{t('Selected:')}</span>
-              <span className="selected-range-value">
-                {evalResponse === 'No filter' ? t('No filter') : evalResponse}
-              </span>
+              <span className="selected-range-value">{selectedDisplayValue}</span>
             </div>
           ) : (
             <>
@@ -356,6 +404,17 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       </div>
       <Divider />
       <div className="footer">
+        {variant === 'v2' && (
+          <Button
+            buttonStyle="secondary"
+            cta
+            key="reset"
+            onClick={onReset}
+            data-test={DateFilterTestKey.ResetButton}
+          >
+            {t('Reset')}
+          </Button>
+        )}
         <Button
           buttonStyle="secondary"
           cta
@@ -396,7 +455,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       defaultOpen={show}
       open={show}
       onOpenChange={toggleOverlay}
-      overlayStyle={{ width: '600px' }}
+      overlayStyle={{ width: variant === 'v2' ? '720px' : '600px' }}
       destroyTooltipOnHide
       getPopupContainer={nodeTrigger =>
         isOverflowingFilterBar
