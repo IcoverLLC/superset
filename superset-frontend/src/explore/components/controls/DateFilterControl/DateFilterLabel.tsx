@@ -67,6 +67,10 @@ const StyledRangeType = styled(Select)`
   width: 272px;
 `;
 
+const StyledRangeTypeV2 = styled(Select)`
+  width: 240px;
+`;
+
 const ContentStyleWrapper = styled.div`
   ${({ theme }) => css`
     .ant-row {
@@ -343,12 +347,21 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   const overlayContent = (
     <ContentStyleWrapper>
       <div className="control-label">{t('Range type')}</div>
-      <StyledRangeType
-        ariaLabel={t('Range type')}
-        options={frameOptions}
-        value={frame}
-        onChange={onChangeFrame}
-      />
+      {variant === 'v2' ? (
+        <StyledRangeTypeV2
+          ariaLabel={t('Range type')}
+          options={frameOptions}
+          value={frame}
+          onChange={onChangeFrame}
+        />
+      ) : (
+        <StyledRangeType
+          ariaLabel={t('Range type')}
+          options={frameOptions}
+          value={frame}
+          onChange={onChangeFrame}
+        />
+      )}
       {frame !== 'No filter' && <Divider />}
       {frame === 'CalendarV2' && (
         <CalendarRangeFrame
@@ -385,7 +398,9 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         {validTimeRange && (
           variant === 'v2' ? (
             <div className="selected-range">
-              <span className="selected-range-label">{t('Выбрано:')}</span>
+              <span className="selected-range-label">
+                {t('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:')}
+              </span>
               <span className="selected-range-value">{selectedDisplayValue}</span>
             </div>
           ) : (
@@ -419,7 +434,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
             onClick={onReset}
             data-test={DateFilterTestKey.ResetButton}
           >
-            {t('Reset')}
+            {t('\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c')}
           </Button>
         )}
         <Button
@@ -462,7 +477,14 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       defaultOpen={show}
       open={show}
       onOpenChange={toggleOverlay}
-      overlayStyle={{ width: variant === 'v2' ? '720px' : '600px' }}
+      overlayStyle={
+        variant === 'v2'
+          ? {
+              width: 'fit-content',
+              maxWidth: 'calc(100vw - 32px)',
+            }
+          : { width: '600px' }
+      }
       destroyTooltipOnHide
       getPopupContainer={nodeTrigger =>
         isOverflowingFilterBar

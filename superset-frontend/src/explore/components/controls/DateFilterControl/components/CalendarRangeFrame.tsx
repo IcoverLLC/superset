@@ -39,9 +39,9 @@ const Wrapper = styled.div`
 `;
 
 const Header = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
 `;
 
 const NavButton = styled(Button)`
@@ -50,11 +50,42 @@ const NavButton = styled(Button)`
   height: auto;
 `;
 
+const HeaderTitle = styled.div`
+  justify-self: center;
+`;
+
+const HeaderActions = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit * 2}px;
+  `}
+`;
+
+const PanelToggleButton = styled(Button)`
+  padding: 0;
+  min-width: auto;
+  height: auto;
+`;
+
+const CalendarLayout = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    align-items: flex-start;
+    gap: ${theme.sizeUnit * 5}px;
+    width: fit-content;
+  `}
+`;
+
+const CalendarContent = styled.div`
+  width: fit-content;
+`;
+
 const MonthsGrid = styled.div`
   ${({ theme }) => css`
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: ${theme.sizeUnit * 2}px;
+    grid-template-columns: repeat(2, max-content);
+    gap: ${theme.sizeUnit * 5}px;
   `}
 `;
 
@@ -76,7 +107,7 @@ const MonthTitle = styled.div`
 
 const WeekdaysGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 24px);
+  grid-template-columns: repeat(7, 34px);
   justify-content: center;
   margin-bottom: ${({ theme }) => theme.sizeUnit}px;
 `;
@@ -92,9 +123,9 @@ const Weekday = styled.div`
 
 const DaysGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 24px);
+  grid-template-columns: repeat(7, 34px);
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
 `;
 
 const getDayBorderRadius = (
@@ -153,11 +184,11 @@ const DayCell = styled.button<{
     cursor: pointer;
     display: inline-flex;
     font: inherit;
-    height: 28px;
+    height: 32px;
     justify-content: center;
     line-height: 20px;
     padding: 0;
-    width: 24px;
+    width: 34px;
 
     &:hover {
       background: ${selected
@@ -170,8 +201,34 @@ const DayCell = styled.button<{
 `;
 
 const EmptyDayCell = styled.div`
-  height: 28px;
-  width: 24px;
+  height: 32px;
+  width: 34px;
+`;
+
+const SidePanel = styled.aside`
+  ${({ theme }) => css`
+    border-left: 1px solid ${theme.colorBorder};
+    min-height: 100%;
+    padding-left: ${theme.sizeUnit * 3}px;
+    width: 152px;
+  `}
+`;
+
+const SidePanelTitle = styled.div`
+  ${({ theme }) => css`
+    font-size: 15px;
+    font-weight: ${theme.fontWeightStrong};
+    line-height: 24px;
+    margin-bottom: ${theme.sizeUnit * 2}px;
+  `}
+`;
+
+const SidePanelPlaceholder = styled.div`
+  ${({ theme }) => css`
+    color: ${theme.colorTextSecondary};
+    font-size: ${theme.fontSizeSM}px;
+    line-height: 20px;
+  `}
 `;
 
 const getCalendarStartOffset = (month: Dayjs) => {
@@ -206,6 +263,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const [rangeStart, setRangeStart] = useState<Dayjs | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Dayjs | null>(null);
   const [isSelectingEnd, setIsSelectingEnd] = useState(false);
+  const [showSidePanel, setShowSidePanel] = useState(false);
   const [leftMonth, setLeftMonth] = useState(
     today.startOf('month').subtract(1, 'month'),
   );
@@ -273,64 +331,92 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
         >
           <Icons.CaretLeftOutlined />
         </NavButton>
-        <div className="section-title">{t('Calendar')}</div>
-        <NavButton
-          buttonStyle="link"
-          onClick={() => setLeftMonth(leftMonth.add(1, 'month'))}
-        >
-          <Icons.RightOutlined />
-        </NavButton>
+        <HeaderTitle className="section-title">
+          {t('\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c')}
+        </HeaderTitle>
+        <HeaderActions>
+          <PanelToggleButton
+            buttonStyle="link"
+            onClick={() => setShowSidePanel(current => !current)}
+          >
+            {showSidePanel
+              ? t('\u0421\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c')
+              : t('\u041f\u0430\u043d\u0435\u043b\u044c')}
+          </PanelToggleButton>
+          <NavButton
+            buttonStyle="link"
+            onClick={() => setLeftMonth(leftMonth.add(1, 'month'))}
+          >
+            <Icons.RightOutlined />
+          </NavButton>
+        </HeaderActions>
       </Header>
-      <MonthsGrid>
-        {months.map(month => (
-          <MonthSection key={month.format('YYYY-MM')}>
-            <MonthTitle>{capitalize(month.format('MMMM YYYY'))}</MonthTitle>
-            <WeekdaysGrid>
-              {weekdays.map(weekday => (
-                <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
-                  {weekday}
-                </Weekday>
-              ))}
-            </WeekdaysGrid>
-            <DaysGrid>
-              {buildMonthDays(month).map((day, index) => {
-                if (!day) {
-                  return (
-                    <EmptyDayCell
-                      key={`${month.format('YYYY-MM')}-empty-${index}`}
-                    />
-                  );
-                }
+      <CalendarLayout>
+        <CalendarContent>
+          <MonthsGrid>
+            {months.map(month => (
+              <MonthSection key={month.format('YYYY-MM')}>
+                <MonthTitle>{capitalize(month.format('MMMM YYYY'))}</MonthTitle>
+                <WeekdaysGrid>
+                  {weekdays.map(weekday => (
+                    <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
+                      {weekday}
+                    </Weekday>
+                  ))}
+                </WeekdaysGrid>
+                <DaysGrid>
+                  {buildMonthDays(month).map((day, index) => {
+                    if (!day) {
+                      return (
+                        <EmptyDayCell
+                          key={`${month.format('YYYY-MM')}-empty-${index}`}
+                        />
+                      );
+                    }
 
-                const selected =
-                  (!!rangeStart && day.isSame(rangeStart, 'day')) ||
-                  (!!rangeEnd && day.isSame(rangeEnd, 'day'));
-                const inRange =
-                  !!rangeStart &&
-                  !!rangeEnd &&
-                  day.isAfter(rangeStart, 'day') &&
-                  day.isBefore(rangeEnd, 'day');
+                    const selected =
+                      (!!rangeStart && day.isSame(rangeStart, 'day')) ||
+                      (!!rangeEnd && day.isSame(rangeEnd, 'day'));
+                    const inRange =
+                      !!rangeStart &&
+                      !!rangeEnd &&
+                      day.isAfter(rangeStart, 'day') &&
+                      day.isBefore(rangeEnd, 'day');
 
-                return (
-                  <DayCell
-                    key={day.format('YYYY-MM-DD')}
-                    type="button"
-                    muted={false}
-                    selected={selected}
-                    inRange={inRange}
-                    rangeStart={!!rangeStart && day.isSame(rangeStart, 'day')}
-                    rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
-                    weekend={day.day() === 0 || day.day() === 6}
-                    onClick={() => onSelectDay(day)}
-                  >
-                    {day.date()}
-                  </DayCell>
-                );
-              })}
-            </DaysGrid>
-          </MonthSection>
-        ))}
-      </MonthsGrid>
+                    return (
+                      <DayCell
+                        key={day.format('YYYY-MM-DD')}
+                        type="button"
+                        muted={false}
+                        selected={selected}
+                        inRange={inRange}
+                        rangeStart={!!rangeStart && day.isSame(rangeStart, 'day')}
+                        rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
+                        weekend={day.day() === 0 || day.day() === 6}
+                        onClick={() => onSelectDay(day)}
+                      >
+                        {day.date()}
+                      </DayCell>
+                    );
+                  })}
+                </DaysGrid>
+              </MonthSection>
+            ))}
+          </MonthsGrid>
+        </CalendarContent>
+        {showSidePanel && (
+          <SidePanel>
+            <SidePanelTitle>
+              {t('\u041f\u0430\u043d\u0435\u043b\u044c')}
+            </SidePanelTitle>
+            <SidePanelPlaceholder>
+              {t(
+                '\u0421\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435 \u0434\u043e\u0431\u0430\u0432\u0438\u043c \u043f\u043e\u0437\u0436\u0435.',
+              )}
+            </SidePanelPlaceholder>
+          </SidePanel>
+        )}
+      </CalendarLayout>
     </Wrapper>
   );
 }

@@ -45,7 +45,10 @@ export const FRAME_OPTIONS: SelectOptionType[] = [
 ];
 
 export const FRAME_OPTIONS_V2: SelectOptionType[] = [
-  { value: 'CalendarV2', label: t('Calendar') },
+  {
+    value: 'CalendarV2',
+    label: t('\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c'),
+  },
   { value: 'Common', label: t('Last') },
   { value: 'Calendar', label: t('Previous') },
   { value: 'Current', label: t('Current') },

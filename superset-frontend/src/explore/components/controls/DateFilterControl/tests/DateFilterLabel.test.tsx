@@ -106,7 +106,9 @@ test('DateFilter v2 hides title and shows selected range inline', () => {
   userEvent.click(screen.getByText('Last week'));
 
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
-  expect(screen.getByText('Selected:')).toBeInTheDocument();
+  expect(
+    screen.getByText('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:'),
+  ).toBeInTheDocument();
   expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
 });
 
