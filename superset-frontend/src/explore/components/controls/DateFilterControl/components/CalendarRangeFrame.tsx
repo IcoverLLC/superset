@@ -61,6 +61,7 @@ const MonthsGrid = styled.div`
 const MonthSection = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: center;
 `;
 
 const MonthTitle = styled.div`
@@ -75,7 +76,8 @@ const MonthTitle = styled.div`
 
 const WeekdaysGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 24px);
+  justify-content: center;
   margin-bottom: ${({ theme }) => theme.sizeUnit}px;
 `;
 
@@ -90,7 +92,8 @@ const Weekday = styled.div`
 
 const DaysGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 24px);
+  justify-content: center;
   gap: 1px;
 `;
 
@@ -154,7 +157,7 @@ const DayCell = styled.button<{
     justify-content: center;
     line-height: 20px;
     padding: 0;
-    width: 100%;
+    width: 24px;
 
     &:hover {
       background: ${selected
@@ -168,6 +171,7 @@ const DayCell = styled.button<{
 
 const EmptyDayCell = styled.div`
   height: 28px;
+  width: 24px;
 `;
 
 const getCalendarStartOffset = (month: Dayjs) => {
