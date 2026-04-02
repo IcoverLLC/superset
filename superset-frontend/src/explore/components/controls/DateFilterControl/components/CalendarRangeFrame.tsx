@@ -18,13 +18,15 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { css, styled, t } from '@superset-ui/core';
-import { Button, Loading } from '@superset-ui/core/components';
+import { Button, Loading, Select } from '@superset-ui/core/components';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import { Dayjs } from 'dayjs';
 import { useLocale } from 'src/hooks/useLocale';
-import { DateFilterTestKey } from '../utils';
-import { FrameComponentProps } from '../types';
+import {
+  DateFilterTestKey,
+} from '../utils';
+import { FrameComponentProps, SelectOptionType } from '../types';
 import {
   encodeCalendarRange,
   parseCalendarRange,
@@ -210,26 +212,107 @@ const SidePanel = styled.aside`
     border-left: 1px solid ${theme.colorBorder};
     min-height: 100%;
     padding-left: ${theme.sizeUnit * 3}px;
-    width: 152px;
+    width: 196px;
   `}
 `;
 
-const SidePanelTitle = styled.div`
+const SidePanelLabel = styled.div`
   ${({ theme }) => css`
-    font-size: 15px;
-    font-weight: ${theme.fontWeightStrong};
-    line-height: 24px;
+    font-size: ${theme.fontSizeSM}px;
+    line-height: 20px;
     margin-bottom: ${theme.sizeUnit * 2}px;
   `}
 `;
 
-const SidePanelPlaceholder = styled.div`
+const SidePanelSelect = styled(Select)`
+  width: 100%;
+`;
+
+const QuickOptions = styled.div`
   ${({ theme }) => css`
-    color: ${theme.colorTextSecondary};
-    font-size: ${theme.fontSizeSM}px;
-    line-height: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: ${theme.sizeUnit * 2}px;
+    margin-top: ${theme.sizeUnit * 4}px;
   `}
 `;
+
+const QuickOptionButton = styled.button<{ selected: boolean }>`
+  ${({ theme, selected }) => css`
+    background: transparent;
+    border: 0;
+    color: ${selected ? theme.colorPrimaryHover : theme.colorPrimary};
+    cursor: pointer;
+    font: inherit;
+    font-weight: ${selected ? theme.fontWeightStrong : theme.fontWeightNormal};
+    line-height: 20px;
+    padding: 0;
+    text-align: left;
+
+    &:hover {
+      color: ${theme.colorPrimaryHover};
+    }
+  `}
+`;
+
+type QuickFrameType = 'Common' | 'Calendar' | 'Current';
+
+const QUICK_FRAME_OPTIONS: SelectOptionType[] = [
+  { value: 'Common', label: t('Last') },
+  { value: 'Calendar', label: t('Previous') },
+  { value: 'Current', label: t('Current') },
+];
+
+const QUICK_RANGE_OPTIONS: Record<
+  QuickFrameType,
+  Array<{ value: string; label: string }>
+> = {
+  Common: [
+    { value: 'Last day', label: t('Day') },
+    { value: 'Last week', label: t('Week') },
+    { value: 'Last month', label: t('Month') },
+    { value: 'Last quarter', label: t('Quarter') },
+    { value: 'Last year', label: t('Year') },
+  ],
+  Calendar: [
+    { value: 'previous calendar week', label: t('Week') },
+    { value: 'previous calendar month', label: t('Month') },
+    { value: 'previous calendar quarter', label: t('Quarter') },
+    { value: 'previous calendar year', label: t('Year') },
+  ],
+  Current: [
+    { value: 'Current day', label: t('Day') },
+    { value: 'Current week', label: t('Week') },
+    { value: 'Current month', label: t('Month') },
+    { value: 'Current quarter', label: t('Quarter') },
+    { value: 'Current year', label: t('Year') },
+  ],
+};
+
+const QUICK_FRAME_DEFAULT_VALUES: Record<QuickFrameType, string> = {
+  Common: 'Last week',
+  Calendar: 'previous calendar week',
+  Current: 'Current week',
+};
+
+const getQuickFrame = (value: string): QuickFrameType => {
+  if (QUICK_RANGE_OPTIONS.Common.some(option => option.value === value)) {
+    return 'Common';
+  }
+  if (QUICK_RANGE_OPTIONS.Calendar.some(option => option.value === value)) {
+    return 'Calendar';
+  }
+  if (QUICK_RANGE_OPTIONS.Current.some(option => option.value === value)) {
+    return 'Current';
+  }
+  return 'Current';
+};
+
+const getQuickValue = (frame: QuickFrameType, value: string) =>
+  QUICK_RANGE_OPTIONS[frame].some(option => option.value === value)
+    ? value
+    : null;
 
 const getCalendarStartOffset = (month: Dayjs) => {
   const firstDayOfMonth = month.startOf('month');
@@ -260,6 +343,9 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const datePickerLocale = useLocale();
   const today = useMemo(() => extendedDayjs().startOf('day'), []);
   const parsedRange = useMemo(() => parseCalendarRange(props.value), [props.value]);
+  const [quickFrame, setQuickFrame] = useState<QuickFrameType>(() =>
+    getQuickFrame(props.value),
+  );
   const [rangeStart, setRangeStart] = useState<Dayjs | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Dayjs | null>(null);
   const [isSelectingEnd, setIsSelectingEnd] = useState(false);
@@ -267,6 +353,10 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const [leftMonth, setLeftMonth] = useState(
     today.startOf('month').subtract(1, 'month'),
   );
+
+  useEffect(() => {
+    setQuickFrame(getQuickFrame(props.value));
+  }, [props.value]);
 
   useEffect(() => {
     if (
@@ -301,6 +391,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   const rightMonth = leftMonth.add(1, 'month');
   const months = [leftMonth, rightMonth];
+  const selectedQuickValue = getQuickValue(quickFrame, props.value);
 
   const onSelectDay = (day: Dayjs) => {
     if (!rangeStart || (!isSelectingEnd && rangeEnd)) {
@@ -316,6 +407,12 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     setRangeEnd(end);
     setIsSelectingEnd(false);
     props.onChange(encodeCalendarRange(start, end));
+  };
+
+  const onQuickFrameChange = (value: string) => {
+    const nextFrame = value as QuickFrameType;
+    setQuickFrame(nextFrame);
+    props.onChange(QUICK_FRAME_DEFAULT_VALUES[nextFrame]);
   };
 
   if (datePickerLocale === null) {
@@ -340,8 +437,8 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             onClick={() => setShowSidePanel(current => !current)}
           >
             {showSidePanel
-              ? t('\u0421\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c')
-              : t('\u041f\u0430\u043d\u0435\u043b\u044c')}
+              ? t('\u0421\u043a\u0440\u044b\u0442\u044c \u0411\u044b\u0441\u0442\u0440\u044b\u0435')
+              : t('\u0411\u044b\u0441\u0442\u0440\u044b\u0435')}
           </PanelToggleButton>
           <NavButton
             buttonStyle="link"
@@ -406,14 +503,25 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
         </CalendarContent>
         {showSidePanel && (
           <SidePanel>
-            <SidePanelTitle>
-              {t('\u041f\u0430\u043d\u0435\u043b\u044c')}
-            </SidePanelTitle>
-            <SidePanelPlaceholder>
-              {t(
-                '\u0421\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435 \u0434\u043e\u0431\u0430\u0432\u0438\u043c \u043f\u043e\u0437\u0436\u0435.',
-              )}
-            </SidePanelPlaceholder>
+            <SidePanelLabel>{t('Range type')}</SidePanelLabel>
+            <SidePanelSelect
+              ariaLabel={t('Range type')}
+              options={QUICK_FRAME_OPTIONS}
+              value={quickFrame}
+              onChange={onQuickFrameChange}
+            />
+            <QuickOptions>
+              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
+                <QuickOptionButton
+                  key={option.value}
+                  type="button"
+                  selected={option.value === selectedQuickValue}
+                  onClick={() => props.onChange(option.value)}
+                >
+                  {option.label}
+                </QuickOptionButton>
+              ))}
+            </QuickOptions>
           </SidePanel>
         )}
       </CalendarLayout>
