@@ -70,14 +70,10 @@ const Wrapper = styled.div`
 
 const QuickPanel = styled.aside`
   ${({ theme }) => css`
-    background: ${theme.colorBgContainer};
+    align-self: stretch;
     border-left: 1px solid ${theme.colorBorder};
-    left: calc(100% + ${theme.sizeUnit * 4}px);
     padding-left: ${theme.sizeUnit * 3}px;
-    position: absolute;
-    top: 0;
     width: 184px;
-    z-index: 1;
   `}
 `;
 
@@ -87,6 +83,7 @@ const QuickPanelContent = styled.div`
     flex-direction: column;
     align-items: flex-start;
     gap: ${theme.sizeUnit * 3}px;
+    height: 100%;
     padding-right: ${theme.sizeUnit * 3}px;
     width: 100%;
   `}
@@ -135,12 +132,9 @@ const ModeButton = styled(Button)`
 `;
 
 const CalendarLayout = styled.div`
-  ${({ theme }) => css`
-    display: flex;
-    align-items: flex-start;
-    position: relative;
-    width: fit-content;
-  `}
+  display: flex;
+  align-items: stretch;
+  width: fit-content;
 `;
 
 const CalendarContent = styled.div`
