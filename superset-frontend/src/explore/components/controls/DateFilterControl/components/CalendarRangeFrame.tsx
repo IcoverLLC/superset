@@ -94,6 +94,28 @@ const DaysGrid = styled.div`
   gap: 2px;
 `;
 
+const getDayBorderRadius = (
+  borderRadius: number,
+  selected: boolean,
+  inRange: boolean,
+  rangeStart: boolean,
+  rangeEnd: boolean,
+) => {
+  if (selected) {
+    return `${borderRadius}px`;
+  }
+  if (rangeStart) {
+    return `${borderRadius}px 0 0 ${borderRadius}px`;
+  }
+  if (rangeEnd) {
+    return `0 ${borderRadius}px ${borderRadius}px 0`;
+  }
+  if (inRange) {
+    return '0';
+  }
+  return `${borderRadius}px`;
+};
+
 const DayCell = styled.button<{
   muted: boolean;
   selected: boolean;
@@ -110,15 +132,13 @@ const DayCell = styled.button<{
         ? theme.colorFillSecondary
         : 'transparent'};
     border: 0;
-    border-radius: ${selected
-      ? theme.borderRadius}px
-      : rangeStart
-        ? `${theme.borderRadius}px 0 0 ${theme.borderRadius}px`
-        : rangeEnd
-          ? `0 ${theme.borderRadius}px ${theme.borderRadius}px 0`
-          : inRange
-            ? '0'
-            : `${theme.borderRadius}px`};
+    border-radius: ${getDayBorderRadius(
+      theme.borderRadius,
+      selected,
+      inRange,
+      rangeStart,
+      rangeEnd,
+    )};
     color: ${selected
       ? theme.colorWhite
       : muted
