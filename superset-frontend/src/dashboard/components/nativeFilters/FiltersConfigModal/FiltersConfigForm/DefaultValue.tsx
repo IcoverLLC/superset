@@ -64,7 +64,8 @@ const DefaultValue: FC<DefaultValueProps> = ({
     <SuperChart
       height={INPUT_HEIGHT}
       width={
-        formFilter?.filterType === 'filter_time'
+        formFilter?.filterType === 'filter_time' ||
+        formFilter?.filterType === 'filter_time_v2'
           ? TIME_FILTER_INPUT_WIDTH
           : INPUT_WIDTH
       }

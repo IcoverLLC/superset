@@ -17,4 +17,6 @@
  * under the License.
  */
 export { default } from './DateFilterLabel';
+export { default as DateFilterControlV2 } from './DateFilterControlV2';
+export * from './types';
 export * from './utils';

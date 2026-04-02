@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-export { default as SelectFilterPlugin } from './Select';
-export { default as RangeFilterPlugin } from './Range';
-export { default as TimeFilterPlugin } from './Time';
-export { default as TimeFilterV2Plugin } from './TimeV2';
-export { default as TimeColumnFilterPlugin } from './TimeColumn';
-export { default as TimeGrainFilterPlugin } from './TimeGrain';
+import DateFilterLabel from './DateFilterLabel';
+import { DateFilterControlProps } from './types';
+
+export default function DateFilterControlV2(props: DateFilterControlProps) {
+  return <DateFilterLabel {...props} variant="v2" />;
+}

@@ -100,6 +100,26 @@ const ContentStyleWrapper = styled.div`
     .footer {
       text-align: right;
     }
+
+    .selected-range {
+      display: flex;
+      align-items: flex-start;
+      gap: ${theme.sizeUnit}px;
+    }
+
+    .selected-range-label {
+      font-style: normal;
+      font-weight: ${theme.fontWeightStrong};
+      font-size: 15px;
+      line-height: 24px;
+      white-space: nowrap;
+    }
+
+    .selected-range-value {
+      font-size: 15px;
+      line-height: 24px;
+      word-break: break-word;
+    }
   `}
 `;
 
@@ -145,6 +165,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     onOpenPopover = noOp,
     onClosePopover = noOp,
     isOverflowingFilterBar = false,
+    variant = 'default',
   } = props;
   const defaultTimeFilter = useDefaultTimeFilter();
 
@@ -304,17 +325,33 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       {frame === 'No filter' && <div data-test={DateFilterTestKey.NoFilter} />}
       <Divider />
       <div>
-        <div className="section-title">{t('Actual time range')}</div>
         {validTimeRange && (
-          <div>
-            {evalResponse === 'No filter' ? t('No filter') : evalResponse}
-          </div>
+          variant === 'v2' ? (
+            <div className="selected-range">
+              <span className="selected-range-label">{t('Selected:')}</span>
+              <span className="selected-range-value">
+                {evalResponse === 'No filter' ? t('No filter') : evalResponse}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="section-title">{t('Actual time range')}</div>
+              <div>
+                {evalResponse === 'No filter' ? t('No filter') : evalResponse}
+              </div>
+            </>
+          )
         )}
         {!validTimeRange && (
-          <IconWrapper className="warning">
-            <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
-            <span className="text error">{evalResponse}</span>
-          </IconWrapper>
+          <>
+            {variant !== 'v2' && (
+              <div className="section-title">{t('Actual time range')}</div>
+            )}
+            <IconWrapper className="warning">
+              <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
+              <span className="text error">{evalResponse}</span>
+            </IconWrapper>
+          </>
         )}
       </div>
       <Divider />
@@ -349,10 +386,12 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       placement="right"
       content={overlayContent}
       title={
-        <IconWrapper>
-          <Icons.EditOutlined />
-          <span className="text">{t('Edit time range')}</span>
-        </IconWrapper>
+        variant === 'v2' ? undefined : (
+          <IconWrapper>
+            <Icons.EditOutlined />
+            <span className="text">{t('Edit time range')}</span>
+          </IconWrapper>
+        )
       }
       defaultOpen={show}
       open={show}

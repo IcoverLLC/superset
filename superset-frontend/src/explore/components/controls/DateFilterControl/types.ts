@@ -21,6 +21,8 @@ export type SelectOptionType = {
   label: string;
 };
 
+export type DateFilterControlVariant = 'default' | 'v2';
+
 export type FrameType =
   | 'Common'
   | 'Calendar'
@@ -113,4 +115,5 @@ export interface DateFilterControlProps {
   onOpenPopover?: () => void;
   onClosePopover?: () => void;
   isOverflowingFilterBar?: boolean;
+  variant?: DateFilterControlVariant;
 }

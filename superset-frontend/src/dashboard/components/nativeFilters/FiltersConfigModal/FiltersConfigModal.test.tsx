@@ -34,6 +34,7 @@ import {
   SelectFilterPlugin,
   TimeColumnFilterPlugin,
   TimeFilterPlugin,
+  TimeFilterV2Plugin,
   TimeGrainFilterPlugin,
 } from 'src/filters/components';
 import FiltersConfigModal, {
@@ -48,6 +49,7 @@ class MainPreset extends Preset {
         new SelectFilterPlugin().configure({ key: 'filter_select' }),
         new RangeFilterPlugin().configure({ key: 'filter_range' }),
         new TimeFilterPlugin().configure({ key: 'filter_time' }),
+        new TimeFilterV2Plugin().configure({ key: 'filter_time_v2' }),
         new TimeColumnFilterPlugin().configure({ key: 'filter_timecolumn' }),
         new TimeGrainFilterPlugin().configure({ key: 'filter_timegrain' }),
       ],
@@ -149,6 +151,7 @@ const COLUMN_REGEX = /^column$/i;
 const VALUE_REGEX = /^value$/i;
 const NUMERICAL_RANGE_REGEX = /^numerical range$/i;
 const TIME_RANGE_REGEX = /^time range$/i;
+const TIME_RANGE_V2_REGEX = /^time range v2$/i;
 const TIME_COLUMN_REGEX = /^time column$/i;
 const TIME_GRAIN_REGEX = /^time grain$/i;
 const FILTER_SETTINGS_REGEX = /^filter settings$/i;
@@ -259,6 +262,21 @@ test('renders a time range filter type', async () => {
   expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
 });
 
+test('renders a time range v2 filter type', async () => {
+  defaultRender();
+
+  userEvent.click(screen.getByText(VALUE_REGEX));
+
+  await waitFor(() => userEvent.click(screen.getByText(TIME_RANGE_V2_REGEX)));
+
+  expect(screen.getByText(FILTER_TYPE_REGEX)).toBeInTheDocument();
+  expect(screen.getByText(FILTER_NAME_REGEX)).toBeInTheDocument();
+  expect(screen.queryByText(DATASET_REGEX)).not.toBeInTheDocument();
+  expect(screen.queryByText(COLUMN_REGEX)).not.toBeInTheDocument();
+
+  expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
+});
+
 test('renders a time column filter type', async () => {
   defaultRender();
 
@@ -295,11 +313,13 @@ test('render time filter types as disabled if there are no temporal columns in t
   userEvent.click(screen.getByText(VALUE_REGEX));
 
   const timeRange = await screen.findByText(TIME_RANGE_REGEX);
+  const timeRangeV2 = await screen.findByText(TIME_RANGE_V2_REGEX);
   const timeGrain = await screen.findByText(TIME_GRAIN_REGEX);
   const timeColumn = await screen.findByText(TIME_COLUMN_REGEX);
   const disabledClass = '.ant-select-item-option-disabled';
 
   expect(timeRange.closest(disabledClass)).toBeInTheDocument();
+  expect(timeRangeV2.closest(disabledClass)).toBeInTheDocument();
   expect(timeGrain.closest(disabledClass)).toBeInTheDocument();
   expect(timeColumn.closest(disabledClass)).toBeInTheDocument();
 });

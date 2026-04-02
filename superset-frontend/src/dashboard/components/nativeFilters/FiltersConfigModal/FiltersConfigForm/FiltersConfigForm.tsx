@@ -234,12 +234,14 @@ export interface FiltersConfigFormProps {
 }
 
 const FILTERS_WITH_ADHOC_FILTERS = ['filter_select', 'filter_range'];
+const TIME_FILTER_TYPES = ['filter_time', 'filter_time_v2'];
 
 // TODO: Rename the filter plugins and remove this mapping
 const FILTER_TYPE_NAME_MAPPING = {
   [t('Select filter')]: t('Value'),
   [t('Range filter')]: t('Numerical range'),
   [t('Time filter')]: t('Time range'),
+  [t('Time filter v2')]: t('Time range v2'),
   [t('Time column')]: t('Time column'),
   [t('Time grain')]: t('Time grain'),
   [t('Group By')]: t('Group by'),
@@ -590,7 +592,7 @@ const FiltersConfigForm = (
   );
   const hasAvailableFilters = availableFilters.length > 0;
   const hasTimeDependency = availableFilters
-    .filter(filter => filter.type === 'filter_time')
+    .filter(filter => TIME_FILTER_TYPES.includes(filter.type || ''))
     .some(filter => dependencies?.includes(filter.value));
 
   const extensionsRegistry = getExtensionsRegistry();
@@ -833,7 +835,7 @@ const FiltersConfigForm = (
                     />
                   </StyledFormItem>
                 </StyledContainer>
-                {formFilter?.filterType === 'filter_time' && (
+                {TIME_FILTER_TYPES.includes(formFilter?.filterType || '') && (
                   <FilterTypeInfo expanded={expanded}>
                     {t(`Dashboard time range filters apply to temporal columns defined in
           the filter section of each chart. Add temporal columns to the chart
@@ -912,7 +914,7 @@ const FiltersConfigForm = (
                   expandIconPosition="end"
                   key={`native-filter-config-${filterId}`}
                   items={[
-                    ...(formFilter?.filterType !== 'filter_time'
+                    ...(!TIME_FILTER_TYPES.includes(formFilter?.filterType || '')
                       ? [
                           {
                             key: `${filterId}-${FilterPanels.configuration.key}`,

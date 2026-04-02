@@ -93,3 +93,19 @@ test('Open and close popover', () => {
   expect(defaultProps.onClosePopover).toHaveBeenCalled();
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
 });
+
+test('DateFilter v2 hides title and shows selected range inline', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: 'Last week',
+      variant: 'v2',
+    }),
+  );
+
+  userEvent.click(screen.getByText('Last week'));
+
+  expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
+  expect(screen.getByText('Selected:')).toBeInTheDocument();
+  expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
+});

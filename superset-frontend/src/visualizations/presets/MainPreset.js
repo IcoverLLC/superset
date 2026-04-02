@@ -74,6 +74,7 @@ import {
   SelectFilterPlugin,
   RangeFilterPlugin,
   TimeFilterPlugin,
+  TimeFilterV2Plugin,
   TimeColumnFilterPlugin,
   TimeGrainFilterPlugin,
 } from 'src/filters/components';
@@ -181,6 +182,7 @@ export default class MainPreset extends Preset {
         new SelectFilterPlugin().configure({ key: FilterPlugins.Select }),
         new RangeFilterPlugin().configure({ key: FilterPlugins.Range }),
         new TimeFilterPlugin().configure({ key: FilterPlugins.Time }),
+        new TimeFilterV2Plugin().configure({ key: FilterPlugins.TimeV2 }),
         new TimeColumnFilterPlugin().configure({
           key: FilterPlugins.TimeColumn,
         }),
