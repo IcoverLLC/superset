@@ -374,16 +374,15 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       )}
       <Divider />
       <div>
-        {validTimeRange && (
-          variant !== 'v2' ? (
+        {validTimeRange &&
+          variant !== 'v2' && (
             <>
               <div className="section-title">{t('Actual time range')}</div>
               <div>
                 {evalResponse === 'No filter' ? t('No filter') : evalResponse}
               </div>
             </>
-          )
-        )}
+          )}
         {!validTimeRange && (
           <>
             {variant !== 'v2' && (
