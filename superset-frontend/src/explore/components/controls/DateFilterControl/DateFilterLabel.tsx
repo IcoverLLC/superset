@@ -408,10 +408,10 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
             key="reset"
             onClick={onReset}
             data-test={DateFilterTestKey.ResetButton}
-          >
-            {t('\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c')}
-          </Button>
-        )}
+        >
+          {t('\u0421\u0411\u0420\u041e\u0421\u0418\u0422\u042c')}
+        </Button>
+      )}
         <Button
           buttonStyle="secondary"
           cta
@@ -419,7 +419,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           onClick={onHide}
           data-test={DateFilterTestKey.CancelButton}
         >
-          {t('CANCEL')}
+          {t('\u041e\u0422\u041c\u0415\u041d\u0418\u0422\u042c')}
         </Button>
         <Button
           buttonStyle="primary"
@@ -429,7 +429,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           onClick={onSave}
           data-test={DateFilterTestKey.ApplyButton}
         >
-          {t('APPLY')}
+          {t('\u041f\u0420\u0418\u041c\u0415\u041d\u0418\u0422\u042c')}
         </Button>
       </div>
     </ContentStyleWrapper>
