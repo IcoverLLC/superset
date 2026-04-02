@@ -91,7 +91,7 @@ const QuickPanelContent = styled.div`
 
 const Header = styled.div`
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
 `;
 
@@ -99,10 +99,8 @@ const HeaderCenter = styled.div`
   ${({ theme }) => css`
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: ${theme.sizeUnit * 3}px;
-    margin-left: ${theme.sizeUnit * 16}px;
-    width: fit-content;
   `}
 `;
 
