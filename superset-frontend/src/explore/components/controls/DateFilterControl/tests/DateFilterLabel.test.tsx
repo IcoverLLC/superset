@@ -94,7 +94,7 @@ test('Open and close popover', () => {
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
 });
 
-test('DateFilter v2 hides title and shows selected range inline', () => {
+test('DateFilter v2 hides title and selected range section', () => {
   render(
     setup({
       ...defaultProps,
@@ -107,8 +107,8 @@ test('DateFilter v2 hides title and shows selected range inline', () => {
 
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
   expect(
-    screen.getByText('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:'),
-  ).toBeInTheDocument();
+    screen.queryByText('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:'),
+  ).not.toBeInTheDocument();
   expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
 });
 

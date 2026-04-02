@@ -43,12 +43,21 @@ const Wrapper = styled.div`
   `}
 `;
 
-const TopInputsGrid = styled.div`
+const QuickPanel = styled.div`
   ${({ theme }) => css`
-    display: grid;
-    gap: ${theme.sizeUnit * 5}px;
-    grid-template-columns: repeat(2, minmax(240px, 1fr));
-    width: fit-content;
+    border: 1px solid ${theme.colorBorder};
+    border-radius: ${theme.borderRadius}px;
+    padding: ${theme.sizeUnit * 3}px;
+    width: 100%;
+  `}
+`;
+
+const QuickPanelContent = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    align-items: flex-start;
+    gap: ${theme.sizeUnit * 4}px;
+    width: 100%;
   `}
 `;
 
@@ -107,6 +116,7 @@ const CalendarContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.sizeUnit * 4}px;
+  min-width: 552px;
   width: fit-content;
 `;
 
@@ -166,16 +176,13 @@ const MonthsOfYearGrid = styled.div`
   `}
 `;
 
-const SidePanel = styled.aside`
+const QuickPanelSection = styled.div`
   ${({ theme }) => css`
-    border-left: 1px solid ${theme.colorBorder};
-    min-height: 100%;
-    padding-left: ${theme.sizeUnit * 3}px;
-    width: 196px;
+    min-width: 188px;
   `}
 `;
 
-const SidePanelLabel = styled.div`
+const QuickPanelLabel = styled.div`
   ${({ theme }) => css`
     font-size: ${theme.fontSizeSM}px;
     line-height: 20px;
@@ -183,7 +190,15 @@ const SidePanelLabel = styled.div`
   `}
 `;
 
-const SidePanelSelect = styled(Select)`
+const QuickPanelDivider = styled.div`
+  ${({ theme }) => css`
+    background: ${theme.colorBorder};
+    min-height: 100%;
+    width: 1px;
+  `}
+`;
+
+const QuickPanelSelect = styled(Select)`
   width: 100%;
 `;
 
@@ -326,6 +341,15 @@ const MonthValueCell = styled.button<{
   `}
 `;
 
+const BottomInputsGrid = styled.div`
+  ${({ theme }) => css`
+    display: grid;
+    gap: ${theme.sizeUnit * 3}px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  `}
+`;
+
 const QUICK_FRAME_OPTIONS: SelectOptionType[] = [
   { value: 'Common', label: t('Last') },
   { value: 'Calendar', label: t('Previous') },
@@ -422,6 +446,130 @@ const getQuickValue = (frame: QuickFrameType, value: string) =>
     ? value
     : null;
 
+const startOfIsoWeek = (value: Dayjs) =>
+  value.startOf('day').subtract((value.day() + 6) % 7, 'day');
+
+const startOfQuarter = (value: Dayjs) =>
+  value
+    .startOf('year')
+    .add(Math.floor(value.month() / 3) * 3, 'month')
+    .startOf('month');
+
+const resolveQuickRange = (
+  value: string,
+  today: Dayjs,
+): { start: Dayjs; end: Dayjs; matchedFlag: boolean } => {
+  const yesterday = today.subtract(1, 'day');
+
+  switch (value) {
+    case 'Last day':
+      return { start: yesterday, end: yesterday, matchedFlag: true };
+    case 'Last week':
+      return {
+        start: yesterday.subtract(6, 'day'),
+        end: yesterday,
+        matchedFlag: true,
+      };
+    case 'Last month':
+      return {
+        start: yesterday.subtract(1, 'month').add(1, 'day'),
+        end: yesterday,
+        matchedFlag: true,
+      };
+    case 'Last quarter':
+      return {
+        start: yesterday.subtract(3, 'month').add(1, 'day'),
+        end: yesterday,
+        matchedFlag: true,
+      };
+    case 'Last year':
+      return {
+        start: yesterday.subtract(1, 'year').add(1, 'day'),
+        end: yesterday,
+        matchedFlag: true,
+      };
+    case 'previous calendar week': {
+      const currentWeekStart = startOfIsoWeek(today);
+      const end = currentWeekStart.subtract(1, 'day');
+      return {
+        start: startOfIsoWeek(end),
+        end,
+        matchedFlag: true,
+      };
+    }
+    case 'previous calendar month': {
+      const currentMonthStart = today.startOf('month');
+      const end = currentMonthStart.subtract(1, 'day');
+      return {
+        start: end.startOf('month'),
+        end,
+        matchedFlag: true,
+      };
+    }
+    case 'previous calendar quarter': {
+      const currentQuarterStart = startOfQuarter(today);
+      const end = currentQuarterStart.subtract(1, 'day');
+      return {
+        start: startOfQuarter(end),
+        end,
+        matchedFlag: true,
+      };
+    }
+    case 'previous calendar year': {
+      const currentYearStart = today.startOf('year');
+      const end = currentYearStart.subtract(1, 'day');
+      return {
+        start: end.startOf('year'),
+        end,
+        matchedFlag: true,
+      };
+    }
+    case 'Current day':
+      return { start: today, end: today, matchedFlag: true };
+    case 'Current week':
+      return {
+        start: startOfIsoWeek(today),
+        end: today,
+        matchedFlag: true,
+      };
+    case 'Current month':
+      return {
+        start: today.startOf('month'),
+        end: today,
+        matchedFlag: true,
+      };
+    case 'Current quarter':
+      return {
+        start: startOfQuarter(today),
+        end: today,
+        matchedFlag: true,
+      };
+    case 'Current year':
+      return {
+        start: today.startOf('year'),
+        end: today,
+        matchedFlag: true,
+      };
+    default:
+      return {
+        start: today,
+        end: today,
+        matchedFlag: false,
+      };
+  }
+};
+
+const resolveConcreteRange = (
+  value: string,
+  today: Dayjs,
+): { start: Dayjs; end: Dayjs; matchedFlag: boolean } => {
+  const parsedRange = parseCalendarRange(value);
+  if (parsedRange.matchedFlag) {
+    return parsedRange;
+  }
+  return resolveQuickRange(value, today);
+};
+
 const getCalendarStartOffset = (month: Dayjs) => {
   const firstDayOfMonth = month.startOf('month');
   return (firstDayOfMonth.day() + 6) % 7;
@@ -513,7 +661,10 @@ const buildMonthSelectionValue = (start: Dayjs, end: Dayjs) =>
 export function CalendarRangeFrame(props: FrameComponentProps) {
   const datePickerLocale = useLocale();
   const today = useMemo(() => extendedDayjs().startOf('day'), []);
-  const parsedRange = useMemo(() => parseCalendarRange(props.value), [props.value]);
+  const concreteRange = useMemo(
+    () => resolveConcreteRange(props.value, today),
+    [props.value, today],
+  );
   const decodedCustomRange = useMemo(
     () => customTimeRangeDecode(props.value),
     [props.value],
@@ -538,30 +689,30 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   }, [props.value]);
 
   useEffect(() => {
-    if (!parsedRange.matchedFlag && decodedCustomRange.matchedFlag) {
+    if (!concreteRange.matchedFlag && decodedCustomRange.matchedFlag) {
       setMode('custom');
     }
-  }, [decodedCustomRange.matchedFlag, parsedRange.matchedFlag]);
+  }, [concreteRange.matchedFlag, decodedCustomRange.matchedFlag]);
 
   useEffect(() => {
     if (
       isSelectingEnd &&
       rangeStart &&
-      parsedRange.matchedFlag &&
-      parsedRange.start.isSame(rangeStart, 'day') &&
-      parsedRange.end.isSame(rangeStart, 'day')
+      concreteRange.matchedFlag &&
+      concreteRange.start.isSame(rangeStart, 'day') &&
+      concreteRange.end.isSame(rangeStart, 'day')
     ) {
       return;
     }
 
-    if (parsedRange.matchedFlag) {
-      setRangeStart(parsedRange.start);
-      setRangeEnd(parsedRange.end);
+    if (concreteRange.matchedFlag) {
+      setRangeStart(concreteRange.start);
+      setRangeEnd(concreteRange.end);
       setIsSelectingEnd(false);
-      setLeftMonth(parsedRange.end.startOf('month').subtract(1, 'month'));
-      setLeftYear(parsedRange.start.year());
-      setStartInput(formatInputDate(parsedRange.start));
-      setEndInput(formatInputDate(parsedRange.end));
+      setLeftMonth(concreteRange.end.startOf('month').subtract(1, 'month'));
+      setLeftYear(concreteRange.start.year());
+      setStartInput(formatInputDate(concreteRange.start));
+      setEndInput(formatInputDate(concreteRange.end));
     } else {
       setRangeStart(null);
       setRangeEnd(null);
@@ -571,7 +722,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setStartInput('');
       setEndInput('');
     }
-  }, [isSelectingEnd, parsedRange, rangeStart, today]);
+  }, [concreteRange, isSelectingEnd, rangeStart, today]);
 
   const weekdays = useMemo(() => {
     const monday = extendedDayjs('2024-01-01');
@@ -667,22 +818,34 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   return (
     <Wrapper data-test={DateFilterTestKey.CalendarV2Frame}>
-      <TopInputsGrid>
-        <Input
-          value={startInput}
-          placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
-          onChange={event => setStartInput(event.target.value)}
-          onBlur={() => applyParsedDates(startInput, endInput)}
-          onKeyDown={onInputKeyDown(startInput, endInput)}
-        />
-        <Input
-          value={endInput}
-          placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
-          onChange={event => setEndInput(event.target.value)}
-          onBlur={() => applyParsedDates(startInput, endInput)}
-          onKeyDown={onInputKeyDown(startInput, endInput)}
-        />
-      </TopInputsGrid>
+      {showSidePanel && (
+        <QuickPanel>
+          <QuickPanelContent>
+            <QuickPanelSection>
+              <QuickPanelLabel>{t('Range type')}</QuickPanelLabel>
+              <QuickPanelSelect
+                ariaLabel={t('Range type')}
+                options={QUICK_FRAME_OPTIONS}
+                value={quickFrame}
+                onChange={onQuickFrameChange}
+              />
+            </QuickPanelSection>
+            <QuickPanelDivider />
+            <QuickOptions>
+              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
+                <QuickOptionButton
+                  key={option.value}
+                  type="button"
+                  selected={option.value === selectedQuickValue}
+                  onClick={() => onQuickOptionClick(option.value)}
+                >
+                  {option.label}
+                </QuickOptionButton>
+              ))}
+            </QuickOptions>
+          </QuickPanelContent>
+        </QuickPanel>
+      )}
       <Header>
         <NavButton
           buttonStyle="link"
@@ -734,7 +897,11 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               }
             }}
           >
-            <Icons.RightOutlined />
+            <Icons.CaretLeftOutlined
+              css={css`
+                transform: rotate(180deg);
+              `}
+            />
           </NavButton>
         </HeaderActions>
       </Header>
@@ -845,30 +1012,23 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               isOverflowingFilterBar={props.isOverflowingFilterBar}
             />
           )}
-        </CalendarContent>
-        {showSidePanel && (
-          <SidePanel>
-            <SidePanelLabel>{t('Range type')}</SidePanelLabel>
-            <SidePanelSelect
-              ariaLabel={t('Range type')}
-              options={QUICK_FRAME_OPTIONS}
-              value={quickFrame}
-              onChange={onQuickFrameChange}
+          <BottomInputsGrid>
+            <Input
+              value={startInput}
+              placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
+              onChange={event => setStartInput(event.target.value)}
+              onBlur={() => applyParsedDates(startInput, endInput)}
+              onKeyDown={onInputKeyDown(startInput, endInput)}
             />
-            <QuickOptions>
-              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
-                <QuickOptionButton
-                  key={option.value}
-                  type="button"
-                  selected={option.value === selectedQuickValue}
-                  onClick={() => onQuickOptionClick(option.value)}
-                >
-                  {option.label}
-                </QuickOptionButton>
-              ))}
-            </QuickOptions>
-          </SidePanel>
-        )}
+            <Input
+              value={endInput}
+              placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
+              onChange={event => setEndInput(event.target.value)}
+              onBlur={() => applyParsedDates(startInput, endInput)}
+              onKeyDown={onInputKeyDown(startInput, endInput)}
+            />
+          </BottomInputsGrid>
+        </CalendarContent>
       </CalendarLayout>
     </Wrapper>
   );

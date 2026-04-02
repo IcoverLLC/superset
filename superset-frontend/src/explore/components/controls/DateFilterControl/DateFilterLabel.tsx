@@ -191,19 +191,6 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   const [tooltipTitle, setTooltipTitle] = useState<ReactNode | null>(value);
   const theme = useTheme();
   const [labelRef, labelIsTruncated] = useCSSTextTruncation<HTMLSpanElement>();
-  const selectedCalendarRange = useMemo(
-    () => parseCalendarRange(timeRangeValue),
-    [timeRangeValue],
-  );
-  const selectedDisplayValue =
-    variant === 'v2' && selectedCalendarRange.matchedFlag
-      ? formatCalendarRangeLabel(
-          selectedCalendarRange.start,
-          selectedCalendarRange.end,
-        )
-      : evalResponse === 'No filter'
-        ? t('No filter')
-        : evalResponse;
 
   useEffect(() => {
     if (value === NO_TIME_RANGE) {
@@ -388,14 +375,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       <Divider />
       <div>
         {validTimeRange && (
-          variant === 'v2' ? (
-            <div className="selected-range">
-              <span className="selected-range-label">
-                {t('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:')}
-              </span>
-              <span className="selected-range-value">{selectedDisplayValue}</span>
-            </div>
-          ) : (
+          variant !== 'v2' ? (
             <>
               <div className="section-title">{t('Actual time range')}</div>
               <div>
@@ -409,10 +389,12 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
             {variant !== 'v2' && (
               <div className="section-title">{t('Actual time range')}</div>
             )}
-            <IconWrapper className="warning">
-              <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
-              <span className="text error">{evalResponse}</span>
-            </IconWrapper>
+            {variant !== 'v2' && (
+              <IconWrapper className="warning">
+                <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
+                <span className="text error">{evalResponse}</span>
+              </IconWrapper>
+            )}
           </>
         )}
       </div>
