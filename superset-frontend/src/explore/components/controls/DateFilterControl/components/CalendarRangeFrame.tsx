@@ -68,16 +68,16 @@ const Wrapper = styled.div`
   `}
 `;
 
-const QuickPanel = styled.aside<{ $visible: boolean }>`
-  ${({ theme, $visible }) => css`
-    align-self: stretch;
+const QuickPanel = styled.aside`
+  ${({ theme }) => css`
+    background: ${theme.colorBgContainer};
     border-left: 1px solid ${theme.colorBorder};
-    opacity: ${$visible ? 1 : 0};
+    left: calc(100% + ${theme.sizeUnit * 4}px);
     padding-left: ${theme.sizeUnit * 3}px;
-    pointer-events: ${$visible ? 'auto' : 'none'};
-    transition: opacity ${theme.transitionTiming}px ease-in-out;
-    visibility: ${$visible ? 'visible' : 'hidden'};
-    width: 196px;
+    position: absolute;
+    top: 0;
+    width: 184px;
+    z-index: 1;
   `}
 `;
 
@@ -87,6 +87,7 @@ const QuickPanelContent = styled.div`
     flex-direction: column;
     align-items: flex-start;
     gap: ${theme.sizeUnit * 3}px;
+    padding-right: ${theme.sizeUnit * 3}px;
     width: 100%;
   `}
 `;
@@ -135,10 +136,9 @@ const ModeButton = styled(Button)`
 
 const CalendarLayout = styled.div`
   ${({ theme }) => css`
-    display: grid;
+    display: flex;
     align-items: flex-start;
-    column-gap: ${theme.sizeUnit * 4}px;
-    grid-template-columns: max-content 196px;
+    position: relative;
     width: fit-content;
   `}
 `;
@@ -147,7 +147,6 @@ const CalendarContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.sizeUnit * 4}px;
-  min-width: 552px;
   width: fit-content;
 `;
 
@@ -208,7 +207,7 @@ const MonthsOfYearGrid = styled.div`
 `;
 
 const QuickPanelSection = styled.div`
-  width: 100%;
+  width: 156px;
 `;
 
 const QuickPanelLabel = styled.div`
@@ -223,12 +222,12 @@ const QuickPanelDivider = styled.div`
   ${({ theme }) => css`
     background: ${theme.colorBorder};
     height: 1px;
-    width: 100%;
+    width: 156px;
   `}
 `;
 
 const QuickPanelSelect = styled(Select)`
-  width: 100%;
+  width: 156px;
 `;
 
 const QuickOptions = styled.div`
@@ -374,8 +373,8 @@ const BottomInputsGrid = styled.div`
   ${({ theme }) => css`
     display: grid;
     gap: ${theme.sizeUnit * 3}px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
+    grid-template-columns: repeat(2, 270px);
+    width: fit-content;
   `}
 `;
 
@@ -1026,32 +1025,34 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             />
           </BottomInputsGrid>
         </CalendarContent>
-        <QuickPanel $visible={showSidePanel}>
-          <QuickPanelContent>
-            <QuickPanelSection>
-              <QuickPanelLabel>{t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}</QuickPanelLabel>
-              <QuickPanelSelect
-                ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
-                options={QUICK_FRAME_OPTIONS}
-                value={quickFrame}
-                onChange={onQuickFrameChange}
-              />
-            </QuickPanelSection>
-            <QuickPanelDivider />
-            <QuickOptions>
-              {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
-                <QuickOptionButton
-                  key={option.value}
-                  type="button"
-                  selected={option.value === selectedQuickValue}
-                  onClick={() => onQuickOptionClick(option.value)}
-                >
-                  {option.label}
-                </QuickOptionButton>
-              ))}
-            </QuickOptions>
-          </QuickPanelContent>
-        </QuickPanel>
+        {showSidePanel && (
+          <QuickPanel>
+            <QuickPanelContent>
+              <QuickPanelSection>
+                <QuickPanelLabel>{t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}</QuickPanelLabel>
+                <QuickPanelSelect
+                  ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
+                  options={QUICK_FRAME_OPTIONS}
+                  value={quickFrame}
+                  onChange={onQuickFrameChange}
+                />
+              </QuickPanelSection>
+              <QuickPanelDivider />
+              <QuickOptions>
+                {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
+                  <QuickOptionButton
+                    key={option.value}
+                    type="button"
+                    selected={option.value === selectedQuickValue}
+                    onClick={() => onQuickOptionClick(option.value)}
+                  >
+                    {option.label}
+                  </QuickOptionButton>
+                ))}
+              </QuickOptions>
+            </QuickPanelContent>
+          </QuickPanel>
+        )}
       </CalendarLayout>
     </Wrapper>
   );
