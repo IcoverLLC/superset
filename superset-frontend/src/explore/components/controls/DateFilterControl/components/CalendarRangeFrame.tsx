@@ -43,7 +43,7 @@ type SpecificDateTimeRangeValue = {
 const DATE_INPUT_FORMAT = 'DD.MM.YYYY';
 const DATE_TIME_INPUT_FORMAT = 'DD.MM.YYYY HH:mm:ss';
 const DATE_INPUT_LENGTH = DATE_INPUT_FORMAT.length;
-const DEFAULT_TIME_SUFFIX = ' 00:00:00';
+const DATE_TIME_INPUT_LENGTH = DATE_TIME_INPUT_FORMAT.length;
 
 const WEEKDAY_LABELS_RU = [
   '\u043f\u043d',
@@ -395,12 +395,49 @@ const MonthValueCell = styled.button<{
   `}
 `;
 
+const BottomInputsRow = styled.div<{ $mode: CalendarMode }>`
+  ${({ theme, $mode }) => css`
+    align-items: center;
+    display: grid;
+    gap: ${theme.sizeUnit * 2}px;
+    grid-template-columns: max-content 1fr;
+    width: ${$mode === 'month' ? '540px' : '552px'};
+  `}
+`;
+
 const BottomInputsGrid = styled.div`
   ${({ theme }) => css`
     display: grid;
     gap: ${theme.sizeUnit * 3}px;
     grid-template-columns: repeat(2, 250px);
     width: fit-content;
+  `}
+`;
+
+const TimeModeToggle = styled.button<{ $active: boolean }>`
+  ${({ theme, $active }) => css`
+    align-items: center;
+    appearance: none;
+    background: ${$active ? theme.colorPrimaryBg : 'transparent'};
+    border: 1px solid ${$active ? theme.colorPrimary : theme.colorBorder};
+    border-radius: ${theme.borderRadius}px;
+    color: ${$active ? theme.colorPrimary : theme.colorTextSecondary};
+    cursor: pointer;
+    display: inline-flex;
+    font-size: ${theme.fontSizeSM}px;
+    font-weight: ${theme.fontWeightStrong};
+    height: 32px;
+    justify-content: center;
+    justify-self: end;
+    line-height: 20px;
+    padding: 0;
+    transition: all 0.2s ease;
+    width: 32px;
+
+    &:hover {
+      border-color: ${theme.colorPrimary};
+      color: ${theme.colorPrimary};
+    }
   `}
 `;
 
@@ -765,18 +802,10 @@ const decodeSpecificDateTimeRange = (
 const hasExplicitTime = (value: Dayjs) =>
   value.hour() !== 0 || value.minute() !== 0 || value.second() !== 0;
 
-const stripTimePart = (value: string) => value.trim().slice(0, DATE_INPUT_LENGTH);
-
-const addDefaultTimeIfNeeded = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return '';
-  }
-  if (trimmed.length > DATE_INPUT_LENGTH) {
-    return value;
-  }
-  return `${stripTimePart(trimmed)}${DEFAULT_TIME_SUFFIX}`;
-};
+const sanitizeInputValue = (value: string, includeTime: boolean) =>
+  value
+    .replace(includeTime ? /[^0-9./\-: ]/g : /[^0-9./\-]/g, '')
+    .slice(0, includeTime ? DATE_TIME_INPUT_LENGTH : DATE_INPUT_LENGTH);
 
 const encodeSpecificDateTimeRange = (start: Dayjs, end: Dayjs) =>
   customTimeRangeEncode({
@@ -841,7 +870,8 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   useEffect(() => {
     const hasTimeInValue =
       specificDateTimeRange.matchedFlag &&
-      (hasExplicitTime(specificDateTimeRange.start) ||
+      (showTimeInputs ||
+        hasExplicitTime(specificDateTimeRange.start) ||
         hasExplicitTime(specificDateTimeRange.end));
 
     if (
@@ -895,6 +925,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     isSelectingEnd,
     mode,
     rangeStart,
+    showTimeInputs,
     specificDateTimeRange,
     today,
   ]);
@@ -943,34 +974,41 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const onInputChange =
     (inputType: 'start' | 'end') =>
     (event: ChangeEvent<HTMLInputElement>) => {
-      const nextValue = event.target.value;
+      const nextValue = sanitizeInputValue(event.target.value, showTimeInputs);
 
-      if (nextValue.length <= DATE_INPUT_LENGTH) {
-        setShowTimeInputs(false);
-        setStartInput(
-          stripTimePart(inputType === 'start' ? nextValue : startInput),
-        );
-        setEndInput(stripTimePart(inputType === 'end' ? nextValue : endInput));
-        return;
+      if (inputType === 'start') {
+        setStartInput(nextValue);
+      } else {
+        setEndInput(nextValue);
       }
-
-      const nextStartValue =
-        inputType === 'start'
-          ? nextValue.length === DATE_INPUT_LENGTH + 1
-            ? addDefaultTimeIfNeeded(nextValue)
-            : nextValue
-          : addDefaultTimeIfNeeded(startInput);
-      const nextEndValue =
-        inputType === 'end'
-          ? nextValue.length === DATE_INPUT_LENGTH + 1
-            ? addDefaultTimeIfNeeded(nextValue)
-            : nextValue
-          : addDefaultTimeIfNeeded(endInput);
-
-      setShowTimeInputs(true);
-      setStartInput(nextStartValue);
-      setEndInput(nextEndValue);
     };
+
+  const onToggleTimeInputs = () => {
+    const nextShowTimeInputs = !showTimeInputs;
+    const parsedStartValue = parseUserDateInput(startInput) ?? rangeStart;
+    const parsedEndValue = parseUserDateInput(endInput) ?? rangeEnd;
+
+    setShowTimeInputs(nextShowTimeInputs);
+
+    if (!parsedStartValue || !parsedEndValue) {
+      setStartInput(sanitizeInputValue(startInput, nextShowTimeInputs));
+      setEndInput(sanitizeInputValue(endInput, nextShowTimeInputs));
+      return;
+    }
+
+    const [start, end] = nextShowTimeInputs
+      ? normalizeDateTimeRange(parsedStartValue, parsedEndValue)
+      : normalizeRange(parsedStartValue, parsedEndValue);
+
+    setMode('day');
+    setStartInput(formatInputDate(start, nextShowTimeInputs));
+    setEndInput(formatInputDate(end, nextShowTimeInputs));
+    props.onChange(
+      nextShowTimeInputs
+        ? encodeSpecificDateTimeRange(start, end)
+        : encodeCalendarRange(start, end),
+    );
+  };
 
   const onInputKeyDown =
     (nextStartText: string, nextEndText: string) =>
@@ -985,7 +1023,11 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setRangeStart(day);
       setRangeEnd(null);
       setIsSelectingEnd(true);
-      props.onChange(encodeCalendarRange(day, day));
+      props.onChange(
+        showTimeInputs
+          ? encodeSpecificDateTimeRange(day.startOf('day'), day.startOf('day'))
+          : encodeCalendarRange(day, day),
+      );
       return;
     }
 
@@ -993,7 +1035,11 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     setRangeStart(start);
     setRangeEnd(end);
     setIsSelectingEnd(false);
-    props.onChange(encodeCalendarRange(start, end));
+    props.onChange(
+      showTimeInputs
+        ? encodeSpecificDateTimeRange(start.startOf('day'), end.startOf('day'))
+        : encodeCalendarRange(start, end),
+    );
   };
 
   const onSelectMonth = (month: Dayjs) => {
@@ -1002,7 +1048,14 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setRangeStart(monthStart);
       setRangeEnd(null);
       setIsSelectingEnd(true);
-      props.onChange(buildMonthSelectionValue(monthStart, monthStart));
+      props.onChange(
+        showTimeInputs
+          ? encodeSpecificDateTimeRange(
+              monthStart.startOf('day'),
+              monthStart.endOf('month').startOf('day'),
+            )
+          : buildMonthSelectionValue(monthStart, monthStart),
+      );
       return;
     }
 
@@ -1013,7 +1066,14 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
     setRangeStart(startMonth);
     setRangeEnd(endMonth.endOf('month').startOf('day'));
     setIsSelectingEnd(false);
-    props.onChange(buildMonthSelectionValue(startMonth, endMonth));
+    props.onChange(
+      showTimeInputs
+        ? encodeSpecificDateTimeRange(
+            startMonth.startOf('day'),
+            endMonth.endOf('month').startOf('day'),
+          )
+        : buildMonthSelectionValue(startMonth, endMonth),
+    );
   };
 
   const onQuickFrameChange = (value: string) => {
@@ -1229,22 +1289,39 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             />
           )}
           {mode !== 'custom' && (
-            <BottomInputsGrid>
-              <Input
-                value={startInput}
-                placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
-                onChange={onInputChange('start')}
-                onBlur={() => applyParsedDates(startInput, endInput)}
-                onKeyDown={onInputKeyDown(startInput, endInput)}
-              />
-              <Input
-                value={endInput}
-                placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
-                onChange={onInputChange('end')}
-                onBlur={() => applyParsedDates(startInput, endInput)}
-                onKeyDown={onInputKeyDown(startInput, endInput)}
-              />
-            </BottomInputsGrid>
+            <BottomInputsRow $mode={mode}>
+              <BottomInputsGrid>
+                <Input
+                  value={startInput}
+                  maxLength={
+                    showTimeInputs ? DATE_TIME_INPUT_LENGTH : DATE_INPUT_LENGTH
+                  }
+                  placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
+                  onChange={onInputChange('start')}
+                  onBlur={() => applyParsedDates(startInput, endInput)}
+                  onKeyDown={onInputKeyDown(startInput, endInput)}
+                />
+                <Input
+                  value={endInput}
+                  maxLength={
+                    showTimeInputs ? DATE_TIME_INPUT_LENGTH : DATE_INPUT_LENGTH
+                  }
+                  placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
+                  onChange={onInputChange('end')}
+                  onBlur={() => applyParsedDates(startInput, endInput)}
+                  onKeyDown={onInputKeyDown(startInput, endInput)}
+                />
+              </BottomInputsGrid>
+              <TimeModeToggle
+                type="button"
+                $active={showTimeInputs}
+                aria-pressed={showTimeInputs}
+                aria-label={t('\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0432\u0440\u0435\u043c\u0435\u043d\u0438')}
+                onClick={onToggleTimeInputs}
+              >
+                {t('\u0412')}
+              </TimeModeToggle>
+            </BottomInputsRow>
           )}
         </CalendarContent>
         {showSidePanel && (
