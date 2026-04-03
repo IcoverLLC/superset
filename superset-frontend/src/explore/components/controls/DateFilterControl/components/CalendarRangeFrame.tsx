@@ -829,7 +829,11 @@ const encodeSpecificDateTimeRange = (start: Dayjs, end: Dayjs) =>
   });
 
 const resolveInitialMode = (value: string): CalendarMode => {
-  if (!parseCalendarRange(value).matchedFlag && customTimeRangeDecode(value).matchedFlag) {
+  const isCalendarRange = parseCalendarRange(value).matchedFlag;
+  const isSpecificDateTimeRange = decodeSpecificDateTimeRange(value).matchedFlag;
+  const isCustomRange = customTimeRangeDecode(value).matchedFlag;
+
+  if (!isCalendarRange && !isSpecificDateTimeRange && isCustomRange) {
     return 'custom';
   }
   return 'day';
@@ -878,10 +882,18 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   }, [props.value]);
 
   useEffect(() => {
-    if (!concreteRange.matchedFlag && decodedCustomRange.matchedFlag) {
+    if (
+      !concreteRange.matchedFlag &&
+      !specificDateTimeRange.matchedFlag &&
+      decodedCustomRange.matchedFlag
+    ) {
       setMode('custom');
     }
-  }, [concreteRange.matchedFlag, decodedCustomRange.matchedFlag]);
+  }, [
+    concreteRange.matchedFlag,
+    decodedCustomRange.matchedFlag,
+    specificDateTimeRange.matchedFlag,
+  ]);
 
   useEffect(() => {
     const hasTimeInValue =
