@@ -95,7 +95,7 @@ const Header = styled.div<{ $mode: CalendarMode }>`
     align-items: center;
     display: grid;
     grid-template-columns: auto 1fr auto;
-    width: ${$mode === 'month' ? '580px' : '592px'};
+    width: ${$mode === 'month' ? '540px' : '552px'};
   `}
 `;
 
@@ -156,12 +156,12 @@ const MonthsHeaderRow = styled.div<{ $mode: CalendarMode }>`
   ${({ theme, $mode }) => css`
     display: grid;
     grid-template-columns:
-      auto
+      12px
       ${$mode === 'month' ? '244px' : '250px'}
       ${$mode === 'month' ? '244px' : '250px'}
-      auto;
+      12px;
     align-items: center;
-    column-gap: ${theme.sizeUnit * 5}px;
+    column-gap: ${theme.sizeUnit * 2}px;
     width: fit-content;
   `}
 `;
