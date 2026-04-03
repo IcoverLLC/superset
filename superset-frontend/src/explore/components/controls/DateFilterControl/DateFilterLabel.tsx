@@ -85,7 +85,7 @@ const ContentStyleWrapper = styled.div`
     .ant-picker-dropdown .ant-picker-header-next-btn,
     .ant-picker-dropdown .ant-picker-header-super-prev-btn,
     .ant-picker-dropdown .ant-picker-header-super-next-btn {
-      color: ${theme.colorPrimary};
+      color: ${theme.colorText};
       min-width: 20px;
       padding: 0;
       transition: color 0.2s ease;
@@ -95,7 +95,7 @@ const ContentStyleWrapper = styled.div`
     .ant-picker-dropdown .ant-picker-header-next-btn:hover,
     .ant-picker-dropdown .ant-picker-header-super-prev-btn:hover,
     .ant-picker-dropdown .ant-picker-header-super-next-btn:hover {
-      color: ${theme.colorPrimaryHover};
+      color: ${theme.colorText};
     }
 
     .ant-picker-dropdown .ant-picker-prev-icon,

@@ -109,10 +109,19 @@ const HeaderCenter = styled.div`
 `;
 
 const NavButton = styled(Button)<{ $hidden?: boolean }>`
-  padding: 0;
-  min-width: auto;
-  height: auto;
-  visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
+  ${({ theme, $hidden }) => css`
+    color: ${theme.colorText};
+    height: auto;
+    min-width: auto;
+    padding: 0;
+    visibility: ${$hidden ? 'hidden' : 'visible'};
+
+    &:hover,
+    &:focus,
+    &:active {
+      color: ${theme.colorText};
+    }
+  `}
 `;
 
 const HeaderActions = styled.div`
@@ -1067,22 +1076,24 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               isOverflowingFilterBar={props.isOverflowingFilterBar}
             />
           )}
-          <BottomInputsGrid>
-            <Input
-              value={startInput}
-              placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
-              onChange={event => setStartInput(event.target.value)}
-              onBlur={() => applyParsedDates(startInput, endInput)}
-              onKeyDown={onInputKeyDown(startInput, endInput)}
-            />
-            <Input
-              value={endInput}
-              placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
-              onChange={event => setEndInput(event.target.value)}
-              onBlur={() => applyParsedDates(startInput, endInput)}
-              onKeyDown={onInputKeyDown(startInput, endInput)}
-            />
-          </BottomInputsGrid>
+          {mode !== 'custom' && (
+            <BottomInputsGrid>
+              <Input
+                value={startInput}
+                placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
+                onChange={event => setStartInput(event.target.value)}
+                onBlur={() => applyParsedDates(startInput, endInput)}
+                onKeyDown={onInputKeyDown(startInput, endInput)}
+              />
+              <Input
+                value={endInput}
+                placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
+                onChange={event => setEndInput(event.target.value)}
+                onBlur={() => applyParsedDates(startInput, endInput)}
+                onKeyDown={onInputKeyDown(startInput, endInput)}
+              />
+            </BottomInputsGrid>
+          )}
         </CalendarContent>
         {showSidePanel && (
           <QuickPanel>
