@@ -16,8 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-import { customTimeRangeEncode } from 'src/explore/components/controls/DateFilterControl/utils';
+import { extendedDayjs } from '@superset-ui/core/utils/dates';
+import {
+  customTimeRangeEncode,
+  formatActualRangeForTooltip,
+  formatCalendarRangeLabel,
+} from 'src/explore/components/controls/DateFilterControl/utils';
 
 describe('Custom TimeRange', () => {
   describe('customTimeRangeEncode', () => {
@@ -180,6 +184,31 @@ describe('Custom TimeRange', () => {
       ).toEqual(
         'DATEADD(DATETIME("2021-01-27T00:00:00"), -7, day) : DATEADD(DATETIME("2021-01-27T00:00:00"), 7, day)',
       );
+    });
+  });
+
+  describe('v2 formatters', () => {
+    it('formats calendar range label with russian short month names', () => {
+      expect(
+        formatCalendarRangeLabel(
+          extendedDayjs('2026-03-15T00:00:00'),
+          extendedDayjs('2026-04-01T00:00:00'),
+        ),
+      ).toEqual('15 Мар 2026 - 1 Апр 2026');
+    });
+
+    it('formats actual range tooltip with russian date format', () => {
+      expect(
+        formatActualRangeForTooltip('2026-03-15 <= col < 2026-04-02'),
+      ).toEqual('15.03.2026 <= col < 02.04.2026');
+    });
+
+    it('formats actual range tooltip with russian datetime format', () => {
+      expect(
+        formatActualRangeForTooltip(
+          '2026-03-15 12:00:00 <= col < 2026-04-02 00:00:00',
+        ),
+      ).toEqual('15.03.2026 12:00:00 <= col < 02.04.2026');
     });
   });
 });
