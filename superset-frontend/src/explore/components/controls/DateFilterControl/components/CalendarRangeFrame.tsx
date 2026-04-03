@@ -46,6 +46,8 @@ const DATE_INPUT_FORMAT = 'DD.MM.YYYY';
 const DATE_TIME_INPUT_FORMAT = 'DD.MM.YYYY HH:mm:ss';
 const DATE_INPUT_LENGTH = DATE_INPUT_FORMAT.length;
 const DATE_TIME_INPUT_LENGTH = DATE_TIME_INPUT_FORMAT.length;
+const DATE_INPUT_DIGITS = 8;
+const DATE_TIME_INPUT_DIGITS = 14;
 
 const WEEKDAY_LABELS_RU = [
   '\u043f\u043d',
@@ -814,10 +816,43 @@ const decodeSpecificDateTimeRange = (
 const hasExplicitTime = (value: Dayjs) =>
   value.hour() !== 0 || value.minute() !== 0 || value.second() !== 0;
 
+const formatMaskedInputValue = (digits: string, includeTime: boolean) => {
+  const trimmedDigits = digits.slice(
+    0,
+    includeTime ? DATE_TIME_INPUT_DIGITS : DATE_INPUT_DIGITS,
+  );
+
+  if (!trimmedDigits) {
+    return '';
+  }
+
+  const datePart = trimmedDigits.slice(0, DATE_INPUT_DIGITS);
+  const dateSegments = [
+    datePart.slice(0, 2),
+    datePart.slice(2, 4),
+    datePart.slice(4, 8),
+  ].filter(Boolean);
+  const formattedDate = dateSegments.join('.');
+
+  if (!includeTime || trimmedDigits.length <= DATE_INPUT_DIGITS) {
+    return formattedDate;
+  }
+
+  const timePart = trimmedDigits.slice(DATE_INPUT_DIGITS);
+  const timeSegments = [
+    timePart.slice(0, 2),
+    timePart.slice(2, 4),
+    timePart.slice(4, 6),
+  ].filter(Boolean);
+
+  return `${formattedDate} ${timeSegments.join(':')}`;
+};
+
 const sanitizeInputValue = (value: string, includeTime: boolean) =>
-  value
-    .replace(includeTime ? /[^0-9./\-: ]/g : /[^0-9./\-]/g, '')
-    .slice(0, includeTime ? DATE_TIME_INPUT_LENGTH : DATE_INPUT_LENGTH);
+  formatMaskedInputValue(
+    value.replace(/\D/g, ''),
+    includeTime,
+  );
 
 const encodeSpecificDateTimeRange = (start: Dayjs, end: Dayjs) =>
   customTimeRangeEncode({
