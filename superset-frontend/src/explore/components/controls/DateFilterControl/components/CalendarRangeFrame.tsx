@@ -65,6 +65,7 @@ const Wrapper = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${theme.sizeUnit * 4}px;
+    position: relative;
   `}
 `;
 
@@ -89,10 +90,13 @@ const QuickPanelContent = styled.div`
   `}
 `;
 
-const Header = styled.div`
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+const Header = styled.div<{ $mode: CalendarMode }>`
+  ${({ $mode }) => css`
+    align-items: center;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    width: ${$mode === 'month' ? '580px' : '592px'};
+  `}
 `;
 
 const HeaderCenter = styled.div`
@@ -116,6 +120,9 @@ const HeaderActions = styled.div`
     display: flex;
     align-items: center;
     gap: ${theme.sizeUnit * 2}px;
+    position: absolute;
+    right: 0;
+    top: 0;
   `}
 `;
 
@@ -144,22 +151,17 @@ const CalendarContent = styled.div`
   width: fit-content;
 `;
 
-const MonthsHeaderRow = styled.div`
-  ${({ theme }) => css`
+const MonthsHeaderRow = styled.div<{ $mode: CalendarMode }>`
+  ${({ theme, $mode }) => css`
     display: grid;
-    grid-template-columns: auto auto auto;
+    grid-template-columns:
+      auto
+      ${$mode === 'month' ? '244px' : '250px'}
+      ${$mode === 'month' ? '244px' : '250px'}
+      auto;
     align-items: center;
-    column-gap: ${theme.sizeUnit * 2}px;
+    column-gap: ${theme.sizeUnit * 5}px;
     width: fit-content;
-  `}
-`;
-
-const MonthsHeaderTitles = styled.div`
-  ${({ theme }) => css`
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
-    gap: ${theme.sizeUnit * 5}px;
-    align-items: center;
   `}
 `;
 
@@ -183,6 +185,7 @@ const MonthTitle = styled.div`
     font-weight: ${theme.fontWeightStrong};
     line-height: 24px;
     text-align: center;
+    width: 100%;
   `}
 `;
 
@@ -870,7 +873,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   return (
     <Wrapper data-test={DateFilterTestKey.CalendarV2Frame}>
-      <Header>
+      <Header $mode={mode}>
         <NavButton
           buttonStyle="link"
           $hidden
@@ -894,6 +897,16 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             </ModeButton>
           ))}
         </HeaderCenter>
+        <NavButton
+          buttonStyle="link"
+          $hidden
+        >
+          <Icons.CaretLeftOutlined
+            css={css`
+              transform: rotate(180deg);
+            `}
+          />
+        </NavButton>
         <HeaderActions>
           <HeaderActionButton
             buttonStyle="link"
@@ -903,33 +916,21 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               ? t('\u0421\u043a\u0440\u044b\u0442\u044c \u0411\u044b\u0441\u0442\u0440\u044b\u0435')
               : t('\u0411\u044b\u0441\u0442\u0440\u044b\u0435')}
           </HeaderActionButton>
-          <NavButton
-            buttonStyle="link"
-            $hidden
-          >
-            <Icons.CaretLeftOutlined
-              css={css`
-                transform: rotate(180deg);
-              `}
-            />
-          </NavButton>
         </HeaderActions>
       </Header>
       <CalendarLayout>
         <CalendarContent>
           {mode === 'day' && (
             <>
-              <MonthsHeaderRow>
+              <MonthsHeaderRow $mode="day">
                 <NavButton buttonStyle="link" onClick={onPreviousClick}>
                   <Icons.CaretLeftOutlined />
                 </NavButton>
-                <MonthsHeaderTitles>
-                  {visibleMonths.map(month => (
-                    <MonthTitle key={`title-${month.format('YYYY-MM')}`}>
-                      {formatMonthTitleRu(month)}
-                    </MonthTitle>
-                  ))}
-                </MonthsHeaderTitles>
+                {visibleMonths.map(month => (
+                  <MonthTitle key={`title-${month.format('YYYY-MM')}`}>
+                    {formatMonthTitleRu(month)}
+                  </MonthTitle>
+                ))}
                 <NavButton buttonStyle="link" onClick={onNextClick}>
                   <Icons.CaretLeftOutlined
                     css={css`
@@ -992,15 +993,13 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
           )}
           {mode === 'month' && (
             <>
-              <MonthsHeaderRow>
+              <MonthsHeaderRow $mode="month">
                 <NavButton buttonStyle="link" onClick={onPreviousClick}>
                   <Icons.CaretLeftOutlined />
                 </NavButton>
-                <MonthsHeaderTitles>
-                  {visibleYears.map(year => (
-                    <MonthTitle key={`title-${year}`}>{String(year)}</MonthTitle>
-                  ))}
-                </MonthsHeaderTitles>
+                {visibleYears.map(year => (
+                  <MonthTitle key={`title-${year}`}>{String(year)}</MonthTitle>
+                ))}
                 <NavButton buttonStyle="link" onClick={onNextClick}>
                   <Icons.CaretLeftOutlined
                     css={css`
