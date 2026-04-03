@@ -147,6 +147,7 @@ const CalendarLayout = styled.div`
 const CalendarContent = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: ${({ theme }) => theme.sizeUnit * 4}px;
   width: fit-content;
 `;
@@ -743,8 +744,15 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       isSelectingEnd &&
       rangeStart &&
       concreteRange.matchedFlag &&
-      concreteRange.start.isSame(rangeStart, 'day') &&
-      concreteRange.end.isSame(rangeStart, 'day')
+      ((mode === 'day' &&
+        concreteRange.start.isSame(rangeStart, 'day') &&
+        concreteRange.end.isSame(rangeStart, 'day')) ||
+        (mode === 'month' &&
+          concreteRange.start.isSame(rangeStart.startOf('month'), 'month') &&
+          concreteRange.end.isSame(
+            rangeStart.endOf('month').startOf('day'),
+            'day',
+          )))
     ) {
       return;
     }
@@ -766,7 +774,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setStartInput('');
       setEndInput('');
     }
-  }, [concreteRange, isSelectingEnd, rangeStart, today]);
+  }, [concreteRange, isSelectingEnd, mode, rangeStart, today]);
 
   const weekdays = useMemo(() => WEEKDAY_LABELS_RU, []);
 
