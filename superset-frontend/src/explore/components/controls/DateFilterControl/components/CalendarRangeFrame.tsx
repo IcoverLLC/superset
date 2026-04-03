@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { css, customTimeRangeDecode, styled, t } from '@superset-ui/core';
 import { Button, Input, Loading, Select } from '@superset-ui/core/components';
 import { Icons } from '@superset-ui/core/components/Icons';
@@ -24,7 +24,7 @@ import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import { Dayjs } from 'dayjs';
 import { useLocale } from 'src/hooks/useLocale';
 import { CustomFrame } from './CustomFrame';
-import { DateFilterTestKey, customTimeRangeEncode } from '../utils';
+import { DateFilterTestKey, customTimeRangeEncode, DAYJS_FORMAT } from '../utils';
 import {
   CustomRangeType,
   FrameComponentProps,
@@ -34,6 +34,16 @@ import { encodeCalendarRange, parseCalendarRange } from '../utils/dateFilterUtil
 
 type QuickFrameType = 'Common' | 'Calendar' | 'Current';
 type CalendarMode = 'day' | 'month' | 'custom';
+type SpecificDateTimeRangeValue = {
+  start: Dayjs;
+  end: Dayjs;
+  matchedFlag: boolean;
+};
+
+const DATE_INPUT_FORMAT = 'DD.MM.YYYY';
+const DATE_TIME_INPUT_FORMAT = 'DD.MM.YYYY HH:mm:ss';
+const DATE_INPUT_LENGTH = DATE_INPUT_FORMAT.length;
+const DEFAULT_TIME_SUFFIX = ' 00:00:00';
 
 const WEEKDAY_LABELS_RU = [
   '\u043f\u043d',
@@ -640,25 +650,36 @@ const formatMonthTitleRu = (value: Dayjs) =>
 const normalizeRange = (start: Dayjs, end: Dayjs) =>
   start.isAfter(end, 'day') ? [end, start] : [start, end];
 
-const formatInputDate = (value: Dayjs | null) =>
-  value ? value.format('DD.MM.YYYY') : '';
+const normalizeDateTimeRange = (start: Dayjs, end: Dayjs) =>
+  start.isAfter(end) ? [end, start] : [start, end];
 
-const parseDateParts = (
+const formatInputDate = (value: Dayjs | null, includeTime = false) =>
+  value ? value.format(includeTime ? DATE_TIME_INPUT_FORMAT : DATE_INPUT_FORMAT) : '';
+
+const parseDateTimeParts = (
   year: number,
   month: number,
   day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
 ): Dayjs | null => {
   const candidate = extendedDayjs(
     `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(
       day,
-    ).padStart(2, '0')}`,
-  ).startOf('day');
+    ).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(
+      minute,
+    ).padStart(2, '0')}:${String(second).padStart(2, '0')}`,
+  );
 
   if (
     !candidate.isValid() ||
     candidate.year() !== year ||
     candidate.month() !== month - 1 ||
-    candidate.date() !== day
+    candidate.date() !== day ||
+    candidate.hour() !== hour ||
+    candidate.minute() !== minute ||
+    candidate.second() !== second
   ) {
     return null;
   }
@@ -672,26 +693,99 @@ const parseUserDateInput = (value: string): Dayjs | null => {
     return null;
   }
 
-  const russianMatch = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+  const russianMatch = trimmed.match(
+    /^(\d{1,2})[./](\d{1,2})[./](\d{2,4})(?:[ T](\d{1,2})(?::(\d{1,2})(?::(\d{1,2}))?)?)?$/,
+  );
   if (russianMatch) {
     const day = Number(russianMatch[1]);
     const month = Number(russianMatch[2]);
     const year = Number(russianMatch[3]);
-    return parseDateParts(year < 100 ? 2000 + year : year, month, day);
-  }
-
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (isoMatch) {
-    return parseDateParts(
-      Number(isoMatch[1]),
-      Number(isoMatch[2]),
-      Number(isoMatch[3]),
+    const hour = russianMatch[4] ? Number(russianMatch[4]) : 0;
+    const minute = russianMatch[5] ? Number(russianMatch[5]) : 0;
+    const second = russianMatch[6] ? Number(russianMatch[6]) : 0;
+    return parseDateTimeParts(
+      year < 100 ? 2000 + year : year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
     );
   }
 
-  const fallback = extendedDayjs(trimmed).startOf('day');
+  const isoMatch = trimmed.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2})(?::(\d{1,2})(?::(\d{1,2}))?)?)?$/,
+  );
+  if (isoMatch) {
+    return parseDateTimeParts(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]),
+      Number(isoMatch[3]),
+      isoMatch[4] ? Number(isoMatch[4]) : 0,
+      isoMatch[5] ? Number(isoMatch[5]) : 0,
+      isoMatch[6] ? Number(isoMatch[6]) : 0,
+    );
+  }
+
+  const fallback = extendedDayjs(trimmed);
   return fallback.isValid() ? fallback : null;
 };
+
+const decodeSpecificDateTimeRange = (
+  timeRange: string,
+): SpecificDateTimeRangeValue => {
+  const { customRange, matchedFlag } = customTimeRangeDecode(timeRange);
+
+  if (
+    !matchedFlag ||
+    customRange.sinceMode !== 'specific' ||
+    customRange.untilMode !== 'specific'
+  ) {
+    return {
+      start: extendedDayjs().startOf('day'),
+      end: extendedDayjs().startOf('day'),
+      matchedFlag: false,
+    };
+  }
+
+  const start = extendedDayjs(customRange.sinceDatetime);
+  const end = extendedDayjs(customRange.untilDatetime);
+
+  if (!start.isValid() || !end.isValid() || end.isBefore(start)) {
+    return {
+      start: extendedDayjs().startOf('day'),
+      end: extendedDayjs().startOf('day'),
+      matchedFlag: false,
+    };
+  }
+
+  return { start, end, matchedFlag: true };
+};
+
+const hasExplicitTime = (value: Dayjs) =>
+  value.hour() !== 0 || value.minute() !== 0 || value.second() !== 0;
+
+const stripTimePart = (value: string) => value.trim().slice(0, DATE_INPUT_LENGTH);
+
+const addDefaultTimeIfNeeded = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (trimmed.length > DATE_INPUT_LENGTH) {
+    return value;
+  }
+  return `${stripTimePart(trimmed)}${DEFAULT_TIME_SUFFIX}`;
+};
+
+const encodeSpecificDateTimeRange = (start: Dayjs, end: Dayjs) =>
+  customTimeRangeEncode({
+    ...INITIAL_CUSTOM_RANGE,
+    sinceMode: 'specific',
+    sinceDatetime: start.format(DAYJS_FORMAT),
+    untilMode: 'specific',
+    untilDatetime: end.format(DAYJS_FORMAT),
+  });
 
 const resolveInitialMode = (value: string): CalendarMode => {
   if (!parseCalendarRange(value).matchedFlag && customTimeRangeDecode(value).matchedFlag) {
@@ -709,6 +803,10 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const concreteRange = useMemo(
     () => resolveConcreteRange(props.value, today),
     [props.value, today],
+  );
+  const specificDateTimeRange = useMemo(
+    () => decodeSpecificDateTimeRange(props.value),
+    [props.value],
   );
   const decodedCustomRange = useMemo(
     () => customTimeRangeDecode(props.value),
@@ -728,6 +826,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const [leftYear, setLeftYear] = useState(today.year());
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
+  const [showTimeInputs, setShowTimeInputs] = useState(false);
 
   useEffect(() => {
     setQuickFrame(getQuickFrame(props.value));
@@ -740,6 +839,11 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   }, [concreteRange.matchedFlag, decodedCustomRange.matchedFlag]);
 
   useEffect(() => {
+    const hasTimeInValue =
+      specificDateTimeRange.matchedFlag &&
+      (hasExplicitTime(specificDateTimeRange.start) ||
+        hasExplicitTime(specificDateTimeRange.end));
+
     if (
       isSelectingEnd &&
       rangeStart &&
@@ -763,8 +867,19 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setIsSelectingEnd(false);
       setLeftMonth(concreteRange.end.startOf('month').subtract(1, 'month'));
       setLeftYear(concreteRange.start.year());
-      setStartInput(formatInputDate(concreteRange.start));
-      setEndInput(formatInputDate(concreteRange.end));
+      setShowTimeInputs(hasTimeInValue);
+      setStartInput(
+        formatInputDate(
+          hasTimeInValue ? specificDateTimeRange.start : concreteRange.start,
+          hasTimeInValue,
+        ),
+      );
+      setEndInput(
+        formatInputDate(
+          hasTimeInValue ? specificDateTimeRange.end : concreteRange.end,
+          hasTimeInValue,
+        ),
+      );
     } else {
       setRangeStart(null);
       setRangeEnd(null);
@@ -773,8 +888,16 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       setLeftYear(today.year());
       setStartInput('');
       setEndInput('');
+      setShowTimeInputs(false);
     }
-  }, [concreteRange, isSelectingEnd, mode, rangeStart, today]);
+  }, [
+    concreteRange,
+    isSelectingEnd,
+    mode,
+    rangeStart,
+    specificDateTimeRange,
+    today,
+  ]);
 
   const weekdays = useMemo(() => WEEKDAY_LABELS_RU, []);
 
@@ -806,10 +929,48 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       return;
     }
 
-    const [start, end] = normalizeRange(parsedStartValue, parsedEndValue);
+    const [start, end] = showTimeInputs
+      ? normalizeDateTimeRange(parsedStartValue, parsedEndValue)
+      : normalizeRange(parsedStartValue, parsedEndValue);
     setMode('day');
-    props.onChange(encodeCalendarRange(start, end));
+    props.onChange(
+      showTimeInputs
+        ? encodeSpecificDateTimeRange(start, end)
+        : encodeCalendarRange(start, end),
+    );
   };
+
+  const onInputChange =
+    (inputType: 'start' | 'end') =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value;
+
+      if (nextValue.length <= DATE_INPUT_LENGTH) {
+        setShowTimeInputs(false);
+        setStartInput(
+          stripTimePart(inputType === 'start' ? nextValue : startInput),
+        );
+        setEndInput(stripTimePart(inputType === 'end' ? nextValue : endInput));
+        return;
+      }
+
+      const nextStartValue =
+        inputType === 'start'
+          ? nextValue.length === DATE_INPUT_LENGTH + 1
+            ? addDefaultTimeIfNeeded(nextValue)
+            : nextValue
+          : addDefaultTimeIfNeeded(startInput);
+      const nextEndValue =
+        inputType === 'end'
+          ? nextValue.length === DATE_INPUT_LENGTH + 1
+            ? addDefaultTimeIfNeeded(nextValue)
+            : nextValue
+          : addDefaultTimeIfNeeded(endInput);
+
+      setShowTimeInputs(true);
+      setStartInput(nextStartValue);
+      setEndInput(nextEndValue);
+    };
 
   const onInputKeyDown =
     (nextStartText: string, nextEndText: string) =>
@@ -1072,14 +1233,14 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               <Input
                 value={startInput}
                 placeholder={t('\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430')}
-                onChange={event => setStartInput(event.target.value)}
+                onChange={onInputChange('start')}
                 onBlur={() => applyParsedDates(startInput, endInput)}
                 onKeyDown={onInputKeyDown(startInput, endInput)}
               />
               <Input
                 value={endInput}
                 placeholder={t('\u0414\u0430\u0442\u0430 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f')}
-                onChange={event => setEndInput(event.target.value)}
+                onChange={onInputChange('end')}
                 onBlur={() => applyParsedDates(startInput, endInput)}
                 onKeyDown={onInputKeyDown(startInput, endInput)}
               />
