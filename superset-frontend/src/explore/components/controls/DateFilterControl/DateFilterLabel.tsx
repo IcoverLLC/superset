@@ -58,6 +58,7 @@ import {
 import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
 import {
   formatCalendarRangeLabel,
+  formatActualRangeForTooltip,
   getDefaultCalendarRangeValue,
   parseCalendarRange,
 } from './utils/dateFilterUtils';
@@ -205,6 +206,8 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         setValidTimeRange(false);
         setTooltipTitle(value || null);
       } else {
+        const tooltipRange =
+          variant === 'v2' ? formatActualRangeForTooltip(actualRange) : actualRange;
         /*
           HRT == human readable text
           ADR == actual datetime range
@@ -225,7 +228,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           );
           setActualTimeRange(formattedRange);
           setTooltipTitle(
-            getTooltipTitle(labelIsTruncated, formattedRange, actualRange),
+            getTooltipTitle(labelIsTruncated, formattedRange, tooltipRange),
           );
         } else if (
           guessedFrame === 'Common' ||
@@ -235,12 +238,12 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         ) {
           setActualTimeRange(value);
           setTooltipTitle(
-            getTooltipTitle(labelIsTruncated, value, actualRange),
+            getTooltipTitle(labelIsTruncated, value, tooltipRange),
           );
         } else {
           setActualTimeRange(actualRange || '');
           setTooltipTitle(
-            getTooltipTitle(labelIsTruncated, actualRange, value),
+            getTooltipTitle(labelIsTruncated, tooltipRange, value),
           );
         }
         setValidTimeRange(true);

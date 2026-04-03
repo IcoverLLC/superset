@@ -131,6 +131,11 @@ export const encodeCalendarRange = (start: Dayjs, end: Dayjs): string =>
 const capitalize = (value: string) =>
   value.length ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 
+const formatRussianDateTime = (value: Dayjs) =>
+  value.hour() === 0 && value.minute() === 0 && value.second() === 0
+    ? value.format('DD.MM.YYYY')
+    : value.format('DD.MM.YYYY HH:mm:ss');
+
 export const formatCalendarRangeLabel = (
   start: Dayjs,
   end: Dayjs,
@@ -139,4 +144,24 @@ export const formatCalendarRangeLabel = (
   const endLabel = capitalize(end.format('D MMM YYYY'));
 
   return start.isSame(end, 'day') ? startLabel : `${startLabel} - ${endLabel}`;
+};
+
+export const formatActualRangeForTooltip = (actualRange?: string): string => {
+  if (!actualRange) {
+    return '';
+  }
+
+  const match = actualRange.match(/^\s*(.+?)\s*<=\s*.+?\s*<\s*(.+?)\s*$/);
+  if (!match) {
+    return actualRange;
+  }
+
+  const start = extendedDayjs(match[1]);
+  const end = extendedDayjs(match[2]);
+
+  if (!start.isValid() || !end.isValid()) {
+    return actualRange;
+  }
+
+  return `${formatRussianDateTime(start)} <= col < ${formatRussianDateTime(end)}`;
 };
