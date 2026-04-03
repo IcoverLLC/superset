@@ -131,6 +131,24 @@ export const encodeCalendarRange = (start: Dayjs, end: Dayjs): string =>
 const capitalize = (value: string) =>
   value.length ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 
+const MONTH_LABELS_SHORT_RU = [
+  'Янв',
+  'Фев',
+  'Мар',
+  'Апр',
+  'Май',
+  'Июн',
+  'Июл',
+  'Авг',
+  'Сен',
+  'Окт',
+  'Ноя',
+  'Дек',
+];
+
+const formatRussianShortDate = (value: Dayjs) =>
+  `${value.date()} ${MONTH_LABELS_SHORT_RU[value.month()]} ${value.year()}`;
+
 const formatRussianDateTime = (value: Dayjs) =>
   value.hour() === 0 && value.minute() === 0 && value.second() === 0
     ? value.format('DD.MM.YYYY')
@@ -140,8 +158,8 @@ export const formatCalendarRangeLabel = (
   start: Dayjs,
   end: Dayjs,
 ): string => {
-  const startLabel = capitalize(start.format('D MMM YYYY'));
-  const endLabel = capitalize(end.format('D MMM YYYY'));
+  const startLabel = capitalize(formatRussianShortDate(start));
+  const endLabel = capitalize(formatRussianShortDate(end));
 
   return start.isSame(end, 'day') ? startLabel : `${startLabel} - ${endLabel}`;
 };
