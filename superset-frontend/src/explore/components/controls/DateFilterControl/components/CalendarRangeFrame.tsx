@@ -447,7 +447,7 @@ const MODE_LINKS: Record<
   Array<{ mode: CalendarMode; label: string }>
 > = {
   day: [
-    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0447\u043d\u044b\u0439' },
+    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0446\u044b' },
     {
       mode: 'custom',
       label: '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439',
@@ -462,7 +462,7 @@ const MODE_LINKS: Record<
   ],
   custom: [
     { mode: 'day', label: '\u041a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c' },
-    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0447\u043d\u044b\u0439' },
+    { mode: 'month', label: '\u041c\u0435\u0441\u044f\u0446\u044b' },
   ],
 };
 
