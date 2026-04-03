@@ -41,6 +41,7 @@ type SpecificDateTimeRangeValue = {
 };
 
 const BASE_CALENDAR_WIDTH = '552px';
+const MOSCOW_TIMEZONE = 'Europe/Moscow';
 const DATE_INPUT_FORMAT = 'DD.MM.YYYY';
 const DATE_TIME_INPUT_FORMAT = 'DD.MM.YYYY HH:mm:ss';
 const DATE_INPUT_LENGTH = DATE_INPUT_FORMAT.length;
@@ -315,14 +316,17 @@ const DayCell = styled.button<{
   rangeStart: boolean;
   rangeEnd: boolean;
   weekend: boolean;
+  today: boolean;
 }>`
-  ${({ theme, selected, inRange, rangeStart, rangeEnd, weekend }) => css`
+  ${({ theme, selected, inRange, rangeStart, rangeEnd, weekend, today }) => css`
     align-items: center;
     appearance: none;
     background: ${selected
       ? theme.colorPrimary
       : inRange
         ? theme.colorFillSecondary
+        : today
+          ? theme.colorPrimaryBg
         : 'transparent'};
     border: 0;
     border-radius: ${getRangeBorderRadius(
@@ -344,6 +348,9 @@ const DayCell = styled.button<{
     justify-content: center;
     line-height: 20px;
     padding: 0;
+    box-shadow: ${today && !selected && !inRange
+      ? `inset 0 0 0 1px ${theme.colorPrimaryBgHover}`
+      : 'none'};
     width: 34px;
 
     &:hover {
@@ -351,6 +358,8 @@ const DayCell = styled.button<{
         ? theme.colorPrimaryHover
         : inRange
           ? theme.colorFill
+          : today
+            ? theme.colorPrimaryBgHover
           : theme.colorFillTertiary};
     }
   `}
@@ -832,6 +841,10 @@ const buildMonthSelectionValue = (start: Dayjs, end: Dayjs) =>
 export function CalendarRangeFrame(props: FrameComponentProps) {
   const datePickerLocale = useLocale();
   const today = useMemo(() => extendedDayjs().startOf('day'), []);
+  const moscowToday = useMemo(
+    () => extendedDayjs().tz(MOSCOW_TIMEZONE).startOf('day'),
+    [],
+  );
   const concreteRange = useMemo(
     () => resolveConcreteRange(props.value, today),
     [props.value, today],
@@ -1199,6 +1212,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                           !!rangeEnd &&
                           day.isAfter(rangeStart, 'day') &&
                           day.isBefore(rangeEnd, 'day');
+                        const isToday = day.isSame(moscowToday, 'day');
 
                         return (
                           <DayCell
@@ -1211,6 +1225,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                             }
                             rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
                             weekend={day.day() === 0 || day.day() === 6}
+                            today={isToday}
                             onClick={() => onSelectDay(day)}
                           >
                             {day.date()}
