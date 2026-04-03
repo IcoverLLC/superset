@@ -374,7 +374,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       {variant !== 'v2' && frame === 'No filter' && (
         <div data-test={DateFilterTestKey.NoFilter} />
       )}
-      <Divider />
+      {variant !== 'v2' && <Divider />}
       <div>
         {validTimeRange &&
           variant !== 'v2' && (
