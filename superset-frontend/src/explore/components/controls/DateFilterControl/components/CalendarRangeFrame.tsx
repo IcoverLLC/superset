@@ -40,6 +40,7 @@ type SpecificDateTimeRangeValue = {
   matchedFlag: boolean;
 };
 
+const BASE_CALENDAR_WIDTH = '552px';
 const DATE_INPUT_FORMAT = 'DD.MM.YYYY';
 const DATE_TIME_INPUT_FORMAT = 'DD.MM.YYYY HH:mm:ss';
 const DATE_INPUT_LENGTH = DATE_INPUT_FORMAT.length;
@@ -101,11 +102,11 @@ const QuickPanelContent = styled.div`
 `;
 
 const Header = styled.div<{ $mode: CalendarMode }>`
-  ${({ $mode }) => css`
+  ${() => css`
     align-items: center;
     display: grid;
     grid-template-columns: auto 1fr auto;
-    width: ${$mode === 'month' ? '540px' : '552px'};
+    width: ${BASE_CALENDAR_WIDTH};
   `}
 `;
 
@@ -163,12 +164,12 @@ const CalendarContent = styled.div`
 `;
 
 const MonthsHeaderRow = styled.div<{ $mode: CalendarMode }>`
-  ${({ theme, $mode }) => css`
+  ${({ theme }) => css`
     display: grid;
     grid-template-columns:
       12px
-      ${$mode === 'month' ? '244px' : '250px'}
-      ${$mode === 'month' ? '244px' : '250px'}
+      250px
+      250px
       12px;
     align-items: center;
     column-gap: ${theme.sizeUnit * 2}px;
@@ -188,6 +189,7 @@ const MonthSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 250px;
 `;
 
 const MonthTitle = styled.div`
@@ -369,7 +371,7 @@ const MonthValueCell = styled.button<{
     background: ${selected
       ? theme.colorPrimary
       : inRange
-        ? theme.colorFillSecondary
+        ? theme.colorFill
         : theme.colorFillTertiary};
     border: 0;
     border-radius: ${getRangeBorderRadius(
@@ -396,12 +398,12 @@ const MonthValueCell = styled.button<{
 `;
 
 const BottomInputsRow = styled.div<{ $mode: CalendarMode }>`
-  ${({ theme, $mode }) => css`
+  ${({ theme }) => css`
     align-items: center;
     display: grid;
     gap: ${theme.sizeUnit * 2}px;
     grid-template-columns: max-content 1fr;
-    width: ${$mode === 'month' ? '540px' : '552px'};
+    width: ${BASE_CALENDAR_WIDTH};
   `}
 `;
 
