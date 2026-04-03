@@ -23,7 +23,6 @@ import {
 } from '@superset-ui/core';
 import { useCallback, useEffect } from 'react';
 import DateFilterControl, {
-  DateFilterControlProps,
   DateFilterControlVariant,
   DateFilterControlV2,
 } from 'src/explore/components/controls/DateFilterControl';
@@ -98,10 +97,13 @@ export default function BaseTimeFilterPlugin(
     extensionKey = 'filter.dateFilterControl',
   } = props;
   const extensionsRegistry = getExtensionsRegistry();
+  const extensionsRegistryGet = extensionsRegistry.get as (
+    key: string,
+  ) => unknown;
 
   const FallbackComponent =
     variant === 'v2' ? DateFilterControlV2 : DateFilterControl;
-  const DateFilterControlExtension = extensionsRegistry.get(
+  const DateFilterControlExtension = extensionsRegistryGet(
     extensionKey,
   ) as typeof FallbackComponent | undefined;
   const DateFilterComponent = DateFilterControlExtension ?? FallbackComponent;
