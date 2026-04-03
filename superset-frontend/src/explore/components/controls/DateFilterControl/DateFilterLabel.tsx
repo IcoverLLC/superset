@@ -77,38 +77,6 @@ const ContentStyleWrapper = styled.div`
       border-radius: 4px;
     }
 
-    .ant-picker-dropdown .ant-picker-header {
-      align-items: center;
-    }
-
-    .ant-picker-dropdown .ant-picker-header-prev-btn,
-    .ant-picker-dropdown .ant-picker-header-next-btn,
-    .ant-picker-dropdown .ant-picker-header-super-prev-btn,
-    .ant-picker-dropdown .ant-picker-header-super-next-btn {
-      color: ${theme.colorText};
-      min-width: 20px;
-      padding: 0;
-      transition: color 0.2s ease;
-    }
-
-    .ant-picker-dropdown .ant-picker-header-prev-btn:hover,
-    .ant-picker-dropdown .ant-picker-header-next-btn:hover,
-    .ant-picker-dropdown .ant-picker-header-super-prev-btn:hover,
-    .ant-picker-dropdown .ant-picker-header-super-next-btn:hover {
-      color: ${theme.colorText};
-    }
-
-    .ant-picker-dropdown .ant-picker-prev-icon,
-    .ant-picker-dropdown .ant-picker-next-icon,
-    .ant-picker-dropdown .ant-picker-super-prev-icon,
-    .ant-picker-dropdown .ant-picker-super-next-icon {
-      font-size: 12px;
-    }
-
-    .ant-picker-dropdown .ant-picker-header-view {
-      font-weight: ${theme.fontWeightStrong};
-    }
-
     .ant-divider-horizontal {
       margin: 16px 0;
     }

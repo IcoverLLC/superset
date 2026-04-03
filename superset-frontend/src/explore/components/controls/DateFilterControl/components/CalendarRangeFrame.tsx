@@ -109,19 +109,10 @@ const HeaderCenter = styled.div`
 `;
 
 const NavButton = styled(Button)<{ $hidden?: boolean }>`
-  ${({ theme, $hidden }) => css`
-    color: ${theme.colorText};
-    height: auto;
-    min-width: auto;
-    padding: 0;
-    visibility: ${$hidden ? 'hidden' : 'visible'};
-
-    &:hover,
-    &:focus,
-    &:active {
-      color: ${theme.colorText};
-    }
-  `}
+  padding: 0;
+  min-width: auto;
+  height: auto;
+  visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
 `;
 
 const HeaderActions = styled.div`
