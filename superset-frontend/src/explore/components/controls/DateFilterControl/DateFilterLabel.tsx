@@ -67,8 +67,8 @@ const StyledRangeType = styled(Select)`
   width: 272px;
 `;
 
-const ContentStyleWrapper = styled.div`
-  ${({ theme }) => css`
+const ContentStyleWrapper = styled.div<{ $variant?: 'default' | 'v2' }>`
+  ${({ theme, $variant }) => css`
     .ant-row {
       margin-top: 8px;
     }
@@ -79,7 +79,7 @@ const ContentStyleWrapper = styled.div`
     }
 
     .ant-divider-horizontal {
-      margin: 16px 0;
+      margin: ${$variant === 'v2' ? '12px 0' : '16px 0'};
     }
 
     .control-label {
@@ -105,6 +105,8 @@ const ContentStyleWrapper = styled.div`
     }
 
     .footer {
+      margin-bottom: ${$variant === 'v2' ? '-4px' : 0};
+      margin-top: ${$variant === 'v2' ? '-2px' : 0};
       text-align: right;
     }
 
@@ -330,7 +332,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   const frameOptions = FRAME_OPTIONS;
 
   const overlayContent = (
-    <ContentStyleWrapper>
+    <ContentStyleWrapper $variant={variant}>
       {variant !== 'v2' && (
         <>
           <div className="control-label">

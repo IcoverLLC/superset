@@ -84,6 +84,7 @@ const QuickPanel = styled.aside`
   ${({ theme }) => css`
     align-self: stretch;
     border-left: 1px solid ${theme.colorBorder};
+    margin-left: ${theme.sizeUnit * 2}px;
     padding-left: ${theme.sizeUnit * 3}px;
     width: 184px;
   `}
