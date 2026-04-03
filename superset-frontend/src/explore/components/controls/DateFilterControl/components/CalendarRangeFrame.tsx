@@ -144,6 +144,25 @@ const CalendarContent = styled.div`
   width: fit-content;
 `;
 
+const MonthsHeaderRow = styled.div`
+  ${({ theme }) => css`
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    column-gap: ${theme.sizeUnit * 2}px;
+    width: fit-content;
+  `}
+`;
+
+const MonthsHeaderTitles = styled.div`
+  ${({ theme }) => css`
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: ${theme.sizeUnit * 5}px;
+    align-items: center;
+  `}
+`;
+
 const MonthsGrid = styled.div`
   ${({ theme }) => css`
     display: grid;
@@ -163,7 +182,6 @@ const MonthTitle = styled.div`
     font-size: 15px;
     font-weight: ${theme.fontWeightStrong};
     line-height: 24px;
-    margin-bottom: ${theme.sizeUnit * 2}px;
     text-align: center;
   `}
 `;
@@ -753,6 +771,22 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const visibleYears = [leftYear, leftYear + 1];
   const selectedQuickValue = getQuickValue(quickFrame, props.value);
 
+  const onPreviousClick = () => {
+    if (mode === 'month') {
+      setLeftYear(leftYear - 1);
+    } else {
+      setLeftMonth(leftMonth.subtract(1, 'month'));
+    }
+  };
+
+  const onNextClick = () => {
+    if (mode === 'month') {
+      setLeftYear(leftYear + 1);
+    } else {
+      setLeftMonth(leftMonth.add(1, 'month'));
+    }
+  };
+
   const applyParsedDates = (nextStartText: string, nextEndText: string) => {
     const parsedStartValue = parseUserDateInput(nextStartText) ?? rangeStart;
     const parsedEndValue = parseUserDateInput(nextEndText) ?? rangeEnd;
@@ -839,14 +873,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       <Header>
         <NavButton
           buttonStyle="link"
-          $hidden={mode === 'custom'}
-          onClick={() => {
-            if (mode === 'month') {
-              setLeftYear(leftYear - 1);
-            } else {
-              setLeftMonth(leftMonth.subtract(1, 'month'));
-            }
-          }}
+          $hidden
         >
           <Icons.CaretLeftOutlined />
         </NavButton>
@@ -878,14 +905,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
           </HeaderActionButton>
           <NavButton
             buttonStyle="link"
-            $hidden={mode === 'custom'}
-            onClick={() => {
-              if (mode === 'month') {
-                setLeftYear(leftYear + 1);
-              } else {
-                setLeftMonth(leftMonth.add(1, 'month'));
-              }
-            }}
+            $hidden
           >
             <Icons.CaretLeftOutlined
               css={css`
@@ -898,102 +918,140 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       <CalendarLayout>
         <CalendarContent>
           {mode === 'day' && (
-            <MonthsGrid>
-              {visibleMonths.map(month => (
-                <MonthSection key={month.format('YYYY-MM')}>
-                  <MonthTitle>{formatMonthTitleRu(month)}</MonthTitle>
-                  <WeekdaysGrid>
-                    {weekdays.map(weekday => (
-                      <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
-                        {weekday}
-                      </Weekday>
-                    ))}
-                  </WeekdaysGrid>
-                  <DaysGrid>
-                    {buildMonthDays(month).map((day, index) => {
-                      if (!day) {
+            <>
+              <MonthsHeaderRow>
+                <NavButton buttonStyle="link" onClick={onPreviousClick}>
+                  <Icons.CaretLeftOutlined />
+                </NavButton>
+                <MonthsHeaderTitles>
+                  {visibleMonths.map(month => (
+                    <MonthTitle key={`title-${month.format('YYYY-MM')}`}>
+                      {formatMonthTitleRu(month)}
+                    </MonthTitle>
+                  ))}
+                </MonthsHeaderTitles>
+                <NavButton buttonStyle="link" onClick={onNextClick}>
+                  <Icons.CaretLeftOutlined
+                    css={css`
+                      transform: rotate(180deg);
+                    `}
+                  />
+                </NavButton>
+              </MonthsHeaderRow>
+              <MonthsGrid>
+                {visibleMonths.map(month => (
+                  <MonthSection key={month.format('YYYY-MM')}>
+                    <WeekdaysGrid>
+                      {weekdays.map(weekday => (
+                        <Weekday key={`${month.format('YYYY-MM')}-${weekday}`}>
+                          {weekday}
+                        </Weekday>
+                      ))}
+                    </WeekdaysGrid>
+                    <DaysGrid>
+                      {buildMonthDays(month).map((day, index) => {
+                        if (!day) {
+                          return (
+                            <EmptyDayCell
+                              key={`${month.format('YYYY-MM')}-empty-${index}`}
+                            />
+                          );
+                        }
+
+                        const selected =
+                          (!!rangeStart && day.isSame(rangeStart, 'day')) ||
+                          (!!rangeEnd && day.isSame(rangeEnd, 'day'));
+                        const inRange =
+                          !!rangeStart &&
+                          !!rangeEnd &&
+                          day.isAfter(rangeStart, 'day') &&
+                          day.isBefore(rangeEnd, 'day');
+
                         return (
-                          <EmptyDayCell
-                            key={`${month.format('YYYY-MM')}-empty-${index}`}
-                          />
+                          <DayCell
+                            key={day.format('YYYY-MM-DD')}
+                            type="button"
+                            selected={selected}
+                            inRange={inRange}
+                            rangeStart={
+                              !!rangeStart && day.isSame(rangeStart, 'day')
+                            }
+                            rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
+                            weekend={day.day() === 0 || day.day() === 6}
+                            onClick={() => onSelectDay(day)}
+                          >
+                            {day.date()}
+                          </DayCell>
                         );
-                      }
-
-                      const selected =
-                        (!!rangeStart && day.isSame(rangeStart, 'day')) ||
-                        (!!rangeEnd && day.isSame(rangeEnd, 'day'));
-                      const inRange =
-                        !!rangeStart &&
-                        !!rangeEnd &&
-                        day.isAfter(rangeStart, 'day') &&
-                        day.isBefore(rangeEnd, 'day');
-
-                      return (
-                        <DayCell
-                          key={day.format('YYYY-MM-DD')}
-                          type="button"
-                          selected={selected}
-                          inRange={inRange}
-                          rangeStart={
-                            !!rangeStart && day.isSame(rangeStart, 'day')
-                          }
-                          rangeEnd={!!rangeEnd && day.isSame(rangeEnd, 'day')}
-                          weekend={day.day() === 0 || day.day() === 6}
-                          onClick={() => onSelectDay(day)}
-                        >
-                          {day.date()}
-                        </DayCell>
-                      );
-                    })}
-                  </DaysGrid>
-                </MonthSection>
-              ))}
-            </MonthsGrid>
+                      })}
+                    </DaysGrid>
+                  </MonthSection>
+                ))}
+              </MonthsGrid>
+            </>
           )}
           {mode === 'month' && (
-            <MonthsGrid>
-              {visibleYears.map(year => (
-                <MonthSection key={year}>
-                  <MonthTitle>{String(year)}</MonthTitle>
-                  <MonthsOfYearGrid>
-                    {Array.from({ length: 12 }, (_, index) =>
-                      extendedDayjs().year(year).month(index).startOf('month'),
-                    ).map(month => {
-                      const monthSelected =
-                        (!!rangeStart &&
-                          month.isSame(rangeStart.startOf('month'), 'month')) ||
-                        (!!rangeEnd &&
-                          month.isSame(rangeEnd.startOf('month'), 'month'));
-                      const monthInRange =
-                        !!rangeStart &&
-                        !!rangeEnd &&
-                        month.isAfter(rangeStart.startOf('month'), 'month') &&
-                        month.isBefore(rangeEnd.startOf('month'), 'month');
+            <>
+              <MonthsHeaderRow>
+                <NavButton buttonStyle="link" onClick={onPreviousClick}>
+                  <Icons.CaretLeftOutlined />
+                </NavButton>
+                <MonthsHeaderTitles>
+                  {visibleYears.map(year => (
+                    <MonthTitle key={`title-${year}`}>{String(year)}</MonthTitle>
+                  ))}
+                </MonthsHeaderTitles>
+                <NavButton buttonStyle="link" onClick={onNextClick}>
+                  <Icons.CaretLeftOutlined
+                    css={css`
+                      transform: rotate(180deg);
+                    `}
+                  />
+                </NavButton>
+              </MonthsHeaderRow>
+              <MonthsGrid>
+                {visibleYears.map(year => (
+                  <MonthSection key={year}>
+                    <MonthsOfYearGrid>
+                      {Array.from({ length: 12 }, (_, index) =>
+                        extendedDayjs().year(year).month(index).startOf('month'),
+                      ).map(month => {
+                        const monthSelected =
+                          (!!rangeStart &&
+                            month.isSame(rangeStart.startOf('month'), 'month')) ||
+                          (!!rangeEnd &&
+                            month.isSame(rangeEnd.startOf('month'), 'month'));
+                        const monthInRange =
+                          !!rangeStart &&
+                          !!rangeEnd &&
+                          month.isAfter(rangeStart.startOf('month'), 'month') &&
+                          month.isBefore(rangeEnd.startOf('month'), 'month');
 
-                      return (
-                        <MonthValueCell
-                          key={month.format('YYYY-MM')}
-                          type="button"
-                          selected={monthSelected}
-                          inRange={monthInRange}
-                          rangeStart={
-                            !!rangeStart &&
-                            month.isSame(rangeStart.startOf('month'), 'month')
-                          }
-                          rangeEnd={
-                            !!rangeEnd &&
-                            month.isSame(rangeEnd.startOf('month'), 'month')
-                          }
-                          onClick={() => onSelectMonth(month)}
-                        >
-                          {MONTH_LABELS_SHORT_RU[month.month()]}
-                        </MonthValueCell>
-                      );
-                    })}
-                  </MonthsOfYearGrid>
-                </MonthSection>
-              ))}
-            </MonthsGrid>
+                        return (
+                          <MonthValueCell
+                            key={month.format('YYYY-MM')}
+                            type="button"
+                            selected={monthSelected}
+                            inRange={monthInRange}
+                            rangeStart={
+                              !!rangeStart &&
+                              month.isSame(rangeStart.startOf('month'), 'month')
+                            }
+                            rangeEnd={
+                              !!rangeEnd &&
+                              month.isSame(rangeEnd.startOf('month'), 'month')
+                            }
+                            onClick={() => onSelectMonth(month)}
+                          >
+                            {MONTH_LABELS_SHORT_RU[month.month()]}
+                          </MonthValueCell>
+                        );
+                      })}
+                    </MonthsOfYearGrid>
+                  </MonthSection>
+                ))}
+              </MonthsGrid>
+            </>
           )}
           {mode === 'custom' && (
             <CustomFrame
