@@ -97,15 +97,14 @@ export default function BaseTimeFilterPlugin(
     extensionKey = 'filter.dateFilterControl',
   } = props;
   const extensionsRegistry = getExtensionsRegistry();
-  const extensionsRegistryGet = extensionsRegistry.get as (
-    key: string,
-  ) => unknown;
 
   const FallbackComponent =
     variant === 'v2' ? DateFilterControlV2 : DateFilterControl;
-  const DateFilterControlExtension = extensionsRegistryGet(
-    extensionKey,
-  ) as typeof FallbackComponent | undefined;
+  const DateFilterControlExtension = (
+    extensionsRegistry as typeof extensionsRegistry & {
+      get: (key: string) => unknown;
+    }
+  ).get(extensionKey) as typeof FallbackComponent | undefined;
   const DateFilterComponent = DateFilterControlExtension ?? FallbackComponent;
 
   const handleTimeRangeChange = useCallback(
