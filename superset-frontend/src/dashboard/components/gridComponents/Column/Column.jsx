@@ -153,14 +153,16 @@ const CollapseToggleButton = styled.button`
     right: 0;
     z-index: 3;
     border: 0;
-    background: ${theme.colorPrimaryBgHover};
-    color: ${theme.colorPrimary};
+    background: ${collapsed
+      ? theme.colorPrimary
+      : `linear-gradient(135deg, transparent 0 46%, ${theme.colorPrimary} 46% 100%)`};
+    color: ${theme.colorWhite};
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    opacity: ${collapsed ? 0.92 : 0.78};
+    opacity: 1;
     width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
     min-width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
     height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
@@ -171,19 +173,19 @@ const CollapseToggleButton = styled.button`
       : 'polygon(100% 0, 0 0, 100% 100%)'};
     transition:
       background-color 0.2s ease,
-      outline-color 0.2s ease,
-      opacity 0.2s ease;
+      outline-color 0.2s ease;
 
     svg {
       position: absolute;
-      top: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 0.75}px;
-      right: ${collapsed ? theme.sizeUnit : theme.sizeUnit * 0.75}px;
+      top: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit}px;
+      right: ${collapsed ? theme.sizeUnit : theme.sizeUnit / 2}px;
     }
 
     &:hover {
-      background: ${theme.colorPrimaryBg};
+      background: ${collapsed
+        ? theme.colorPrimaryHover
+        : `linear-gradient(135deg, transparent 0 46%, ${theme.colorPrimaryHover} 46% 100%)`};
       outline: 1px solid ${theme.colorPrimaryBorderHover};
-      opacity: 1;
     }
   `}
 `;
