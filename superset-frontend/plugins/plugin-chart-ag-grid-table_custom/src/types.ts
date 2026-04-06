@@ -139,7 +139,7 @@ export type SearchOption = {
 
 export type StoredColumnState = JsonObject[];
 
-export interface TableOwnState {
+export interface ServerPaginationData {
   pageSize?: number;
   currentPage?: number;
   sortBy?: SortByItem[];
@@ -147,8 +147,6 @@ export interface TableOwnState {
   searchColumn?: string;
   columnState?: StoredColumnState;
 }
-
-export interface ServerPaginationData extends TableOwnState {}
 
 export interface AgGridTableChartTransformedProps<
   D extends DataRecord = DataRecord,

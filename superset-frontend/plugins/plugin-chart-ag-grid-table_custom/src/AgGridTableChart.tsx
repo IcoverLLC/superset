@@ -39,7 +39,6 @@ import {
   SearchOption,
   SortByItem,
   StoredColumnState,
-  TableOwnState,
 } from './types';
 import AgGridDataTable from './AgGridTable';
 import { updateTableOwnState } from './utils/externalAPIs';
@@ -223,11 +222,11 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   const buildOwnState = useCallback(
-    (partialState: Partial<TableOwnState>): TableOwnState => {
+    (partialState: Record<string, unknown>) => {
       const currentColumnState = latestColumnStateRef.current;
 
       return {
-        ...((serverPaginationData || {}) as TableOwnState),
+        ...(serverPaginationData || {}),
         ...partialState,
         ...(Array.isArray(currentColumnState) && currentColumnState.length > 0
           ? { columnState: currentColumnState }
