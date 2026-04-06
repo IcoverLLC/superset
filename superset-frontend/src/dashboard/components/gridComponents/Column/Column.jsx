@@ -146,12 +146,35 @@ const MenuCheckboxLabel = styled.div`
   `}
 `;
 
+const ColumnFrame = styled.div`
+  ${({ theme, isCollapsed }) => css`
+    width: 100%;
+    min-height: ${isCollapsed ? theme.sizeUnit * 14 : 0}px;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: ${theme.sizeUnit}px;
+  `}
+`;
+
+const ColumnContent = styled.div`
+  min-width: 0;
+  flex: 1 1 auto;
+`;
+
+const ColumnCollapseRail = styled.div`
+  ${({ theme, isCollapsed }) => css`
+    width: ${isCollapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 8}px;
+    min-width: ${isCollapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 8}px;
+    display: flex;
+    align-items: ${isCollapsed ? 'stretch' : 'flex-start'};
+    justify-content: center;
+    padding-top: ${isCollapsed ? 0 : theme.sizeUnit * 3}px;
+  `}
+`;
+
 const CollapseToggleButton = styled.button`
   ${({ theme, collapsed }) => css`
-    position: absolute;
-    top: ${collapsed ? theme.sizeUnit * 2 : theme.sizeUnit * 3}px;
-    ${collapsed ? 'left' : 'right'}: ${theme.sizeUnit * 2}px;
-    z-index: 3;
     border: none;
     border-radius: ${theme.borderRadius * 3}px;
     background: ${theme.colorBgElevated};
@@ -164,6 +187,7 @@ const CollapseToggleButton = styled.button`
     padding: ${collapsed
       ? `${theme.sizeUnit * 6}px ${theme.sizeUnit}px`
       : `${theme.sizeUnit}px`};
+    width: 100%;
     min-width: ${collapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 7}px;
     min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 7}px;
 
@@ -430,21 +454,27 @@ const Column = props => {
             editMode={editMode}
             isCollapsed={isCollapsed}
           >
-            {canCollapse && !editMode && (
-              <CollapseToggleButton
-                type="button"
-                aria-label={isCollapsed ? t('Expand column') : t('Collapse column')}
-                collapsed={isCollapsed}
-                onClick={handleToggleCollapsed}
-              >
-                {isCollapsed ? (
-                  <Icons.VerticalRightOutlined iconSize="m" />
-                ) : (
-                  <Icons.VerticalLeftOutlined iconSize="m" />
-                )}
-              </CollapseToggleButton>
+            {canCollapse && !editMode ? (
+              <ColumnFrame isCollapsed={isCollapsed}>
+                {!isCollapsed && <ColumnContent>{renderColumnContent()}</ColumnContent>}
+                <ColumnCollapseRail isCollapsed={isCollapsed}>
+                  <CollapseToggleButton
+                    type="button"
+                    aria-label={isCollapsed ? t('Expand column') : t('Collapse column')}
+                    collapsed={isCollapsed}
+                    onClick={handleToggleCollapsed}
+                  >
+                    {isCollapsed ? (
+                      <Icons.VerticalRightOutlined iconSize="m" />
+                    ) : (
+                      <Icons.VerticalLeftOutlined iconSize="m" />
+                    )}
+                  </CollapseToggleButton>
+                </ColumnCollapseRail>
+              </ColumnFrame>
+            ) : (
+              renderColumnContent()
             )}
-            {renderColumnContent()}
           </ColumnStyles>
         </WithPopoverMenu>
       </ResizableContainer>
