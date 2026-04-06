@@ -146,53 +146,48 @@ const MenuCheckboxLabel = styled.div`
   `}
 `;
 
-const ColumnFrame = styled.div`
-  ${({ theme, isCollapsed }) => css`
-    width: 100%;
-    min-height: ${isCollapsed ? theme.sizeUnit * 14 : 0}px;
-    display: flex;
-    align-items: stretch;
-    justify-content: space-between;
-    gap: ${theme.sizeUnit}px;
-  `}
-`;
-
-const ColumnContent = styled.div`
-  min-width: 0;
-  flex: 1 1 auto;
-`;
-
-const ColumnCollapseRail = styled.div`
-  ${({ theme, isCollapsed }) => css`
-    width: ${isCollapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 8}px;
-    min-width: ${isCollapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 8}px;
-    display: flex;
-    align-items: ${isCollapsed ? 'stretch' : 'flex-start'};
-    justify-content: center;
-    padding-top: ${isCollapsed ? 0 : theme.sizeUnit * 3}px;
-  `}
-`;
-
 const CollapseToggleButton = styled.button`
   ${({ theme, collapsed }) => css`
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
     border: none;
-    border-radius: ${theme.borderRadius * 3}px;
-    background: ${theme.colorBgElevated};
+    background: ${collapsed
+      ? theme.colorBgElevated
+      : `linear-gradient(135deg, transparent 0 48%, ${theme.colorBgElevated} 48% 100%)`};
     color: ${theme.colorPrimary};
     box-shadow: ${theme.boxShadowSecondary};
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: ${collapsed
-      ? `${theme.sizeUnit * 6}px ${theme.sizeUnit}px`
-      : `${theme.sizeUnit}px`};
-    width: 100%;
-    min-width: ${collapsed ? theme.sizeUnit * 5 : theme.sizeUnit * 7}px;
-    min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 7}px;
+    padding: 0;
+    opacity: ${collapsed ? 0.85 : 0.62};
+    width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
+    min-width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
+    height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
+    min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
+    border-radius: ${collapsed
+      ? `${theme.borderRadius * 2}px`
+      : `0 ${theme.borderRadius * 2}px 0 ${theme.borderRadius * 4}px`};
+    clip-path: ${collapsed
+      ? 'none'
+      : 'polygon(100% 0, 0 0, 100% 100%)'};
+    transition:
+      opacity 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+
+    svg {
+      position: absolute;
+      top: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit}px;
+      right: ${collapsed ? theme.sizeUnit : theme.sizeUnit / 2}px;
+    }
 
     &:hover {
       background: ${theme.colorPrimaryBg};
+      opacity: 0.92;
     }
   `}
 `;
@@ -454,27 +449,21 @@ const Column = props => {
             editMode={editMode}
             isCollapsed={isCollapsed}
           >
-            {canCollapse && !editMode ? (
-              <ColumnFrame isCollapsed={isCollapsed}>
-                {!isCollapsed && <ColumnContent>{renderColumnContent()}</ColumnContent>}
-                <ColumnCollapseRail isCollapsed={isCollapsed}>
-                  <CollapseToggleButton
-                    type="button"
-                    aria-label={isCollapsed ? t('Expand column') : t('Collapse column')}
-                    collapsed={isCollapsed}
-                    onClick={handleToggleCollapsed}
-                  >
-                    {isCollapsed ? (
-                      <Icons.VerticalRightOutlined iconSize="m" />
-                    ) : (
-                      <Icons.VerticalLeftOutlined iconSize="m" />
-                    )}
-                  </CollapseToggleButton>
-                </ColumnCollapseRail>
-              </ColumnFrame>
-            ) : (
-              renderColumnContent()
+            {canCollapse && !editMode && (
+              <CollapseToggleButton
+                type="button"
+                aria-label={isCollapsed ? t('Expand column') : t('Collapse column')}
+                collapsed={isCollapsed}
+                onClick={handleToggleCollapsed}
+              >
+                {isCollapsed ? (
+                  <Icons.VerticalRightOutlined iconSize="m" />
+                ) : (
+                  <Icons.VerticalLeftOutlined iconSize="m" />
+                )}
+              </CollapseToggleButton>
             )}
+            {renderColumnContent()}
           </ColumnStyles>
         </WithPopoverMenu>
       </ResizableContainer>
