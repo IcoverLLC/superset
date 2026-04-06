@@ -18,16 +18,7 @@
  * under the License.
  */
 import { SetDataMaskHook } from '@superset-ui/core';
-import { SortByItem } from '../types';
-
-interface TableOwnState {
-  currentPage?: number;
-  pageSize?: number;
-  sortColumn?: string;
-  sortOrder?: 'asc' | 'desc';
-  searchText?: string;
-  sortBy?: SortByItem[];
-}
+import { TableOwnState } from '../types';
 
 export const updateTableOwnState = (
   setDataMask: SetDataMaskHook = () => {},
