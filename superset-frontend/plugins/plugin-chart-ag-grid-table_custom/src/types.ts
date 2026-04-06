@@ -137,15 +137,12 @@ export type SearchOption = {
   label: string;
 };
 
-export type StoredColumnState = JsonObject[];
-
 export interface ServerPaginationData {
   pageSize?: number;
   currentPage?: number;
   sortBy?: SortByItem[];
   searchText?: string;
   searchColumn?: string;
-  columnState?: StoredColumnState;
 }
 
 export interface AgGridTableChartTransformedProps<

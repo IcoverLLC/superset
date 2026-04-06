@@ -38,7 +38,6 @@ import {
   InputColumn,
   SearchOption,
   SortByItem,
-  StoredColumnState,
 } from './types';
 import AgGridDataTable from './AgGridTable';
 import { updateTableOwnState } from './utils/externalAPIs';
@@ -84,18 +83,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
   const lastContextMenuTsRef = useRef<number>(0);
-  const latestColumnStateRef = useRef<StoredColumnState | undefined>(
-    Array.isArray(serverPaginationData?.columnState)
-      ? (serverPaginationData.columnState as StoredColumnState)
-      : undefined,
-  );
-
-  useEffect(() => {
-    if (Array.isArray(serverPaginationData?.columnState)) {
-      latestColumnStateRef.current =
-        serverPaginationData.columnState as StoredColumnState;
-    }
-  }, [serverPaginationData]);
 
   useEffect(() => {
     const options = columns
@@ -202,45 +189,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           isActiveFilterValue,
           timestampFormatter,
         };
-        const crossFilterDataMask = getCrossFilterDataMask(crossFilterProps)
-          .dataMask;
-        const currentColumnState = latestColumnStateRef.current;
-
-        setDataMask({
-          ...crossFilterDataMask,
-          ownState: {
-            ...(serverPaginationData || {}),
-            ...(Array.isArray(currentColumnState) &&
-            currentColumnState.length > 0
-              ? { columnState: currentColumnState }
-              : {}),
-          },
-        });
+        setDataMask(getCrossFilterDataMask(crossFilterProps).dataMask);
       }
     },
-    [emitCrossFilters, setDataMask, filters, timeGrain, serverPaginationData],
-  );
-
-  const buildOwnState = useCallback(
-    (partialState: Record<string, unknown>) => {
-      const currentColumnState = latestColumnStateRef.current;
-
-      return {
-        ...(serverPaginationData || {}),
-        ...partialState,
-        ...(Array.isArray(currentColumnState) && currentColumnState.length > 0
-          ? { columnState: currentColumnState }
-          : {}),
-      };
-    },
-    [serverPaginationData],
-  );
-
-  const handleColumnStateSnapshot = useCallback(
-    (columnState: StoredColumnState) => {
-      latestColumnStateRef.current = columnState;
-    },
-    [],
+    [emitCrossFilters, setDataMask, filters, timeGrain],
   );
 
   const handleCellContextMenu = useCallback(
@@ -362,58 +314,63 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   const handleServerPaginationChange = useCallback(
     (pageNumber: number, pageSize: number) => {
-      const modifiedOwnState = buildOwnState({
+      const modifiedOwnState = {
+        ...serverPaginationData,
         currentPage: pageNumber,
         pageSize,
-      });
+      };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [buildOwnState, setDataMask],
+    [setDataMask],
   );
 
   const handlePageSizeChange = useCallback(
     (pageSize: number) => {
-      const modifiedOwnState = buildOwnState({
+      const modifiedOwnState = {
+        ...serverPaginationData,
         currentPage: 0,
         pageSize,
-      });
+      };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [buildOwnState, setDataMask],
+    [setDataMask],
   );
 
   const handleChangeSearchCol = (searchCol: string) => {
     if (!isEqual(searchCol, serverPaginationData?.searchColumn)) {
-      const modifiedOwnState = buildOwnState({
+      const modifiedOwnState = {
+        ...(serverPaginationData || {}),
         searchColumn: searchCol,
         searchText: '',
-      });
+      };
       updateTableOwnState(setDataMask, modifiedOwnState);
     }
   };
 
   const handleSearch = useCallback(
     (searchText: string) => {
-      const modifiedOwnState = buildOwnState({
+      const modifiedOwnState = {
+        ...(serverPaginationData || {}),
         searchColumn:
           serverPaginationData?.searchColumn || searchOptions[0]?.value,
         searchText,
         currentPage: 0, // Reset to first page when searching
-      });
+      };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [buildOwnState, searchOptions, serverPaginationData?.searchColumn, setDataMask],
+    [setDataMask, searchOptions],
   );
 
   const handleSortByChange = useCallback(
     (sortBy: SortByItem[]) => {
       if (!serverPagination) return;
-      const modifiedOwnState = buildOwnState({
+      const modifiedOwnState = {
+        ...serverPaginationData,
         sortBy,
-      });
+      };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [buildOwnState, setDataMask, serverPagination],
+    [setDataMask, serverPagination],
   );
 
   const renderTimeComparisonVisibility = (): JSX.Element => (
@@ -456,7 +413,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         showTotals={showTotals}
         width={width}
         onCellContextMenu={handleCellContextMenu}
-        onColumnStateSnapshot={handleColumnStateSnapshot}
       />
     </StyledChartContainer>
   );

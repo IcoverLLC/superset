@@ -54,7 +54,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { debounce, isEqual } from 'lodash';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
-import { SearchOption, SortByItem, StoredColumnState } from '../types';
+import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { Header as GridHeader } from '../gridHeader/Header';
@@ -91,7 +91,6 @@ export interface AgGridTableProps {
   showTotals: boolean;
   width: number;
   onCellContextMenu?: (event: CellContextMenuEvent) => void;
-  onColumnStateSnapshot?: (columnState: StoredColumnState) => void;
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
@@ -128,7 +127,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     showTotals,
     width,
     onCellContextMenu,
-    onColumnStateSnapshot,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -394,56 +392,30 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       width,
     ]);
 
-    const getOwnStateColumnState = useCallback((): StoredColumnState | null => {
-      const columnState = serverPaginationData?.columnState;
-      return Array.isArray(columnState)
-        ? (columnState as StoredColumnState)
-        : null;
-    }, [serverPaginationData]);
-
-    const getStoredColumnState = useCallback((): StoredColumnState | null => {
-      const ownStateColumnState = getOwnStateColumnState();
-      if (ownStateColumnState?.length) {
-        return ownStateColumnState;
-      }
-
-      if (!storageKey) {
-        return null;
-      }
-
-      try {
-        const storedState = localStorage.getItem(storageKey);
-        if (!storedState) {
-          return null;
-        }
-        const parsedState = JSON.parse(storedState);
-        return Array.isArray(parsedState)
-          ? (parsedState as StoredColumnState)
-          : null;
-      } catch (error) {
-        return null;
-      }
-    }, [getOwnStateColumnState, storageKey]);
-
     const applyStoredColumnState = useCallback(
       (api: GridApi) => {
-        const storedColumnState = getStoredColumnState();
-        if (!storedColumnState?.length) {
+        if (!storageKey) {
           return false;
         }
-
         try {
+          const storedState = localStorage.getItem(storageKey);
+          if (!storedState) {
+            return false;
+          }
+          const parsedState = JSON.parse(storedState);
+          if (!Array.isArray(parsedState)) {
+            return false;
+          }
           api.applyColumnState({
-            state: storedColumnState as ColumnState[],
+            state: parsedState as ColumnState[],
             applyOrder: true,
           });
-          onColumnStateSnapshot?.(storedColumnState);
           return true;
         } catch (error) {
           return false;
         }
       },
-      [getStoredColumnState, onColumnStateSnapshot],
+      [storageKey],
     );
 
     useEffect(() => {
@@ -457,20 +429,18 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
     const persistColumnState = useCallback(
       (api: GridApi) => {
-        const state = api.getColumnState() as StoredColumnState;
-        onColumnStateSnapshot?.(state);
-
         if (!storageKey) {
           return;
         }
         try {
+          const state = api.getColumnState();
           localStorage.setItem(storageKey, JSON.stringify(state));
           hasStoredColumnState.current = true;
         } catch (error) {
           // Ignore localStorage errors.
         }
       },
-      [onColumnStateSnapshot, storageKey],
+      [storageKey],
     );
 
     const onGridReady = (params: GridReadyEvent) => {
@@ -478,20 +448,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       hasStoredColumnState.current = restoredState;
       if (!restoredState) {
         sizeColumnsToContentWhenPossible(params.api);
-        if (
-          typeof window !== 'undefined' &&
-          typeof window.requestAnimationFrame === 'function'
-        ) {
-          window.requestAnimationFrame(() => {
-            onColumnStateSnapshot?.(
-              params.api.getColumnState() as StoredColumnState,
-            );
-          });
-        } else {
-          onColumnStateSnapshot?.(
-            params.api.getColumnState() as StoredColumnState,
-          );
-        }
       }
     };
 
@@ -515,19 +471,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [defaultColDef.minWidth, persistColumnState],
     );
 
-    const handleColumnPinned = useCallback(
-      (event: ColumnPinnedEvent) => {
-        persistColumnState(event.api);
-      },
-      [persistColumnState],
-    );
-
-    const handleColumnMoved = useCallback(
-      (event: ColumnMovedEvent) => {
-        if ('finished' in event && event.finished === false) {
-          return;
-        }
-
+    const handleColumnStateChange = useCallback(
+      (event: ColumnPinnedEvent | ColumnMovedEvent) => {
         persistColumnState(event.api);
       },
       [persistColumnState],
@@ -610,8 +555,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             rowBuffer={rowBuffer}
             onCellClicked={handleCrossFilter}
             onColumnVisible={handleColumnVisible}
-            onColumnPinned={handleColumnPinned}
-            onColumnMoved={handleColumnMoved}
+            onColumnPinned={handleColumnStateChange}
+            onColumnMoved={handleColumnStateChange}
             onColumnResized={handleColumnResized}
             onCellContextMenu={onCellContextMenu}
             initialState={gridInitialState}
