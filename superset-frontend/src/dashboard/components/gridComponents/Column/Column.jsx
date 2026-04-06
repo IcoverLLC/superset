@@ -152,28 +152,35 @@ const CollapseToggleButton = styled.button`
     top: 0;
     right: 0;
     z-index: 3;
-    border: 0;
+    border: 1px solid ${theme.colorPrimaryBorder};
     background: ${collapsed
-      ? theme.colorPrimary
-      : `linear-gradient(135deg, transparent 0 46%, ${theme.colorPrimary} 46% 100%)`};
-    color: ${theme.colorWhite};
+      ? theme.colorPrimaryBg
+      : `linear-gradient(135deg, transparent 0 46%, ${theme.colorPrimaryBg} 46% 100%)`};
+    color: ${theme.colorPrimary};
+    box-shadow:
+      inset 0 0 0 1px ${theme.colorPrimaryBorder},
+      ${theme.boxShadowSecondary};
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    opacity: 1;
+    opacity: ${collapsed ? 0.95 : 0.82};
     width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
     min-width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
     height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
     min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
-    border-radius: 0;
+    border-radius: ${collapsed
+      ? `${theme.borderRadius * 2}px`
+      : `0 ${theme.borderRadius * 2}px 0 ${theme.borderRadius * 4}px`};
     clip-path: ${collapsed
       ? 'none'
       : 'polygon(100% 0, 0 0, 100% 100%)'};
     transition:
+      opacity 0.2s ease,
       background-color 0.2s ease,
-      outline-color 0.2s ease;
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
 
     svg {
       position: absolute;
@@ -182,10 +189,12 @@ const CollapseToggleButton = styled.button`
     }
 
     &:hover {
-      background: ${collapsed
-        ? theme.colorPrimaryHover
-        : `linear-gradient(135deg, transparent 0 46%, ${theme.colorPrimaryHover} 46% 100%)`};
-      outline: 1px solid ${theme.colorPrimaryBorderHover};
+      background: ${theme.colorPrimaryBgHover};
+      border-color: ${theme.colorPrimaryBorderHover};
+      box-shadow:
+        inset 0 0 0 1px ${theme.colorPrimaryBorderHover},
+        ${theme.boxShadowSecondary};
+      opacity: 1;
     }
   `}
 `;
