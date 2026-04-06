@@ -50,10 +50,17 @@ import WithPopoverMenu from 'src/dashboard/components/menu/WithPopoverMenu';
 import { componentShape } from 'src/dashboard/util/propShapes';
 import backgroundStyleOptions from 'src/dashboard/util/backgroundStyleOptions';
 import { BACKGROUND_TRANSPARENT } from 'src/dashboard/util/constants';
+import { COLUMN_TYPE } from 'src/dashboard/util/componentTypes';
 import { isEmbedded } from 'src/dashboard/util/isEmbedded';
 import { EMPTY_CONTAINER_Z_INDEX } from 'src/dashboard/constants';
 import { isCurrentUserBot } from 'src/utils/isBot';
 import { useDebouncedEffect } from '../../../../explore/exploreUtils';
+import {
+  applyCollapsedWidthsForRow,
+  getInitialCollapsedColumnsForRow,
+  isCollapsibleColumn,
+  setCollapsedColumnForDashboard,
+} from '../../../util/collapsibleColumns';
 
 const propTypes = {
   id: PropTypes.string.isRequired,
@@ -77,6 +84,8 @@ const propTypes = {
   handleComponentDrop: PropTypes.func.isRequired,
   deleteComponent: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
+  dashboardId: PropTypes.number,
+  getComponentById: PropTypes.func,
 };
 
 const GridRow = styled.div`
@@ -153,12 +162,14 @@ const Row = props => {
     updateComponents,
     deleteComponent,
     parentId,
+    dashboardId,
   } = props;
 
   const [isFocused, setIsFocused] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const [hoverMenuHovered, setHoverMenuHovered] = useState(false);
   const [containerHeight, setContainerHeight] = useState(null);
+  const [collapsedColumns, setCollapsedColumns] = useState({});
   const containerRef = useRef();
   const isComponentVisibleRef = useRef(isComponentVisible);
 
@@ -166,8 +177,6 @@ const Row = props => {
     isComponentVisibleRef.current = isComponentVisible;
   }, [isComponentVisible]);
 
-  // if chart not rendered - render it if it's less than 1 view height away from current viewport
-  // if chart rendered - remove it if it's more than 4 view heights away from current viewport
   useEffect(() => {
     let observerEnabler;
     let observerDisabler;
@@ -192,7 +201,6 @@ const Row = props => {
       observerDisabler = new IntersectionObserver(
         ([entry]) => {
           if (!entry.isIntersecting && isComponentVisibleRef.current) {
-            // Reference: https://www.w3.org/TR/intersection-observer/#dom-intersectionobserver-rootmargin
             if (!isEmbedded()) {
               setIsInView(false);
             }
@@ -250,12 +258,12 @@ const Row = props => {
         });
       }
     },
-    [updateComponents, rowComponent],
+    [rowComponent, updateComponents],
   );
 
   const handleDeleteComponent = useCallback(() => {
     deleteComponent(rowComponent.id, parentId);
-  }, [deleteComponent, rowComponent, parentId]);
+  }, [deleteComponent, parentId, rowComponent.id]);
 
   const handleMenuHover = useCallback(hovered => {
     const { isHovered } = hovered;
@@ -267,11 +275,79 @@ const Row = props => {
     [rowComponent.children],
   );
 
+  const rowLayoutItems = useMemo(
+    () =>
+      rowItems.reduce((acc, childId) => {
+        const child = props.getComponentById?.(childId);
+        if (child) {
+          acc[childId] = child;
+        }
+        return acc;
+      }, {}),
+    [props.getComponentById, rowItems],
+  );
+
+  const collapseConfigSignature = useMemo(
+    () =>
+      rowItems
+        .map(childId => {
+          const child = rowLayoutItems[childId];
+          return [
+            childId,
+            child?.type,
+            Boolean(child?.meta?.enableCollapse),
+            Boolean(child?.meta?.collapsedByDefault),
+          ].join(':');
+        })
+        .join('|'),
+    [rowItems, rowLayoutItems],
+  );
+
+  useEffect(() => {
+    setCollapsedColumns(
+      getInitialCollapsedColumnsForRow({
+        dashboardId,
+        rowComponent,
+        layout: rowLayoutItems,
+      }),
+    );
+  }, [collapseConfigSignature, dashboardId, rowComponent]);
+
   const backgroundStyle = backgroundStyleOptions.find(
     opt =>
       opt.value === (rowComponent.meta.background || BACKGROUND_TRANSPARENT),
   );
+
   const remainColumnCount = availableColumnCount - occupiedColumnCount;
+  const effectiveChildWidths = useMemo(
+    () =>
+      applyCollapsedWidthsForRow({
+        rowComponent,
+        layout: rowLayoutItems,
+        collapsedColumns,
+        editMode,
+      }),
+    [collapsedColumns, editMode, rowComponent, rowLayoutItems],
+  );
+
+  const handleToggleColumnCollapse = useCallback(
+    columnId => {
+      setCollapsedColumns(current => {
+        const nextCollapsed = !current[columnId];
+        setCollapsedColumnForDashboard({
+          dashboardId,
+          columnId,
+          collapsed: nextCollapsed,
+        });
+        return {
+          ...current,
+          [columnId]: nextCollapsed,
+        };
+      });
+    },
+    [dashboardId],
+  );
+
   const renderChild = useCallback(
     ({ dragSourceRef }) => (
       <WithPopoverMenu
@@ -280,6 +356,7 @@ const Row = props => {
         disableClick
         menuItems={[
           <BackgroundStyleDropdown
+            key={`${rowComponent.id}-background`}
             id={`${rowComponent.id}-background`}
             value={backgroundStyle.value}
             onChange={handleChangeBackground}
@@ -364,6 +441,14 @@ const Row = props => {
                   isComponentVisible={isComponentVisible}
                   onChangeTab={onChangeTab}
                   isInView={isInView}
+                  runtimeWidth={effectiveChildWidths[componentId]}
+                  isColumnCollapsed={Boolean(collapsedColumns[componentId])}
+                  onToggleCollapse={
+                    rowLayoutItems[componentId]?.type === COLUMN_TYPE &&
+                    isCollapsibleColumn(rowLayoutItems[componentId])
+                      ? handleToggleColumnCollapse
+                      : undefined
+                  }
                 />
                 {editMode && (
                   <Droppable
@@ -401,14 +486,17 @@ const Row = props => {
       backgroundStyle.className,
       backgroundStyle.value,
       columnWidth,
+      collapsedColumns,
       containerHeight,
       depth,
       editMode,
+      effectiveChildWidths,
       handleChangeBackground,
       handleChangeFocus,
       handleComponentDrop,
       handleDeleteComponent,
       handleMenuHover,
+      handleToggleColumnCollapse,
       hoverMenuHovered,
       isComponentVisible,
       isFocused,
@@ -420,6 +508,7 @@ const Row = props => {
       remainColumnCount,
       rowComponent,
       rowItems,
+      rowLayoutItems,
     ],
   );
 
