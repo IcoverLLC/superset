@@ -49,7 +49,6 @@ const propTypes = {
   directPathToChild: PropTypes.arrayOf(PropTypes.string),
   directPathLastUpdated: PropTypes.number,
   isComponentVisible: PropTypes.bool,
-  parentEffectiveWidth: PropTypes.number,
 };
 
 const DashboardComponent = props => {
@@ -62,20 +61,7 @@ const DashboardComponent = props => {
   );
   const dashboardId = dashboardInfo.id;
   const component = dashboardLayout[props.id];
-  const parentLayoutComponent = dashboardLayout[props.parentId];
-  const parentComponent = useMemo(() => {
-    if (!parentLayoutComponent || !props.parentEffectiveWidth) {
-      return parentLayoutComponent;
-    }
-
-    return {
-      ...parentLayoutComponent,
-      meta: {
-        ...parentLayoutComponent.meta,
-        width: props.parentEffectiveWidth,
-      },
-    };
-  }, [parentLayoutComponent, props.parentEffectiveWidth]);
+  const parentComponent = dashboardLayout[props.parentId];
   const getComponentById = useCallback(
     id => dashboardLayout[id],
     [dashboardLayout],
