@@ -165,7 +165,7 @@ const CollapseToggleButton = styled.button`
     min-width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
     height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
     min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
-    border-radius: 0;
+    border-radius: ${collapsed ? `${theme.borderRadius}px` : 0};
     clip-path: ${collapsed
       ? 'none'
       : 'polygon(100% 0, 0 0, 100% 100%)'};
