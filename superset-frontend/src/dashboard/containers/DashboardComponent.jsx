@@ -49,6 +49,9 @@ const propTypes = {
   directPathToChild: PropTypes.arrayOf(PropTypes.string),
   directPathLastUpdated: PropTypes.number,
   isComponentVisible: PropTypes.bool,
+  parentEffectiveWidth: PropTypes.number,
+  runtimeWidth: PropTypes.number,
+  shouldExpandChildrenToAvailableWidth: PropTypes.bool,
 };
 
 const DashboardComponent = props => {
@@ -61,7 +64,40 @@ const DashboardComponent = props => {
   );
   const dashboardId = dashboardInfo.id;
   const component = dashboardLayout[props.id];
-  const parentComponent = dashboardLayout[props.parentId];
+  const parentLayoutComponent = dashboardLayout[props.parentId];
+  const effectiveComponent = useMemo(() => {
+    if (
+      !component ||
+      typeof props.runtimeWidth === 'undefined' ||
+      component.type === COLUMN_TYPE
+    ) {
+      return component;
+    }
+
+    return {
+      ...component,
+      meta: {
+        ...component.meta,
+        width: props.runtimeWidth,
+      },
+    };
+  }, [component, props.runtimeWidth]);
+  const parentComponent = useMemo(() => {
+    if (
+      !parentLayoutComponent ||
+      typeof props.parentEffectiveWidth === 'undefined'
+    ) {
+      return parentLayoutComponent;
+    }
+
+    return {
+      ...parentLayoutComponent,
+      meta: {
+        ...parentLayoutComponent.meta,
+        width: props.parentEffectiveWidth,
+      },
+    };
+  }, [parentLayoutComponent, props.parentEffectiveWidth]);
   const getComponentById = useCallback(
     id => dashboardLayout[id],
     [dashboardLayout],
@@ -92,8 +128,8 @@ const DashboardComponent = props => {
   // rows and columns need more data about their child dimensions
   // doing this allows us to not pass the entire component lookup to all Components
   const { occupiedColumnCount, minColumnWidth } = useMemo(() => {
-    if (component) {
-      const componentType = component.type;
+    if (effectiveComponent) {
+      const componentType = effectiveComponent.type;
       if (componentType === ROW_TYPE || componentType === COLUMN_TYPE) {
         const { occupiedWidth, minimumWidth } = getDetailedComponentWidth({
           id: props.id,
@@ -110,14 +146,16 @@ const DashboardComponent = props => {
       return {};
     }
     return {};
-  }, [component, dashboardLayout, props.id]);
+  }, [dashboardLayout, effectiveComponent, props.id]);
 
-  const Component = component ? componentLookup[component.type] : null;
+  const Component = effectiveComponent
+    ? componentLookup[effectiveComponent.type]
+    : null;
   return Component ? (
     <Component
       {...props}
       {...boundActionCreators}
-      component={component}
+      component={effectiveComponent}
       getComponentById={getComponentById}
       parentComponent={parentComponent}
       editMode={editMode}

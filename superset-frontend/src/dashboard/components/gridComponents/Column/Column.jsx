@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Fragment, useCallback, useState, useMemo, memo } from 'react';
+import { Fragment, useCallback, useMemo, useState, memo } from 'react';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
 import { css, styled, t } from '@superset-ui/core';
+import { Checkbox } from '@superset-ui/core/components';
 import { Icons } from '@superset-ui/core/components/Icons';
 import DashboardComponent from 'src/dashboard/containers/DashboardComponent';
 import DeleteComponentButton from 'src/dashboard/components/DeleteComponentButton';
@@ -35,8 +36,12 @@ import BackgroundStyleDropdown from 'src/dashboard/components/menu/BackgroundSty
 import WithPopoverMenu from 'src/dashboard/components/menu/WithPopoverMenu';
 import backgroundStyleOptions from 'src/dashboard/util/backgroundStyleOptions';
 import { componentShape } from 'src/dashboard/util/propShapes';
-import { BACKGROUND_TRANSPARENT } from 'src/dashboard/util/constants';
+import {
+  BACKGROUND_TRANSPARENT,
+  GRID_MIN_COLUMN_COUNT,
+} from 'src/dashboard/util/constants';
 import { EMPTY_CONTAINER_Z_INDEX } from 'src/dashboard/constants';
+import { ROW_TYPE } from 'src/dashboard/util/componentTypes';
 
 const propTypes = {
   id: PropTypes.string.isRequired,
@@ -59,15 +64,27 @@ const propTypes = {
   deleteComponent: PropTypes.func.isRequired,
   handleComponentDrop: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
+
+  // runtime collapse behavior
+  isColumnCollapsed: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
+  runtimeWidth: PropTypes.number,
+  shouldExpandChildrenToAvailableWidth: PropTypes.bool,
 };
 
-const defaultProps = {};
+const defaultProps = {
+  isColumnCollapsed: false,
+  onToggleCollapse: undefined,
+  runtimeWidth: undefined,
+  shouldExpandChildrenToAvailableWidth: false,
+};
 
 const ColumnStyles = styled.div`
-  ${({ theme, editMode }) => css`
+  ${({ theme, editMode, isCollapsed }) => css`
     &.grid-column {
       width: 100%;
       position: relative;
+      min-height: ${isCollapsed ? theme.sizeUnit * 14 : 0}px;
 
       & > :not(.hover-menu):not(:last-child) {
         ${!editMode && `margin-bottom: ${theme.sizeUnit * 4}px;`}
@@ -119,6 +136,60 @@ const emptyColumnContentStyles = theme => css`
   color: ${theme.colorTextLabel};
 `;
 
+const MenuCheckboxLabel = styled.div`
+  ${({ theme }) => css`
+    white-space: nowrap;
+
+    .ant-checkbox-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: ${theme.sizeUnit * 2}px;
+    }
+  `}
+`;
+
+const CollapseToggleButton = styled.button`
+  ${({ theme, collapsed }) => css`
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
+    border: 0;
+    background: ${theme.colorPrimaryBgHover};
+    color: ${theme.colorPrimary};
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: ${collapsed ? 0.92 : 0.78};
+    width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
+    min-width: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 9}px;
+    height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
+    min-height: ${collapsed ? theme.sizeUnit * 18 : theme.sizeUnit * 9}px;
+    border-radius: ${collapsed ? `${theme.borderRadius}px` : 0};
+    clip-path: ${collapsed
+      ? 'none'
+      : 'polygon(100% 0, 0 0, 100% 100%)'};
+    transition:
+      background-color 0.2s ease,
+      outline-color 0.2s ease,
+      opacity 0.2s ease;
+
+    svg {
+      position: absolute;
+      top: ${collapsed ? theme.sizeUnit * 6 : theme.sizeUnit * 0.75}px;
+      right: ${collapsed ? theme.sizeUnit : theme.sizeUnit * 0.75}px;
+    }
+
+    &:hover {
+      background: ${theme.colorPrimaryBg};
+      outline: 1px solid ${theme.colorPrimaryBorderHover};
+      opacity: 1;
+    }
+  `}
+`;
+
 const Column = props => {
   const {
     component: columnComponent,
@@ -139,6 +210,10 @@ const Column = props => {
     id,
     parentId,
     updateComponents,
+    isColumnCollapsed,
+    onToggleCollapse,
+    runtimeWidth,
+    shouldExpandChildrenToAvailableWidth,
   } = props;
 
   const [isFocused, setIsFocused] = useState(false);
@@ -151,22 +226,48 @@ const Column = props => {
     setIsFocused(Boolean(nextFocus));
   }, []);
 
-  const handleChangeBackground = useCallback(
-    nextValue => {
-      const metaKey = 'background';
-      if (nextValue && columnComponent.meta[metaKey] !== nextValue) {
-        updateComponents({
-          [columnComponent.id]: {
-            ...columnComponent,
-            meta: {
-              ...columnComponent.meta,
-              [metaKey]: nextValue,
-            },
+  const updateColumnMeta = useCallback(
+    nextMeta => {
+      updateComponents({
+        [columnComponent.id]: {
+          ...columnComponent,
+          meta: {
+            ...columnComponent.meta,
+            ...nextMeta,
           },
-        });
-      }
+        },
+      });
     },
     [columnComponent, updateComponents],
+  );
+
+  const handleChangeBackground = useCallback(
+    nextValue => {
+      if (nextValue && columnComponent.meta.background !== nextValue) {
+        updateColumnMeta({ background: nextValue });
+      }
+    },
+    [columnComponent.meta.background, updateColumnMeta],
+  );
+
+  const handleChangeCollapseEnabled = useCallback(
+    event => {
+      const enableCollapse = event.target.checked;
+      updateColumnMeta({
+        enableCollapse,
+        collapsedByDefault: enableCollapse
+          ? Boolean(columnComponent.meta.collapsedByDefault)
+          : false,
+      });
+    },
+    [columnComponent.meta.collapsedByDefault, updateColumnMeta],
+  );
+
+  const handleChangeCollapsedByDefault = useCallback(
+    event => {
+      updateColumnMeta({ collapsedByDefault: event.target.checked });
+    },
+    [updateColumnMeta],
   );
 
   const columnItems = useMemo(
@@ -179,6 +280,141 @@ const Column = props => {
       opt.value === (columnComponent.meta.background || BACKGROUND_TRANSPARENT),
   );
 
+  const canCollapse =
+    parentComponent?.type === ROW_TYPE &&
+    Boolean(columnComponent.meta.enableCollapse);
+  const isCollapsed = canCollapse && !editMode && isColumnCollapsed;
+  const displayedWidth = isCollapsed
+    ? GRID_MIN_COLUMN_COUNT
+    : runtimeWidth ?? columnComponent.meta.width;
+  const didWidthExpand =
+    typeof runtimeWidth !== 'undefined' &&
+    runtimeWidth !== columnComponent.meta.width;
+  const shouldExpandDescendants =
+    shouldExpandChildrenToAvailableWidth || didWidthExpand;
+
+  const handleToggleCollapsed = useCallback(() => {
+    onToggleCollapse?.(columnComponent.id);
+  }, [columnComponent.id, onToggleCollapse]);
+
+  const menuItems = useMemo(
+    () => [
+      <BackgroundStyleDropdown
+        key={`${columnComponent.id}-background`}
+        id={`${columnComponent.id}-background`}
+        value={columnComponent.meta.background}
+        onChange={handleChangeBackground}
+      />,
+      <MenuCheckboxLabel key={`${columnComponent.id}-collapse-enabled`}>
+        <Checkbox
+          name={`${columnComponent.id}-collapse-enabled`}
+          checked={Boolean(columnComponent.meta.enableCollapse)}
+          onChange={handleChangeCollapseEnabled}
+        >
+          {t('Allow collapse')}
+        </Checkbox>
+      </MenuCheckboxLabel>,
+      <MenuCheckboxLabel key={`${columnComponent.id}-collapsed-default`}>
+        <Checkbox
+          name={`${columnComponent.id}-collapsed-default`}
+          checked={Boolean(columnComponent.meta.collapsedByDefault)}
+          disabled={!columnComponent.meta.enableCollapse}
+          onChange={handleChangeCollapsedByDefault}
+        >
+          {t('Collapsed by default')}
+        </Checkbox>
+      </MenuCheckboxLabel>,
+    ],
+    [
+      columnComponent.id,
+      columnComponent.meta.background,
+      columnComponent.meta.collapsedByDefault,
+      columnComponent.meta.enableCollapse,
+      handleChangeBackground,
+      handleChangeCollapseEnabled,
+      handleChangeCollapsedByDefault,
+    ],
+  );
+
+  const renderColumnContent = () => {
+    if (isCollapsed) {
+      return null;
+    }
+
+    return (
+      <>
+        {editMode && (
+          <Droppable
+            component={columnComponent}
+            parentComponent={columnComponent}
+            {...(columnItems.length === 0
+              ? {
+                  dropToChild: true,
+                }
+              : {
+                  component: columnItems[0],
+                })}
+            depth={depth}
+            index={0}
+            orientation="column"
+            onDrop={handleComponentDrop}
+            className={cx(
+              'empty-droptarget',
+              columnItems.length > 0 && 'droptarget-edge',
+            )}
+            editMode
+          >
+            {({ dropIndicatorProps }) =>
+              dropIndicatorProps && <div {...dropIndicatorProps} />
+            }
+          </Droppable>
+        )}
+        {columnItems.length === 0 ? (
+          <div css={emptyColumnContentStyles}>{t('Empty column')}</div>
+        ) : (
+          columnItems.map((componentId, itemIndex) => (
+            <Fragment key={componentId}>
+              <DashboardComponent
+                id={componentId}
+                parentId={columnComponent.id}
+                depth={depth + 1}
+                index={itemIndex}
+                availableColumnCount={displayedWidth}
+                columnWidth={columnWidth}
+                onResizeStart={onResizeStart}
+                onResize={onResize}
+                onResizeStop={onResizeStop}
+                isComponentVisible={isComponentVisible}
+                onChangeTab={onChangeTab}
+                parentEffectiveWidth={displayedWidth}
+                shouldExpandChildrenToAvailableWidth={shouldExpandDescendants}
+              />
+              {editMode && (
+                <Droppable
+                  component={columnItems}
+                  parentComponent={columnComponent}
+                  depth={depth}
+                  index={itemIndex + 1}
+                  orientation="column"
+                  onDrop={handleComponentDrop}
+                  className={cx(
+                    'empty-droptarget',
+                    itemIndex === columnItems.length - 1 && 'droptarget-edge',
+                  )}
+                  editMode
+                >
+                  {({ dropIndicatorProps }) =>
+                    dropIndicatorProps && <div {...dropIndicatorProps} />
+                  }
+                </Droppable>
+              )}
+            </Fragment>
+          ))
+        )}
+      </>
+    );
+  };
+
   const renderChild = useCallback(
     ({ dragSourceRef }) => (
       <ResizableContainer
@@ -186,11 +422,9 @@ const Column = props => {
         adjustableWidth
         adjustableHeight={false}
         widthStep={columnWidth}
-        widthMultiple={columnComponent.meta.width}
+        widthMultiple={displayedWidth}
         minWidthMultiple={minColumnWidth}
-        maxWidthMultiple={
-          availableColumnCount + (columnComponent.meta.width || 0)
-        }
+        maxWidthMultiple={availableColumnCount + (displayedWidth || 0)}
         onResizeStart={onResizeStart}
         onResize={onResize}
         onResizeStop={onResizeStop}
@@ -200,13 +434,7 @@ const Column = props => {
           isFocused={isFocused}
           onChangeFocus={handleChangeFocus}
           disableClick
-          menuItems={[
-            <BackgroundStyleDropdown
-              id={`${columnComponent.id}-background`}
-              value={columnComponent.meta.background}
-              onChange={handleChangeBackground}
-            />,
-          ]}
+          menuItems={menuItems}
           editMode={editMode}
         >
           {editMode && (
@@ -225,74 +453,23 @@ const Column = props => {
           <ColumnStyles
             className={cx('grid-column', backgroundStyle.className)}
             editMode={editMode}
+            isCollapsed={isCollapsed}
           >
-            {editMode && (
-              <Droppable
-                component={columnComponent}
-                parentComponent={columnComponent}
-                {...(columnItems.length === 0
-                  ? {
-                      dropToChild: true,
-                    }
-                  : {
-                      component: columnItems[0],
-                    })}
-                depth={depth}
-                index={0}
-                orientation="column"
-                onDrop={handleComponentDrop}
-                className={cx(
-                  'empty-droptarget',
-                  columnItems.length > 0 && 'droptarget-edge',
-                )}
-                editMode
+            {canCollapse && !editMode && (
+              <CollapseToggleButton
+                type="button"
+                aria-label={isCollapsed ? t('Expand column') : t('Collapse column')}
+                collapsed={isCollapsed}
+                onClick={handleToggleCollapsed}
               >
-                {({ dropIndicatorProps }) =>
-                  dropIndicatorProps && <div {...dropIndicatorProps} />
-                }
-              </Droppable>
+                {isCollapsed ? (
+                  <Icons.VerticalRightOutlined iconSize="m" />
+                ) : (
+                  <Icons.VerticalLeftOutlined iconSize="m" />
+                )}
+              </CollapseToggleButton>
             )}
-            {columnItems.length === 0 ? (
-              <div css={emptyColumnContentStyles}>{t('Empty column')}</div>
-            ) : (
-              columnItems.map((componentId, itemIndex) => (
-                <Fragment key={componentId}>
-                  <DashboardComponent
-                    id={componentId}
-                    parentId={columnComponent.id}
-                    depth={depth + 1}
-                    index={itemIndex}
-                    availableColumnCount={columnComponent.meta.width}
-                    columnWidth={columnWidth}
-                    onResizeStart={onResizeStart}
-                    onResize={onResize}
-                    onResizeStop={onResizeStop}
-                    isComponentVisible={isComponentVisible}
-                    onChangeTab={onChangeTab}
-                  />
-                  {editMode && (
-                    <Droppable
-                      component={columnItems}
-                      parentComponent={columnComponent}
-                      depth={depth}
-                      index={itemIndex + 1}
-                      orientation="column"
-                      onDrop={handleComponentDrop}
-                      className={cx(
-                        'empty-droptarget',
-                        itemIndex === columnItems.length - 1 &&
-                          'droptarget-edge',
-                      )}
-                      editMode
-                    >
-                      {({ dropIndicatorProps }) =>
-                        dropIndicatorProps && <div {...dropIndicatorProps} />
-                      }
-                    </Droppable>
-                  )}
-                </Fragment>
-              ))
-            )}
+            {renderColumnContent()}
           </ColumnStyles>
         </WithPopoverMenu>
       </ResizableContainer>
@@ -300,22 +477,21 @@ const Column = props => {
     [
       availableColumnCount,
       backgroundStyle.className,
-      columnComponent,
-      columnItems,
+      columnComponent.id,
       columnWidth,
-      depth,
+      displayedWidth,
       editMode,
-      handleChangeBackground,
       handleChangeFocus,
-      handleComponentDrop,
       handleDeleteComponent,
-      isComponentVisible,
+      handleToggleCollapsed,
+      isCollapsed,
       isFocused,
+      menuItems,
       minColumnWidth,
-      onChangeTab,
       onResize,
       onResizeStart,
       onResizeStop,
+      renderColumnContent,
     ],
   );
 

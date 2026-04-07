@@ -56,8 +56,12 @@ jest.mock('src/dashboard/components/dnd/DragDroppable', () => ({
 jest.mock(
   'src/dashboard/containers/DashboardComponent',
   () =>
-    ({ availableColumnCount, depth }) => (
-      <div data-test="mock-dashboard-component" depth={depth}>
+    ({ availableColumnCount, depth, runtimeWidth }) => (
+      <div
+        data-test="mock-dashboard-component"
+        depth={depth}
+        data-runtime-width={runtimeWidth}
+      >
         {availableColumnCount}
       </div>
     ),
@@ -101,6 +105,9 @@ const props = {
   handleComponentDrop() {},
   deleteComponent() {},
   updateComponents() {},
+  getComponentById(id) {
+    return mockLayout.present[id];
+  },
 };
 
 function setup(overrideProps) {
@@ -199,6 +206,17 @@ test('should increment the depth of its children', () => {
   expect(getByTestId('mock-dashboard-component')).toHaveAttribute(
     'depth',
     `${props.depth + 1}`,
+  );
+});
+
+test('should expand the first child width when runtime expansion is enabled', () => {
+  const { getByTestId } = setup({
+    shouldExpandChildrenToAvailableWidth: true,
+  });
+
+  expect(getByTestId('mock-dashboard-component')).toHaveAttribute(
+    'data-runtime-width',
+    '12',
   );
 });
 

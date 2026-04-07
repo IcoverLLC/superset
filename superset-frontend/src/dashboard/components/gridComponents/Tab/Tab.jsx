@@ -232,6 +232,7 @@ const Tab = props => {
       editMode,
       isComponentVisible,
       dashboardId,
+      shouldExpandChildrenToAvailableWidth,
     } = props;
 
     const shouldDisplayEmptyState = tabComponent.children.length === 0;
@@ -312,6 +313,9 @@ const Tab = props => {
               onResizeStop={onResizeStop}
               isComponentVisible={isComponentVisible}
               onChangeTab={handleChangeTab}
+              shouldExpandChildrenToAvailableWidth={
+                shouldExpandChildrenToAvailableWidth
+              }
             />
             {/* Make bottom of tab droppable */}
             {editMode && (
@@ -354,6 +358,7 @@ const Tab = props => {
     handleDrop,
     handleTopDropTargetDrop,
     shouldDropToChild,
+    props.shouldExpandChildrenToAvailableWidth,
   ]);
 
   const renderTabChild = useCallback(
