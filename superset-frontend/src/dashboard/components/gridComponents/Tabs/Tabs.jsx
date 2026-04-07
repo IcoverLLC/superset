@@ -348,12 +348,9 @@ const Tabs = props => {
     renderHoverMenu = true,
     isComponentVisible: isCurrentTabVisible,
     editMode,
-    shouldExpandChildrenToAvailableWidth,
   } = props;
 
   const { children: tabIds } = tabsComponent;
-  const contentAvailableColumnCount =
-    tabsComponent.meta?.width || availableColumnCount;
 
   const tabBarPaddingLeft =
     renderTabContent === false
@@ -405,7 +402,7 @@ const Tabs = props => {
               depth={depth}
               index={tabIndex}
               renderType={RENDER_TAB}
-              availableColumnCount={contentAvailableColumnCount}
+              availableColumnCount={availableColumnCount}
               columnWidth={columnWidth}
               onDropOnTab={handleDropOnTab}
               onDropPositionChange={handleGetDropPosition}
@@ -414,9 +411,6 @@ const Tabs = props => {
               isFocused={activeKey === tabId}
               isHighlighted={
                 activeKey !== tabId && tabsToHighlight?.includes(tabId)
-              }
-              shouldExpandChildrenToAvailableWidth={
-                shouldExpandChildrenToAvailableWidth
               }
             />
           </>
@@ -437,7 +431,7 @@ const Tabs = props => {
             depth={depth} // see isValidChild.js for why tabs don't increment child depth
             index={tabIndex}
             renderType={RENDER_TAB_CONTENT}
-            availableColumnCount={contentAvailableColumnCount}
+            availableColumnCount={availableColumnCount}
             columnWidth={columnWidth}
             onResizeStart={onResizeStart}
             onResize={onResize}
@@ -445,9 +439,6 @@ const Tabs = props => {
             onDropOnTab={handleDropOnTab}
             isComponentVisible={
               selectedTabIndex === tabIndex && isCurrentTabVisible
-            }
-            shouldExpandChildrenToAvailableWidth={
-              shouldExpandChildrenToAvailableWidth
             }
           />
         ),
@@ -458,7 +449,7 @@ const Tabs = props => {
       showDropIndicators,
       tabsComponent.id,
       depth,
-      contentAvailableColumnCount,
+      availableColumnCount,
       columnWidth,
       handleDropOnTab,
       handleGetDropPosition,
@@ -472,7 +463,6 @@ const Tabs = props => {
       onResizeStop,
       selectedTabIndex,
       isCurrentTabVisible,
-      shouldExpandChildrenToAvailableWidth,
     ],
   );
 
