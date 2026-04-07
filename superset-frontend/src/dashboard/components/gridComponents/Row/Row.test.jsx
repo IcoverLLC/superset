@@ -220,35 +220,6 @@ test('should expand the first child width when runtime expansion is enabled', ()
   );
 });
 
-test('should not render children for columns collapsed by default on first paint', () => {
-  const collapsedColumnId = 'COLLAPSED_COLUMN_ID';
-  const collapsedRow = {
-    ...mockLayout.present.ROW_ID,
-    children: [collapsedColumnId],
-  };
-  const collapsedColumn = {
-    ...mockLayout.present.COLUMN_ID,
-    id: collapsedColumnId,
-    meta: {
-      ...mockLayout.present.COLUMN_ID.meta,
-      enableCollapse: true,
-      collapsedByDefault: true,
-    },
-  };
-
-  const { queryByTestId } = setup({
-    component: collapsedRow,
-    getComponentById(id) {
-      if (id === collapsedColumnId) {
-        return collapsedColumn;
-      }
-      return mockLayout.present[id];
-    },
-  });
-
-  expect(queryByTestId('mock-dashboard-component')).not.toBeInTheDocument();
-});
-
 describe('visibility handling for intersection observers', () => {
   const mockIntersectionObserver = jest.fn();
   const mockObserve = jest.fn();

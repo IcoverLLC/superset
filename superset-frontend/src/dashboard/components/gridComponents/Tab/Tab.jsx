@@ -62,7 +62,6 @@ const propTypes = {
   onResizeStart: PropTypes.func,
   onResize: PropTypes.func,
   onResizeStop: PropTypes.func,
-  shouldExpandChildrenToAvailableWidth: PropTypes.bool,
 
   // redux
   handleComponentDrop: PropTypes.func.isRequired,
@@ -81,7 +80,6 @@ const defaultProps = {
   onResizeStart() {},
   onResize() {},
   onResizeStop() {},
-  shouldExpandChildrenToAvailableWidth: false,
 };
 
 const TabTitleContainer = styled.div`
@@ -315,11 +313,6 @@ const Tab = props => {
               onResizeStop={onResizeStop}
               isComponentVisible={isComponentVisible}
               onChangeTab={handleChangeTab}
-              runtimeWidth={
-                shouldExpandChildrenToAvailableWidth
-                  ? availableColumnCount
-                  : undefined
-              }
               shouldExpandChildrenToAvailableWidth={
                 shouldExpandChildrenToAvailableWidth
               }
