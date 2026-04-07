@@ -34,7 +34,7 @@ import {
   styled,
   t,
 } from '@superset-ui/core';
-import { Icons, Constants } from '@superset-ui/core/components';
+import { Checkbox, Icons, Constants } from '@superset-ui/core/components';
 
 import {
   Draggable,
@@ -54,6 +54,11 @@ import { isEmbedded } from 'src/dashboard/util/isEmbedded';
 import { EMPTY_CONTAINER_Z_INDEX } from 'src/dashboard/constants';
 import { isCurrentUserBot } from 'src/utils/isBot';
 import { useDebouncedEffect } from '../../../../explore/exploreUtils';
+import {
+  getInitialCollapsedStateForRow,
+  isCollapsibleRow,
+  setCollapsedRowForDashboard,
+} from '../../../util/collapsibleRows';
 
 const propTypes = {
   id: PropTypes.string.isRequired,
@@ -71,16 +76,22 @@ const propTypes = {
   onResizeStart: PropTypes.func.isRequired,
   onResize: PropTypes.func.isRequired,
   onResizeStop: PropTypes.func.isRequired,
-  maxChildrenHeight: PropTypes.number.isRequired,
+  maxChildrenHeight: PropTypes.number,
 
   // dnd
   handleComponentDrop: PropTypes.func.isRequired,
   deleteComponent: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
+  dashboardId: PropTypes.number,
+};
+
+const defaultProps = {
+  maxChildrenHeight: 0,
+  dashboardId: undefined,
 };
 
 const GridRow = styled.div`
-  ${({ theme, editMode }) => css`
+  ${({ theme, editMode, isCollapsed }) => css`
     position: relative;
     display: flex;
     flex-direction: row;
@@ -88,6 +99,7 @@ const GridRow = styled.div`
     align-items: flex-start;
     width: 100%;
     height: fit-content;
+    min-height: ${isCollapsed ? theme.sizeUnit * 8 : 0}px;
 
     & > :not(:last-child):not(.hover-menu) {
       ${!editMode && `margin-right: ${theme.sizeUnit * 4}px;`}
@@ -134,6 +146,57 @@ const emptyRowContentStyles = theme => css`
   color: ${theme.colorTextLabel};
 `;
 
+const MenuCheckboxLabel = styled.div`
+  ${({ theme }) => css`
+    white-space: nowrap;
+
+    .ant-checkbox-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: ${theme.sizeUnit * 2}px;
+    }
+  `}
+`;
+
+const CollapseToggleButton = styled.button`
+  ${({ theme, collapsed }) => css`
+    position: absolute;
+    top: ${theme.sizeUnit}px;
+    right: ${theme.sizeUnit * 2}px;
+    z-index: 3;
+    border: none;
+    border-radius: ${theme.borderRadius * 3}px;
+    background: ${theme.colorBgElevated};
+    color: ${theme.colorPrimary};
+    box-shadow: ${theme.boxShadowSecondary};
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: ${theme.sizeUnit}px ${theme.sizeUnit * 2}px;
+    min-width: ${theme.sizeUnit * 8}px;
+    min-height: ${theme.sizeUnit * 6}px;
+    opacity: ${collapsed ? 1 : 0.92};
+
+    &:hover {
+      background: ${theme.colorPrimaryBg};
+    }
+  `}
+`;
+
+const collapsedRowContentStyles = theme => css`
+  min-height: ${theme.sizeUnit * 8}px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colorTextLabel};
+  border: 1px solid ${theme.colorBorderSecondary};
+  border-radius: ${theme.borderRadius}px;
+  background: ${theme.colorBgContainerDisabled};
+  padding: 0 ${theme.sizeUnit * 10}px 0 ${theme.sizeUnit * 2}px;
+`;
+
 const Row = props => {
   const {
     component: rowComponent,
@@ -153,12 +216,19 @@ const Row = props => {
     updateComponents,
     deleteComponent,
     parentId,
+    dashboardId,
   } = props;
 
   const [isFocused, setIsFocused] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const [hoverMenuHovered, setHoverMenuHovered] = useState(false);
   const [containerHeight, setContainerHeight] = useState(null);
+  const [isRowCollapsed, setIsRowCollapsed] = useState(() =>
+    getInitialCollapsedStateForRow({
+      dashboardId,
+      rowComponent,
+    }),
+  );
   const containerRef = useRef();
   const isComponentVisibleRef = useRef(isComponentVisible);
 
@@ -166,8 +236,20 @@ const Row = props => {
     isComponentVisibleRef.current = isComponentVisible;
   }, [isComponentVisible]);
 
-  // if chart not rendered - render it if it's less than 1 view height away from current viewport
-  // if chart rendered - remove it if it's more than 4 view heights away from current viewport
+  useEffect(() => {
+    setIsRowCollapsed(
+      getInitialCollapsedStateForRow({
+        dashboardId,
+        rowComponent,
+      }),
+    );
+  }, [
+    dashboardId,
+    rowComponent.id,
+    rowComponent.meta?.enableCollapse,
+    rowComponent.meta?.collapsedByDefault,
+  ]);
+
   useEffect(() => {
     let observerEnabler;
     let observerDisabler;
@@ -192,7 +274,6 @@ const Row = props => {
       observerDisabler = new IntersectionObserver(
         ([entry]) => {
           if (!entry.isIntersecting && isComponentVisibleRef.current) {
-            // Reference: https://www.w3.org/TR/intersection-observer/#dom-intersectionobserver-rootmargin
             if (!isEmbedded()) {
               setIsInView(false);
             }
@@ -235,22 +316,62 @@ const Row = props => {
     setIsFocused(Boolean(nextFocus));
   }, []);
 
+  const updateRowMeta = useCallback(
+    nextMeta => {
+      updateComponents({
+        [rowComponent.id]: {
+          ...rowComponent,
+          meta: {
+            ...rowComponent.meta,
+            ...nextMeta,
+          },
+        },
+      });
+    },
+    [rowComponent, updateComponents],
+  );
+
   const handleChangeBackground = useCallback(
     nextValue => {
-      const metaKey = 'background';
-      if (nextValue && rowComponent.meta[metaKey] !== nextValue) {
-        updateComponents({
-          [rowComponent.id]: {
-            ...rowComponent,
-            meta: {
-              ...rowComponent.meta,
-              [metaKey]: nextValue,
-            },
-          },
+      if (nextValue && rowComponent.meta.background !== nextValue) {
+        updateRowMeta({ background: nextValue });
+      }
+    },
+    [rowComponent.meta.background, updateRowMeta],
+  );
+
+  const handleChangeCollapseEnabled = useCallback(
+    event => {
+      const enableCollapse = event.target.checked;
+      updateRowMeta({
+        enableCollapse,
+        collapsedByDefault: enableCollapse
+          ? Boolean(rowComponent.meta.collapsedByDefault)
+          : false,
+      });
+
+      if (!enableCollapse) {
+        setIsRowCollapsed(false);
+        setCollapsedRowForDashboard({
+          dashboardId,
+          rowId: rowComponent.id,
+          collapsed: false,
         });
       }
     },
-    [updateComponents, rowComponent],
+    [
+      dashboardId,
+      rowComponent.id,
+      rowComponent.meta.collapsedByDefault,
+      updateRowMeta,
+    ],
+  );
+
+  const handleChangeCollapsedByDefault = useCallback(
+    event => {
+      updateRowMeta({ collapsedByDefault: event.target.checked });
+    },
+    [updateRowMeta],
   );
 
   const handleDeleteComponent = useCallback(() => {
@@ -262,6 +383,18 @@ const Row = props => {
     setHoverMenuHovered(isHovered);
   }, []);
 
+  const handleToggleCollapsed = useCallback(() => {
+    setIsRowCollapsed(current => {
+      const nextCollapsed = !current;
+      setCollapsedRowForDashboard({
+        dashboardId,
+        rowId: rowComponent.id,
+        collapsed: nextCollapsed,
+      });
+      return nextCollapsed;
+    });
+  }, [dashboardId, rowComponent.id]);
+
   const rowItems = useMemo(
     () => rowComponent.children || [],
     [rowComponent.children],
@@ -271,20 +404,57 @@ const Row = props => {
     opt =>
       opt.value === (rowComponent.meta.background || BACKGROUND_TRANSPARENT),
   );
+  const canCollapse =
+    isCollapsibleRow(rowComponent) && Boolean(rowItems.length > 0);
+  const isCollapsed = canCollapse && !editMode && isRowCollapsed;
   const remainColumnCount = availableColumnCount - occupiedColumnCount;
+
+  const menuItems = useMemo(
+    () => [
+      <BackgroundStyleDropdown
+        key={`${rowComponent.id}-background`}
+        id={`${rowComponent.id}-background`}
+        value={backgroundStyle.value}
+        onChange={handleChangeBackground}
+      />,
+      <MenuCheckboxLabel key={`${rowComponent.id}-collapse-enabled`}>
+        <Checkbox
+          name={`${rowComponent.id}-collapse-enabled`}
+          checked={Boolean(rowComponent.meta.enableCollapse)}
+          onChange={handleChangeCollapseEnabled}
+        >
+          {t('Allow collapse')}
+        </Checkbox>
+      </MenuCheckboxLabel>,
+      <MenuCheckboxLabel key={`${rowComponent.id}-collapsed-default`}>
+        <Checkbox
+          name={`${rowComponent.id}-collapsed-default`}
+          checked={Boolean(rowComponent.meta.collapsedByDefault)}
+          disabled={!rowComponent.meta.enableCollapse}
+          onChange={handleChangeCollapsedByDefault}
+        >
+          {t('Collapsed by default')}
+        </Checkbox>
+      </MenuCheckboxLabel>,
+    ],
+    [
+      backgroundStyle.value,
+      handleChangeBackground,
+      handleChangeCollapseEnabled,
+      handleChangeCollapsedByDefault,
+      rowComponent.id,
+      rowComponent.meta.collapsedByDefault,
+      rowComponent.meta.enableCollapse,
+    ],
+  );
+
   const renderChild = useCallback(
     ({ dragSourceRef }) => (
       <WithPopoverMenu
         isFocused={isFocused}
         onChangeFocus={handleChangeFocus}
         disableClick
-        menuItems={[
-          <BackgroundStyleDropdown
-            id={`${rowComponent.id}-background`}
-            value={backgroundStyle.value}
-            onChange={handleChangeBackground}
-          />,
-        ]}
+        menuItems={menuItems}
         editMode={editMode}
       >
         {editMode && (
@@ -311,108 +481,133 @@ const Row = props => {
           data-test={`grid-row-${backgroundStyle.className}`}
           ref={containerRef}
           editMode={editMode}
+          isCollapsed={isCollapsed}
         >
-          {editMode && (
-            <Droppable
-              {...(rowItems.length === 0
-                ? {
-                    component: rowComponent,
-                    parentComponent: rowComponent,
-                    dropToChild: true,
-                  }
-                : {
-                    component: rowItems[0],
-                    parentComponent: rowComponent,
-                  })}
-              depth={depth}
-              index={0}
-              orientation="row"
-              onDrop={handleComponentDrop}
-              className={cx(
-                'empty-droptarget',
-                'empty-droptarget--vertical',
-                rowItems.length > 0 && 'droptarget-side',
-              )}
-              editMode
-              style={{
-                height: rowItems.length > 0 ? containerHeight : '100%',
-                ...(rowItems.length > 0 && { width: 16 }),
-              }}
+          {canCollapse && !editMode && (
+            <CollapseToggleButton
+              type="button"
+              aria-label={isCollapsed ? t('Expand row') : t('Collapse row')}
+              collapsed={isCollapsed}
+              onClick={handleToggleCollapsed}
             >
-              {({ dropIndicatorProps }) =>
-                dropIndicatorProps && <div {...dropIndicatorProps} />
-              }
-            </Droppable>
+              {isCollapsed ? (
+                <Icons.DownOutlined iconSize="m" />
+              ) : (
+                <Icons.UpOutlined iconSize="m" />
+              )}
+            </CollapseToggleButton>
           )}
-          {rowItems.length === 0 && (
-            <div css={emptyRowContentStyles}>{t('Empty row')}</div>
-          )}
-          {rowItems.length > 0 &&
-            rowItems.map((componentId, itemIndex) => (
-              <Fragment key={componentId}>
-                <DashboardComponent
-                  key={componentId}
-                  id={componentId}
-                  parentId={rowComponent.id}
-                  depth={depth + 1}
-                  index={itemIndex}
-                  availableColumnCount={remainColumnCount}
-                  columnWidth={columnWidth}
-                  onResizeStart={onResizeStart}
-                  onResize={onResize}
-                  onResizeStop={onResizeStop}
-                  isComponentVisible={isComponentVisible}
-                  onChangeTab={onChangeTab}
-                  isInView={isInView}
-                />
-                {editMode && (
-                  <Droppable
-                    component={rowItems}
-                    parentComponent={rowComponent}
-                    depth={depth}
-                    index={itemIndex + 1}
-                    orientation="row"
-                    onDrop={handleComponentDrop}
-                    className={cx(
-                      'empty-droptarget',
-                      'empty-droptarget--vertical',
-                      remainColumnCount === 0 &&
-                        itemIndex === rowItems.length - 1 &&
-                        'droptarget-side',
+          {isCollapsed ? (
+            <div css={collapsedRowContentStyles}>{t('Collapsed row')}</div>
+          ) : (
+            <>
+              {editMode && (
+                <Droppable
+                  {...(rowItems.length === 0
+                    ? {
+                        component: rowComponent,
+                        parentComponent: rowComponent,
+                        dropToChild: true,
+                      }
+                    : {
+                        component: rowItems[0],
+                        parentComponent: rowComponent,
+                      })}
+                  depth={depth}
+                  index={0}
+                  orientation="row"
+                  onDrop={handleComponentDrop}
+                  className={cx(
+                    'empty-droptarget',
+                    'empty-droptarget--vertical',
+                    rowItems.length > 0 && 'droptarget-side',
+                  )}
+                  editMode
+                  style={{
+                    height: rowItems.length > 0 ? containerHeight : '100%',
+                    ...(rowItems.length > 0 && { width: 16 }),
+                  }}
+                >
+                  {({ dropIndicatorProps }) =>
+                    dropIndicatorProps && <div {...dropIndicatorProps} />
+                  }
+                </Droppable>
+              )}
+              {rowItems.length === 0 && (
+                <div css={emptyRowContentStyles}>{t('Empty row')}</div>
+              )}
+              {rowItems.length > 0 &&
+                rowItems.map((componentId, itemIndex) => (
+                  <Fragment key={componentId}>
+                    <DashboardComponent
+                      key={componentId}
+                      id={componentId}
+                      parentId={rowComponent.id}
+                      depth={depth + 1}
+                      index={itemIndex}
+                      availableColumnCount={remainColumnCount}
+                      columnWidth={columnWidth}
+                      onResizeStart={onResizeStart}
+                      onResize={onResize}
+                      onResizeStop={onResizeStop}
+                      isComponentVisible={isComponentVisible}
+                      onChangeTab={onChangeTab}
+                      isInView={isInView}
+                    />
+                    {editMode && (
+                      <Droppable
+                        component={rowItems}
+                        parentComponent={rowComponent}
+                        depth={depth}
+                        index={itemIndex + 1}
+                        orientation="row"
+                        onDrop={handleComponentDrop}
+                        className={cx(
+                          'empty-droptarget',
+                          'empty-droptarget--vertical',
+                          remainColumnCount === 0 &&
+                            itemIndex === rowItems.length - 1 &&
+                            'droptarget-side',
+                        )}
+                        editMode
+                        style={{
+                          height: containerHeight,
+                          ...(remainColumnCount === 0 &&
+                            itemIndex === rowItems.length - 1 && {
+                              width: 16,
+                            }),
+                        }}
+                      >
+                        {({ dropIndicatorProps }) =>
+                          dropIndicatorProps && <div {...dropIndicatorProps} />
+                        }
+                      </Droppable>
                     )}
-                    editMode
-                    style={{
-                      height: containerHeight,
-                      ...(remainColumnCount === 0 &&
-                        itemIndex === rowItems.length - 1 && { width: 16 }),
-                    }}
-                  >
-                    {({ dropIndicatorProps }) =>
-                      dropIndicatorProps && <div {...dropIndicatorProps} />
-                    }
-                  </Droppable>
-                )}
-              </Fragment>
-            ))}
+                  </Fragment>
+                ))}
+            </>
+          )}
         </GridRow>
       </WithPopoverMenu>
     ),
     [
       backgroundStyle.className,
-      backgroundStyle.value,
+      canCollapse,
       columnWidth,
       containerHeight,
       depth,
       editMode,
-      handleChangeBackground,
       handleChangeFocus,
       handleComponentDrop,
       handleDeleteComponent,
       handleMenuHover,
+      handleToggleCollapsed,
       hoverMenuHovered,
+      isCollapsed,
       isComponentVisible,
       isFocused,
       isInView,
+      menuItems,
       onChangeTab,
       onResize,
       onResizeStart,
@@ -439,5 +634,6 @@ const Row = props => {
 };
 
 Row.propTypes = propTypes;
+Row.defaultProps = defaultProps;
 
 export default memo(Row);

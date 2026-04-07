@@ -202,6 +202,44 @@ test('should increment the depth of its children', () => {
   );
 });
 
+test('should hide children when row is collapsed by default', () => {
+  const collapsedRow = {
+    ...props.component,
+    meta: {
+      ...props.component.meta,
+      enableCollapse: true,
+      collapsedByDefault: true,
+    },
+  };
+
+  const { queryByTestId, getByRole } = setup({
+    component: collapsedRow,
+    dashboardId: 10,
+  });
+
+  expect(queryByTestId('mock-dashboard-component')).not.toBeInTheDocument();
+  expect(getByRole('button', { name: 'Expand row' })).toBeInTheDocument();
+});
+
+test('should expand collapsed row on toggle click', () => {
+  const collapsedRow = {
+    ...props.component,
+    meta: {
+      ...props.component.meta,
+      enableCollapse: true,
+      collapsedByDefault: true,
+    },
+  };
+
+  const { getByRole, getByTestId } = setup({
+    component: collapsedRow,
+    dashboardId: 10,
+  });
+
+  fireEvent.click(getByRole('button', { name: 'Expand row' }));
+  expect(getByTestId('mock-dashboard-component')).toBeInTheDocument();
+});
+
 describe('visibility handling for intersection observers', () => {
   const mockIntersectionObserver = jest.fn();
   const mockObserve = jest.fn();
