@@ -302,6 +302,27 @@ test('Render tab content with no children', () => {
   expect(screen.queryByText('edit mode')).not.toBeInTheDocument();
 });
 
+test('passes runtime width to direct children when parent block expands', () => {
+  const props = createProps();
+  props.component.children = ['CHART_DIRECT'];
+  props.shouldExpandChildrenToAvailableWidth = true;
+  props.availableColumnCount = 11;
+
+  render(<Tab {...props} />, {
+    useRedux: true,
+    useDnd: true,
+  });
+
+  expect(DashboardComponent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      id: 'CHART_DIRECT',
+      runtimeWidth: 11,
+      shouldExpandChildrenToAvailableWidth: true,
+    }),
+    {},
+  );
+});
+
 test('Render tab content with no children, canEdit: true', () => {
   const props = createProps();
   props.component.children = [];

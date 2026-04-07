@@ -181,7 +181,19 @@ const Row = props => {
   const [isInView, setIsInView] = useState(false);
   const [hoverMenuHovered, setHoverMenuHovered] = useState(false);
   const [containerHeight, setContainerHeight] = useState(null);
-  const [collapsedColumns, setCollapsedColumns] = useState({});
+  const [collapsedColumns, setCollapsedColumns] = useState(() =>
+    getInitialCollapsedColumnsForRow({
+      dashboardId,
+      rowComponent,
+      layout: (rowComponent.children || []).reduce((acc, childId) => {
+        const child = props.getComponentById?.(childId);
+        if (child) {
+          acc[childId] = child;
+        }
+        return acc;
+      }, {}),
+    }),
+  );
   const containerRef = useRef();
   const isComponentVisibleRef = useRef(isComponentVisible);
 

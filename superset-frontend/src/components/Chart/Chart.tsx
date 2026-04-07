@@ -78,6 +78,7 @@ export interface ChartProps {
   ownState?: JsonObject;
   postTransformProps?: Function;
   datasetsStatus?: 'loading' | 'error' | 'complete';
+  isComponentVisible?: boolean;
   isInView?: boolean;
   emitCrossFilters?: boolean;
 }
@@ -179,14 +180,18 @@ class Chart extends PureComponent<ChartProps, {}> {
       this.handleRenderContainerFailure.bind(this);
   }
 
+  shouldRunQuery() {
+    return this.props.triggerQuery && this.props.isComponentVisible !== false;
+  }
+
   componentDidMount() {
-    if (this.props.triggerQuery) {
+    if (this.shouldRunQuery()) {
       this.runQuery();
     }
   }
 
   componentDidUpdate() {
-    if (this.props.triggerQuery) {
+    if (this.shouldRunQuery()) {
       this.runQuery();
     }
   }

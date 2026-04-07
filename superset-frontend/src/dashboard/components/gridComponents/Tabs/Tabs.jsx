@@ -57,6 +57,7 @@ const propTypes = {
   onResizeStart: PropTypes.func,
   onResize: PropTypes.func,
   onResizeStop: PropTypes.func,
+  shouldExpandChildrenToAvailableWidth: PropTypes.bool,
 
   // dnd
   createComponent: PropTypes.func.isRequired,
@@ -71,6 +72,7 @@ const defaultProps = {
   onResizeStart() {},
   onResize() {},
   onResizeStop() {},
+  shouldExpandChildrenToAvailableWidth: false,
 };
 
 const DropIndicator = styled.div`
