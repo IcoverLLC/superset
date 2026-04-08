@@ -48,7 +48,10 @@ const chartProps = {
 describe('TimeGrainFilterPlugin', () => {
   const setDataMask = jest.fn();
 
-  const getWrapper = (formData = {}, filterState = { value: ['P1D'] }) =>
+  const getWrapper = (
+    formData: Partial<typeof chartProps.formData> = {},
+    filterState: typeof chartProps.filterState = { value: ['P1D'] },
+  ) =>
     render(
       // @ts-ignore
       <TimeGrainFilterPlugin
@@ -71,7 +74,9 @@ describe('TimeGrainFilterPlugin', () => {
 
     await userEvent.click(screen.getByRole('combobox'));
 
-    expect(screen.getByRole('option', { name: '5 minutes' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: '5 minutes' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'year' })).toBeInTheDocument();
     expect(
       screen.queryByRole('option', { name: 'day' }),
