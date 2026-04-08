@@ -252,6 +252,14 @@ const TIME_FILTER_V2_CALENDAR_FORMAT_OPTIONS = [
   { value: 'monthly', label: t('Monthly') },
 ];
 
+const getTimeGrainOptions = (dataset?: Record<string, any>) =>
+  ((dataset?.time_grain_sqla as [string | null, string][] | undefined) || [])
+    .filter(([value]) => !!value)
+    .map(([value, label]) => ({
+      value: value as string,
+      label,
+    }));
+
 /**
  * The configuration form for a specific filter.
  * Assigns field values to `filters[filterId]` in the form.
@@ -341,6 +349,16 @@ const FiltersConfigForm = (
     formFilter?.dataset?.value ??
     filterToEdit?.targets[0]?.datasetId ??
     mostUsedDataset(loadedDatasets, charts);
+  const selectedDataset = useMemo(
+    () =>
+      datasetDetails ||
+      Object.values(loadedDatasets).find(dataset => dataset.id === datasetId),
+    [datasetDetails, datasetId, loadedDatasets],
+  );
+  const timeGrainOptions = useMemo(
+    () => getTimeGrainOptions(selectedDataset),
+    [selectedDataset],
+  );
 
   const formChanged = useCallback(() => {
     form.setFields([
@@ -636,6 +654,7 @@ const FiltersConfigForm = (
             'schema',
             'sql',
             'table_name',
+            'time_grain_sqla',
           ],
         })}`,
       })
@@ -1357,6 +1376,58 @@ const FiltersConfigForm = (
                                     controlValues: {
                                       ...previous,
                                       calendarFormat: value.target.value,
+                                    },
+                                    defaultDataMask: null,
+                                  });
+                                  forceUpdate();
+                                  formChanged();
+                                }}
+                              />
+                            </StyledRowFormItem>
+                          )}
+                          {formFilter?.filterType === 'filter_timegrain' && (
+                            <StyledRowFormItem
+                              expanded={expanded}
+                              name={[
+                                'filters',
+                                filterId,
+                                'controlValues',
+                                'availableTimeGrains',
+                              ]}
+                              initialValue={
+                                formFilter?.controlValues?.availableTimeGrains ??
+                                filterToEdit?.controlValues
+                                  ?.availableTimeGrains
+                              }
+                              label={
+                                <>
+                                  <StyledLabel>
+                                    {t('Displayed time grains')}
+                                  </StyledLabel>
+                                  &nbsp;
+                                  <InfoTooltip
+                                    placement="top"
+                                    tooltip={t(
+                                      'Choose which time grain options are shown in this filter. Leave empty to show all available options.',
+                                    )}
+                                  />
+                                </>
+                              }
+                            >
+                              <Select
+                                mode="multiple"
+                                allowClear
+                                ariaLabel={t('Displayed time grains')}
+                                options={timeGrainOptions}
+                                onChange={value => {
+                                  const previous =
+                                    form.getFieldValue('filters')?.[filterId]
+                                      .controlValues || {};
+                                  setNativeFilterFieldValues(form, filterId, {
+                                    controlValues: {
+                                      ...previous,
+                                      availableTimeGrains:
+                                        value?.length ? value : undefined,
                                     },
                                     defaultDataMask: null,
                                   });

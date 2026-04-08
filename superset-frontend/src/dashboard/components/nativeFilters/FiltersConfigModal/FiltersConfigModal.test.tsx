@@ -154,6 +154,7 @@ const TIME_RANGE_REGEX = /^time range$/i;
 const TIME_RANGE_V2_REGEX = /^time range v2$/i;
 const TIME_COLUMN_REGEX = /^time column$/i;
 const TIME_GRAIN_REGEX = /^time grain$/i;
+const DISPLAYED_TIME_GRAINS_REGEX = /^displayed time grains$/i;
 const FILTER_SETTINGS_REGEX = /^filter settings$/i;
 const DEFAULT_VALUE_REGEX = /^filter has default value$/i;
 const MULTIPLE_REGEX = /^can select multiple values$/i;
@@ -305,6 +306,49 @@ test('renders a time grain filter type', async () => {
   expect(screen.queryByText(COLUMN_REGEX)).not.toBeInTheDocument();
 
   expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
+});
+
+test('allows configuring displayed time grains for time grain filters', async () => {
+  const onSave = jest.fn();
+  defaultRender(defaultState(), {
+    ...props,
+    onSave,
+  });
+
+  userEvent.click(screen.getByText(VALUE_REGEX));
+  await waitFor(() => userEvent.click(screen.getByText(TIME_GRAIN_REGEX)));
+
+  await userEvent.click(screen.getByText(FILTER_SETTINGS_REGEX));
+  const timeGrainsSelect = screen.getByRole('combobox', {
+    name: DISPLAYED_TIME_GRAINS_REGEX,
+  });
+
+  await userEvent.click(timeGrainsSelect);
+  await userEvent.click(screen.getByRole('option', { name: 'hour' }));
+  await userEvent.click(timeGrainsSelect);
+  await userEvent.click(screen.getByRole('option', { name: 'month' }));
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: FILTER_NAME_REGEX }),
+    'Custom time grain filter',
+  );
+  await userEvent.click(screen.getByRole('button', { name: SAVE_REGEX }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modified: expect.arrayContaining([
+          expect.objectContaining({
+            controlValues: expect.objectContaining({
+              availableTimeGrains: ['PT1H', 'P1M'],
+            }),
+            filterType: 'filter_timegrain',
+            name: 'Custom time grain filter',
+          }),
+        ]),
+      }),
+    ),
+  );
 });
 
 test('render time filter types as disabled if there are no temporal columns in the dataset', async () => {

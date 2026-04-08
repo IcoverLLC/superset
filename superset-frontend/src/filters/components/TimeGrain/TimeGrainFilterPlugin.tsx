@@ -49,19 +49,28 @@ export default function PluginFilterTimegrain(
     filterState,
     inputRef,
   } = props;
-  const { defaultValue } = formData;
+  const { availableTimeGrains, defaultValue } = formData;
 
   const [value, setValue] = useState<string[]>(defaultValue ?? []);
+  const filteredData = useMemo(() => {
+    if (!availableTimeGrains?.length) {
+      return data;
+    }
+    const allowedTimeGrains = new Set(availableTimeGrains);
+    return data.filter(
+      ({ duration }: { duration: string }) => allowedTimeGrains.has(duration),
+    );
+  }, [availableTimeGrains, data]);
   const durationMap = useMemo(
     () =>
-      data.reduce(
+      filteredData.reduce(
         (agg, { duration, name }: { duration: string; name: string }) => ({
           ...agg,
           [duration]: name,
         }),
         {} as { [key in string]: string },
       ),
-    [JSON.stringify(data)],
+    [JSON.stringify(filteredData)],
   );
 
   const handleChange = (values: string[] | string | undefined | null) => {
@@ -84,19 +93,27 @@ export default function PluginFilterTimegrain(
   };
 
   useEffect(() => {
-    handleChange(defaultValue ?? []);
+    const nextDefaultValue = ensureIsArray(defaultValue ?? []).filter(
+      timeGrain =>
+        !availableTimeGrains?.length || availableTimeGrains.includes(timeGrain),
+    );
+    handleChange(nextDefaultValue);
     // I think after Config Modal update some filter it re-creates default value for all other filters
     // so we can process it like this `JSON.stringify` or start to use `Immer`
-  }, [JSON.stringify(defaultValue)]);
+  }, [JSON.stringify(defaultValue), JSON.stringify(availableTimeGrains)]);
 
   useEffect(() => {
-    handleChange(filterState.value ?? []);
-  }, [JSON.stringify(filterState.value)]);
+    const nextValue = ensureIsArray(filterState.value ?? []).filter(
+      timeGrain =>
+        !availableTimeGrains?.length || availableTimeGrains.includes(timeGrain),
+    );
+    handleChange(nextValue);
+  }, [JSON.stringify(filterState.value), JSON.stringify(availableTimeGrains)]);
 
   const placeholderText =
-    (data || []).length === 0
+    (filteredData || []).length === 0
       ? t('No data')
-      : tn('%s option', '%s options', data.length, data.length);
+      : tn('%s option', '%s options', filteredData.length, filteredData.length);
 
   const formItemData: FormItemProps = {};
   if (filterState.validateMessage) {
@@ -107,7 +124,7 @@ export default function PluginFilterTimegrain(
     );
   }
 
-  const options = (data || []).map(
+  const options = (filteredData || []).map(
     (row: { name: string; duration: string }) => {
       const { name, duration } = row;
       return {

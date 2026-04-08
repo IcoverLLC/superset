@@ -23,6 +23,7 @@ import { PluginFilterHooks, PluginFilterStylesProps } from '../types';
 
 interface PluginFilterTimeGrainCustomizeProps {
   defaultValue?: string[] | null;
+  availableTimeGrains?: string[] | null;
   inputRef?: RefObject<HTMLInputElement>;
 }
 
@@ -39,4 +40,5 @@ export type PluginFilterTimeGrainProps = PluginFilterStylesProps & {
 
 export const DEFAULT_FORM_DATA: PluginFilterTimeGrainCustomizeProps = {
   defaultValue: null,
+  availableTimeGrains: null,
 };
