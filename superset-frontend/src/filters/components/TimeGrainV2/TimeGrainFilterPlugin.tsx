@@ -23,7 +23,7 @@ import {
   TimeGranularity,
   tn,
 } from '@superset-ui/core';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FormItem,
   type FormItemProps,
@@ -51,7 +51,21 @@ export default function PluginFilterTimegrainV2(
   } = props;
   const { availableTimeGrains, defaultValue } = formData;
 
-  const [value, setValue] = useState<string[]>(defaultValue ?? []);
+  const filterAvailableTimeGrains = useCallback(
+    (values: string[] | string | undefined | null) =>
+      ensureIsArray<string>(values).filter(
+        timeGrain =>
+          !availableTimeGrains?.length || availableTimeGrains.includes(timeGrain),
+      ),
+    [availableTimeGrains],
+  );
+  const initialValue =
+    filterState.value === undefined ? defaultValue ?? [] : filterState.value;
+  const [value, setValue] = useState<string[]>(() =>
+    filterAvailableTimeGrains(initialValue),
+  );
+  const lastAutoSyncRef = useRef<string | null>(null);
+  const pendingUserValueRef = useRef<string | null>(null);
   const filteredData = useMemo(() => {
     if (!availableTimeGrains?.length) {
       return data;
@@ -64,17 +78,16 @@ export default function PluginFilterTimegrainV2(
   const durationMap = useMemo(
     () =>
       filteredData.reduce(
-        (agg, { duration, name }: { duration: string; name: string }) => ({
-          ...agg,
-          [duration]: name,
-        }),
+        (agg, { duration, name }: { duration: string; name: string }) => {
+          agg[duration] = name;
+          return agg;
+        },
         {} as { [key in string]: string },
       ),
-    [JSON.stringify(filteredData)],
+    [filteredData],
   );
 
-  const handleChange = (values: string[] | string | undefined | null) => {
-    const resultValue: string[] = ensureIsArray<string>(values);
+  const applyValue = useCallback((resultValue: string[]) => {
     const [timeGrain] = resultValue;
     const label = timeGrain ? durationMap[timeGrain] : undefined;
 
@@ -90,23 +103,70 @@ export default function PluginFilterTimegrainV2(
         value: resultValue.length ? resultValue : null,
       },
     });
+  }, [durationMap, setDataMask]);
+
+  const handleChange = (values: string[] | string | undefined | null) => {
+    const resultValue = filterAvailableTimeGrains(values);
+    pendingUserValueRef.current = JSON.stringify(resultValue);
+    lastAutoSyncRef.current = null;
+    applyValue(resultValue);
   };
 
-  useEffect(() => {
-    const nextDefaultValue = ensureIsArray(defaultValue ?? []).filter(
-      timeGrain =>
-        !availableTimeGrains?.length || availableTimeGrains.includes(timeGrain),
-    );
-    handleChange(nextDefaultValue);
-  }, [JSON.stringify(defaultValue), JSON.stringify(availableTimeGrains)]);
+  const sourceValue =
+    filterState.value === undefined ? defaultValue ?? [] : filterState.value;
+  const rawFilterStateValue = useMemo(
+    () => ensureIsArray<string>(filterState.value ?? []),
+    [filterState.value],
+  );
+  const nextSyncedValue = useMemo(
+    () => filterAvailableTimeGrains(sourceValue),
+    [filterAvailableTimeGrains, sourceValue],
+  );
+  const rawFilterStateValueKey = useMemo(
+    () => JSON.stringify(rawFilterStateValue),
+    [rawFilterStateValue],
+  );
+  const nextSyncedValueKey = useMemo(
+    () => JSON.stringify(nextSyncedValue),
+    [nextSyncedValue],
+  );
+  const selectedValueKey = JSON.stringify(value);
 
   useEffect(() => {
-    const nextValue = ensureIsArray(filterState.value ?? []).filter(
-      timeGrain =>
-        !availableTimeGrains?.length || availableTimeGrains.includes(timeGrain),
-    );
-    handleChange(nextValue);
-  }, [JSON.stringify(filterState.value), JSON.stringify(availableTimeGrains)]);
+    if (pendingUserValueRef.current === nextSyncedValueKey) {
+      pendingUserValueRef.current = null;
+    }
+
+    if (rawFilterStateValueKey !== nextSyncedValueKey) {
+      const autoSyncKey = `${rawFilterStateValueKey}::${nextSyncedValueKey}`;
+      if (lastAutoSyncRef.current === autoSyncKey) {
+        return;
+      }
+
+      lastAutoSyncRef.current = autoSyncKey;
+      applyValue(nextSyncedValue);
+      return;
+    }
+
+    lastAutoSyncRef.current = null;
+
+    if (
+      pendingUserValueRef.current &&
+      pendingUserValueRef.current !== nextSyncedValueKey
+    ) {
+      return;
+    }
+
+    if (selectedValueKey !== nextSyncedValueKey) {
+      setValue(nextSyncedValue);
+    }
+  }, [
+    applyValue,
+    nextSyncedValue,
+    nextSyncedValueKey,
+    rawFilterStateValueKey,
+    selectedValueKey,
+  ]);
 
   const placeholderText =
     (filteredData || []).length === 0

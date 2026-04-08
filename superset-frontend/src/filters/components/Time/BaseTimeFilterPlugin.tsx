@@ -21,7 +21,7 @@ import {
   NO_TIME_RANGE,
   getExtensionsRegistry,
 } from '@superset-ui/core';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import DateFilterControl, {
   DateFilterControlVariant,
   DateFilterControlV2,
@@ -99,10 +99,12 @@ export default function BaseTimeFilterPlugin(
   } = props;
   const extensionsRegistry = getExtensionsRegistry();
   const calendarFormat = props.formData?.calendarFormat ?? 'standard';
+  const currentValue = filterState.value || NO_TIME_RANGE;
   const normalizedValue = normalizeTimeRangeForCalendarFormat(
-    filterState.value || NO_TIME_RANGE,
+    currentValue,
     calendarFormat,
   );
+  const lastNormalizedSyncRef = useRef<string | null>(null);
 
   const FallbackComponent =
     variant === 'v2' ? DateFilterControlV2 : DateFilterControl;
@@ -131,12 +133,17 @@ export default function BaseTimeFilterPlugin(
   );
 
   useEffect(() => {
-    if (normalizedValue !== (filterState.value || NO_TIME_RANGE)) {
+    if (normalizedValue !== currentValue) {
+      const syncKey = `${calendarFormat}::${currentValue}::${normalizedValue}`;
+      if (lastNormalizedSyncRef.current === syncKey) {
+        return;
+      }
+      lastNormalizedSyncRef.current = syncKey;
       handleTimeRangeChange(normalizedValue);
-      return;
+    } else {
+      lastNormalizedSyncRef.current = null;
     }
-    handleTimeRangeChange(filterState.value);
-  }, [filterState.value, normalizedValue, handleTimeRangeChange]);
+  }, [calendarFormat, currentValue, normalizedValue, handleTimeRangeChange]);
 
   return props.formData?.inView ? (
     <TimeFilterStyles width={width} height={height}>

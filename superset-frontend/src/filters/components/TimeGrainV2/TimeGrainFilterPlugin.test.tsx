@@ -97,4 +97,75 @@ describe('TimeGrainV2FilterPlugin', () => {
       },
     });
   });
+
+  test('does not re-emit the same selected value on rerender with a new setDataMask callback', () => {
+    const initialSetDataMask = jest.fn();
+    const { rerender } = render(
+      // @ts-ignore
+      <TimeGrainFilterPlugin
+        // @ts-ignore
+        {...transformProps({
+          ...chartProps,
+          formData: { ...chartProps.formData },
+          filterState: { value: ['P1D'] },
+        })}
+        setDataMask={initialSetDataMask}
+      />,
+    );
+
+    expect(initialSetDataMask).not.toHaveBeenCalled();
+
+    const nextSetDataMask = jest.fn();
+    rerender(
+      // @ts-ignore
+      <TimeGrainFilterPlugin
+        // @ts-ignore
+        {...transformProps({
+          ...chartProps,
+          formData: { ...chartProps.formData },
+          filterState: { value: ['P1D'] },
+        })}
+        setDataMask={nextSetDataMask}
+      />,
+    );
+
+    expect(nextSetDataMask).not.toHaveBeenCalled();
+  });
+
+  test('clears hidden selected values only once across rerenders', () => {
+    const initialSetDataMask = jest.fn();
+    const props = {
+      ...transformProps({
+        ...chartProps,
+        formData: {
+          ...chartProps.formData,
+          availableTimeGrains: ['PT5M', 'P1Y'],
+          defaultValue: ['P1D'],
+        },
+        filterState: { value: ['P1D'] },
+      }),
+    };
+
+    const { rerender } = render(
+      // @ts-ignore
+      <TimeGrainFilterPlugin {...props} setDataMask={initialSetDataMask} />,
+    );
+
+    expect(initialSetDataMask).toHaveBeenCalledTimes(1);
+    expect(initialSetDataMask).toHaveBeenCalledWith({
+      extraFormData: {},
+      filterState: {
+        label: undefined,
+        value: null,
+      },
+    });
+
+    const nextSetDataMask = jest.fn();
+    rerender(
+      // @ts-ignore
+      <TimeGrainFilterPlugin {...props} setDataMask={nextSetDataMask} />,
+    );
+
+    expect(nextSetDataMask).not.toHaveBeenCalled();
+  });
 });
