@@ -28,6 +28,7 @@ export const FILTER_SUPPORTED_TYPES = {
   filter_time: [GenericDataType.Temporal],
   filter_time_v2: [GenericDataType.Temporal],
   filter_timegrain: [GenericDataType.Temporal],
+  filter_timegrain_v2: [GenericDataType.Temporal],
   filter_timecolumn: [GenericDataType.Temporal],
   filter_select: [
     GenericDataType.Boolean,

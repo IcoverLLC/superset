@@ -16,10 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-export { default as SelectFilterPlugin } from './Select';
-export { default as RangeFilterPlugin } from './Range';
-export { default as TimeFilterPlugin } from './Time';
-export { default as TimeFilterV2Plugin } from './TimeV2';
-export { default as TimeColumnFilterPlugin } from './TimeColumn';
-export { default as TimeGrainFilterPlugin } from './TimeGrain';
-export { default as TimeGrainV2FilterPlugin } from './TimeGrainV2';
+import { Behavior, ChartMetadata, ChartPlugin, t } from '@superset-ui/core';
+import buildQuery from '../TimeGrain/buildQuery';
+import controlPanel from '../TimeGrain/controlPanel';
+import thumbnail from '../TimeGrain/images/thumbnail.png';
+import transformProps from './transformProps';
+
+export default class FilterTimeGrainV2Plugin extends ChartPlugin {
+  constructor() {
+    const metadata = new ChartMetadata({
+      name: t('Time grain v2'),
+      description: t('Custom time grain filter plugin'),
+      behaviors: [Behavior.InteractiveChart, Behavior.NativeFilter],
+      tags: [t('Experimental')],
+      thumbnail,
+    });
+
+    super({
+      buildQuery,
+      controlPanel,
+      loadChart: () => import('./TimeGrainFilterPlugin'),
+      metadata,
+      transformProps,
+    });
+  }
+}

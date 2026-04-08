@@ -189,6 +189,7 @@ export enum FilterPlugins {
   TimeV2 = 'filter_time_v2',
   TimeColumn = 'filter_timecolumn',
   TimeGrain = 'filter_timegrain',
+  TimeGrainV2 = 'filter_timegrain_v2',
 }
 
 export enum Actions {

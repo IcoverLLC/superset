@@ -244,6 +244,7 @@ const FILTER_TYPE_NAME_MAPPING = {
   [t('Time filter v2')]: t('Time range v2'),
   [t('Time column')]: t('Time column'),
   [t('Time grain')]: t('Time grain'),
+  [t('Time grain v2')]: t('Time grain v2'),
   [t('Group By')]: t('Group by'),
 };
 
@@ -1385,7 +1386,7 @@ const FiltersConfigForm = (
                               />
                             </StyledRowFormItem>
                           )}
-                          {formFilter?.filterType === 'filter_timegrain' && (
+                          {formFilter?.filterType === 'filter_timegrain_v2' && (
                             <StyledRowFormItem
                               expanded={expanded}
                               name={[

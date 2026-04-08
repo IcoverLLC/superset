@@ -24,7 +24,7 @@ import transformProps from './transformProps';
 const chartProps = {
   formData: {
     defaultValue: ['P1D'],
-    nativeFilterId: 'time-grain-filter',
+    nativeFilterId: 'time-grain-v2-filter',
   },
   height: 20,
   width: 220,
@@ -45,7 +45,7 @@ const chartProps = {
   appSection: AppSection.Dashboard,
 };
 
-describe('TimeGrainFilterPlugin', () => {
+describe('TimeGrainV2FilterPlugin', () => {
   const setDataMask = jest.fn();
 
   const getWrapper = (
