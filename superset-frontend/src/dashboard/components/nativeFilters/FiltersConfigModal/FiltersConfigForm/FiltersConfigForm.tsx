@@ -247,6 +247,11 @@ const FILTER_TYPE_NAME_MAPPING = {
   [t('Group By')]: t('Group by'),
 };
 
+const TIME_FILTER_V2_CALENDAR_FORMAT_OPTIONS = [
+  { value: 'standard', label: t('Standard') },
+  { value: 'monthly', label: t('Monthly') },
+];
+
 /**
  * The configuration form for a specific filter.
  * Assigns field values to `filters[filterId]` in the form.
@@ -529,6 +534,11 @@ const FiltersConfigForm = (
   if (typeof formFilter?.controlValues?.sortAscending === 'boolean') {
     sort = formFilter.controlValues.sortAscending;
   }
+
+  const timeFilterV2CalendarFormat =
+    formFilter?.controlValues?.calendarFormat ||
+    filterToEdit?.controlValues?.calendarFormat ||
+    'standard';
 
   const showDefaultValue =
     !hasDataset ||
@@ -1323,6 +1333,39 @@ const FiltersConfigForm = (
                       forceRender: true,
                       children: (
                         <>
+                          {formFilter?.filterType === 'filter_time_v2' && (
+                            <StyledRowFormItem
+                              expanded={expanded}
+                              name={[
+                                'filters',
+                                filterId,
+                                'controlValues',
+                                'calendarFormat',
+                              ]}
+                              initialValue={timeFilterV2CalendarFormat}
+                              label={
+                                <StyledLabel>{t('Calendar format')}</StyledLabel>
+                              }
+                            >
+                              <Radio.GroupWrapper
+                                options={TIME_FILTER_V2_CALENDAR_FORMAT_OPTIONS}
+                                onChange={value => {
+                                  const previous =
+                                    form.getFieldValue('filters')?.[filterId]
+                                      .controlValues || {};
+                                  setNativeFilterFieldValues(form, filterId, {
+                                    controlValues: {
+                                      ...previous,
+                                      calendarFormat: value.target.value,
+                                    },
+                                    defaultDataMask: null,
+                                  });
+                                  forceUpdate();
+                                  formChanged();
+                                }}
+                              />
+                            </StyledRowFormItem>
+                          )}
                           <StyledFormItem
                             expanded={expanded}
                             name={['filters', filterId, 'description']}

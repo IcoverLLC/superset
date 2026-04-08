@@ -28,9 +28,15 @@ import { DateFilterTestKey, customTimeRangeEncode, DAYJS_FORMAT } from '../utils
 import {
   CustomRangeType,
   FrameComponentProps,
+  DateFilterControlCalendarFormat,
   SelectOptionType,
 } from '../types';
-import { encodeCalendarRange, parseCalendarRange } from '../utils/dateFilterUtils';
+import {
+  encodeCalendarRange,
+  getDefaultMonthlyRangeValue,
+  normalizeTimeRangeForCalendarFormat,
+  parseCalendarRange,
+} from '../utils/dateFilterUtils';
 
 type QuickFrameType = 'Common' | 'Calendar' | 'Current';
 type CalendarMode = 'day' | 'month' | 'custom';
@@ -493,6 +499,29 @@ const QUICK_FRAME_DEFAULT_VALUES: Record<QuickFrameType, string> = {
   Current: 'Current week',
 };
 
+const MONTHLY_QUICK_FRAME_OPTIONS: SelectOptionType[] = [
+  { value: 'Calendar', label: t('\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0438\u0439') },
+];
+
+const MONTHLY_QUICK_RANGE_OPTIONS: Record<
+  QuickFrameType,
+  Array<{ value: string; label: string }>
+> = {
+  Common: [],
+  Calendar: [
+    { value: 'previous calendar month', label: t('\u041c\u0435\u0441\u044f\u0446') },
+    { value: 'previous calendar quarter', label: t('\u041a\u0432\u0430\u0440\u0442\u0430\u043b') },
+    { value: 'previous calendar year', label: t('\u0413\u043e\u0434') },
+  ],
+  Current: [],
+};
+
+const MONTHLY_QUICK_FRAME_DEFAULT_VALUES: Record<QuickFrameType, string> = {
+  Common: getDefaultMonthlyRangeValue(),
+  Calendar: getDefaultMonthlyRangeValue(),
+  Current: getDefaultMonthlyRangeValue(),
+};
+
 const MODE_LINKS: Record<
   CalendarMode,
   Array<{ mode: CalendarMode; label: string }>
@@ -545,6 +574,12 @@ const getQuickFrame = (value: string): QuickFrameType => {
   }
   return 'Current';
 };
+
+const resolveQuickFrame = (
+  value: string,
+  calendarFormat: DateFilterControlCalendarFormat = 'standard',
+): QuickFrameType =>
+  calendarFormat === 'monthly' ? 'Calendar' : getQuickFrame(value);
 
 const getQuickValue = (frame: QuickFrameType, value: string) =>
   QUICK_RANGE_OPTIONS[frame].some(option => option.value === value)
@@ -863,7 +898,14 @@ const encodeSpecificDateTimeRange = (start: Dayjs, end: Dayjs) =>
     untilDatetime: end.format(DAYJS_FORMAT),
   });
 
-const resolveInitialMode = (value: string): CalendarMode => {
+const resolveInitialMode = (
+  value: string,
+  calendarFormat: DateFilterControlCalendarFormat = 'standard',
+): CalendarMode => {
+  if (calendarFormat === 'monthly') {
+    return 'month';
+  }
+
   const isCalendarRange = parseCalendarRange(value).matchedFlag;
   const isSpecificDateTimeRange = decodeSpecificDateTimeRange(value).matchedFlag;
   const isCustomRange = customTimeRangeDecode(value).matchedFlag;
@@ -879,26 +921,37 @@ const buildMonthSelectionValue = (start: Dayjs, end: Dayjs) =>
 
 export function CalendarRangeFrame(props: FrameComponentProps) {
   const datePickerLocale = useLocale();
+  const isMonthlyOnly = props.calendarFormat === 'monthly';
+  const normalizedValue = useMemo(
+    () =>
+      normalizeTimeRangeForCalendarFormat(
+        props.value,
+        props.calendarFormat ?? 'standard',
+      ),
+    [props.calendarFormat, props.value],
+  );
   const today = useMemo(() => extendedDayjs().startOf('day'), []);
   const moscowToday = useMemo(
     () => extendedDayjs().tz(MOSCOW_TIMEZONE).startOf('day'),
     [],
   );
   const concreteRange = useMemo(
-    () => resolveConcreteRange(props.value, today),
-    [props.value, today],
+    () => resolveConcreteRange(normalizedValue, today),
+    [normalizedValue, today],
   );
   const specificDateTimeRange = useMemo(
-    () => decodeSpecificDateTimeRange(props.value),
-    [props.value],
+    () => decodeSpecificDateTimeRange(normalizedValue),
+    [normalizedValue],
   );
   const decodedCustomRange = useMemo(
-    () => customTimeRangeDecode(props.value),
-    [props.value],
+    () => customTimeRangeDecode(normalizedValue),
+    [normalizedValue],
   );
-  const [mode, setMode] = useState<CalendarMode>(() => resolveInitialMode(props.value));
+  const [mode, setMode] = useState<CalendarMode>(() =>
+    resolveInitialMode(normalizedValue, props.calendarFormat),
+  );
   const [quickFrame, setQuickFrame] = useState<QuickFrameType>(() =>
-    getQuickFrame(props.value),
+    resolveQuickFrame(normalizedValue, props.calendarFormat),
   );
   const [rangeStart, setRangeStart] = useState<Dayjs | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Dayjs | null>(null);
@@ -913,11 +966,20 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const [showTimeInputs, setShowTimeInputs] = useState(false);
 
   useEffect(() => {
-    setQuickFrame(getQuickFrame(props.value));
-  }, [props.value]);
+    setQuickFrame(resolveQuickFrame(normalizedValue, props.calendarFormat));
+  }, [normalizedValue, props.calendarFormat]);
+
+  useEffect(() => {
+    setMode(
+      isMonthlyOnly
+        ? 'month'
+        : resolveInitialMode(normalizedValue, props.calendarFormat),
+    );
+  }, [isMonthlyOnly, normalizedValue, props.calendarFormat]);
 
   useEffect(() => {
     if (
+      !isMonthlyOnly &&
       !concreteRange.matchedFlag &&
       !specificDateTimeRange.matchedFlag &&
       decodedCustomRange.matchedFlag
@@ -927,6 +989,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   }, [
     concreteRange.matchedFlag,
     decodedCustomRange.matchedFlag,
+    isMonthlyOnly,
     specificDateTimeRange.matchedFlag,
   ]);
 
@@ -997,7 +1060,16 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
 
   const visibleMonths = [leftMonth, leftMonth.add(1, 'month')];
   const visibleYears = [leftYear, leftYear + 1];
-  const selectedQuickValue = getQuickValue(quickFrame, props.value);
+  const quickFrameOptions = isMonthlyOnly
+    ? MONTHLY_QUICK_FRAME_OPTIONS
+    : QUICK_FRAME_OPTIONS;
+  const quickRangeOptions = isMonthlyOnly
+    ? MONTHLY_QUICK_RANGE_OPTIONS
+    : QUICK_RANGE_OPTIONS;
+  const quickFrameDefaultValues = isMonthlyOnly
+    ? MONTHLY_QUICK_FRAME_DEFAULT_VALUES
+    : QUICK_FRAME_DEFAULT_VALUES;
+  const selectedQuickValue = getQuickValue(quickFrame, normalizedValue);
 
   const onPreviousClick = () => {
     if (mode === 'month') {
@@ -1142,12 +1214,12 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
   const onQuickFrameChange = (value: string) => {
     const nextFrame = value as QuickFrameType;
     setQuickFrame(nextFrame);
-    setMode('day');
-    props.onChange(QUICK_FRAME_DEFAULT_VALUES[nextFrame]);
+    setMode(isMonthlyOnly ? 'month' : 'day');
+    props.onChange(quickFrameDefaultValues[nextFrame]);
   };
 
   const onQuickOptionClick = (value: string) => {
-    setMode('day');
+    setMode(isMonthlyOnly ? 'month' : 'day');
     props.onChange(value);
   };
 
@@ -1173,7 +1245,8 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
           <Icons.CaretLeftOutlined />
         </NavButton>
         <HeaderCenter>
-          {MODE_LINKS[mode].map(option => (
+          {!isMonthlyOnly &&
+            MODE_LINKS[mode].map(option => (
             <ModeButton
               key={option.mode}
               buttonStyle="link"
@@ -1187,7 +1260,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
             >
               {t(option.label)}
             </ModeButton>
-          ))}
+            ))}
         </HeaderCenter>
         <NavButton
           buttonStyle="link"
@@ -1212,7 +1285,7 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
       </Header>
       <CalendarLayout>
         <CalendarContent>
-          {mode === 'day' && (
+          {!isMonthlyOnly && mode === 'day' && (
             <>
               <MonthsHeaderRow $mode="day">
                 <NavButton buttonStyle="link" onClick={onPreviousClick}>
@@ -1346,14 +1419,14 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
               </MonthsGrid>
             </>
           )}
-          {mode === 'custom' && (
+          {!isMonthlyOnly && mode === 'custom' && (
             <CustomFrame
-              value={props.value}
+              value={normalizedValue}
               onChange={props.onChange}
               isOverflowingFilterBar={props.isOverflowingFilterBar}
             />
           )}
-          {mode !== 'custom' && (
+          {!isMonthlyOnly && mode !== 'custom' && (
             <BottomInputsRow $mode={mode}>
               <BottomInputsGrid>
                 <Input
@@ -1396,14 +1469,14 @@ export function CalendarRangeFrame(props: FrameComponentProps) {
                 <QuickPanelLabel>{t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}</QuickPanelLabel>
                 <QuickPanelSelect
                   ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
-                  options={QUICK_FRAME_OPTIONS}
+                  options={quickFrameOptions}
                   value={quickFrame}
                   onChange={onQuickFrameChange}
                 />
               </QuickPanelSection>
               <QuickPanelDivider />
               <QuickOptions>
-                {QUICK_RANGE_OPTIONS[quickFrame].map(option => (
+                {quickRangeOptions[quickFrame].map(option => (
                   <QuickOptionButton
                     key={option.value}
                     type="button"

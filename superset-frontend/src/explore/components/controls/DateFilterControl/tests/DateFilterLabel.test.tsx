@@ -131,3 +131,23 @@ test('DateFilter v2 opens calendar frame and shows reset button', () => {
   ).toBeInTheDocument();
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
 });
+
+test('DateFilter v2 monthly format hides partial-month controls', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: NO_TIME_RANGE,
+      variant: 'v2',
+      calendarFormat: 'monthly',
+    }),
+  );
+
+  userEvent.click(screen.getByText(NO_TIME_RANGE));
+
+  expect(
+    screen.getByTestId(DateFilterTestKey.CalendarV2Frame),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Пользовательский')).not.toBeInTheDocument();
+  expect(screen.queryByPlaceholderText('Дата начала')).not.toBeInTheDocument();
+  expect(screen.queryByPlaceholderText('Дата окончания')).not.toBeInTheDocument();
+});

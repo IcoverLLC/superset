@@ -26,6 +26,7 @@ import DateFilterControl, {
   DateFilterControlVariant,
   DateFilterControlV2,
 } from 'src/explore/components/controls/DateFilterControl';
+import { normalizeTimeRangeForCalendarFormat } from 'src/explore/components/controls/DateFilterControl/utils';
 import { PluginFilterTimeProps } from './types';
 import { FilterPluginStyle } from '../common';
 
@@ -97,6 +98,11 @@ export default function BaseTimeFilterPlugin(
     extensionKey = 'filter.dateFilterControl',
   } = props;
   const extensionsRegistry = getExtensionsRegistry();
+  const calendarFormat = props.formData?.calendarFormat ?? 'standard';
+  const normalizedValue = normalizeTimeRangeForCalendarFormat(
+    filterState.value || NO_TIME_RANGE,
+    calendarFormat,
+  );
 
   const FallbackComponent =
     variant === 'v2' ? DateFilterControlV2 : DateFilterControl;
@@ -125,8 +131,12 @@ export default function BaseTimeFilterPlugin(
   );
 
   useEffect(() => {
+    if (normalizedValue !== (filterState.value || NO_TIME_RANGE)) {
+      handleTimeRangeChange(normalizedValue);
+      return;
+    }
     handleTimeRangeChange(filterState.value);
-  }, [filterState.value]);
+  }, [filterState.value, normalizedValue, handleTimeRangeChange]);
 
   return props.formData?.inView ? (
     <TimeFilterStyles width={width} height={height}>
@@ -140,7 +150,7 @@ export default function BaseTimeFilterPlugin(
         tabIndex={-1}
       >
         <DateFilterComponent
-          value={filterState.value || NO_TIME_RANGE}
+          value={normalizedValue}
           name={props.formData.nativeFilterId || 'time_range'}
           onChange={handleTimeRangeChange}
           onOpenPopover={() => setFilterActive(true)}
@@ -150,6 +160,7 @@ export default function BaseTimeFilterPlugin(
             unsetFocusedFilter();
           }}
           isOverflowingFilterBar={isOverflowingFilterBar}
+          calendarFormat={calendarFormat}
         />
       </ControlContainer>
     </TimeFilterStyles>

@@ -19,8 +19,12 @@
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import {
   customTimeRangeEncode,
+  encodeCalendarRange,
   formatActualRangeForTooltip,
   formatCalendarRangeLabel,
+  getDefaultMonthlyRangeValue,
+  isFullMonthCalendarRange,
+  normalizeTimeRangeForCalendarFormat,
 } from 'src/explore/components/controls/DateFilterControl/utils';
 
 describe('Custom TimeRange', () => {
@@ -209,6 +213,41 @@ describe('Custom TimeRange', () => {
           '2026-03-15 12:00:00 <= col < 2026-04-02 00:00:00',
         ),
       ).toEqual('15.03.2026 12:00:00 <= col < 02.04.2026');
+    });
+
+    it('detects full-month calendar ranges', () => {
+      expect(
+        isFullMonthCalendarRange(
+          encodeCalendarRange(
+            extendedDayjs('2026-02-01T00:00:00'),
+            extendedDayjs('2026-03-31T00:00:00'),
+          ),
+        ),
+      ).toBe(true);
+
+      expect(
+        isFullMonthCalendarRange(
+          encodeCalendarRange(
+            extendedDayjs('2026-02-03T00:00:00'),
+            extendedDayjs('2026-03-31T00:00:00'),
+          ),
+        ),
+      ).toBe(false);
+    });
+
+    it('normalizes invalid monthly ranges to the previous calendar month', () => {
+      expect(normalizeTimeRangeForCalendarFormat('Last week', 'monthly')).toBe(
+        getDefaultMonthlyRangeValue(),
+      );
+    });
+
+    it('keeps valid monthly ranges unchanged', () => {
+      expect(
+        normalizeTimeRangeForCalendarFormat(
+          'previous calendar quarter',
+          'monthly',
+        ),
+      ).toBe('previous calendar quarter');
     });
   });
 });

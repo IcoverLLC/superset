@@ -59,7 +59,8 @@ import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
 import {
   formatCalendarRangeLabel,
   formatActualRangeForTooltip,
-  getDefaultCalendarRangeValue,
+  getDefaultV2CalendarRangeValue,
+  normalizeTimeRangeForCalendarFormat,
   parseCalendarRange,
 } from './utils/dateFilterUtils';
 
@@ -175,10 +176,14 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     onClosePopover = noOp,
     isOverflowingFilterBar = false,
     variant = 'default',
+    calendarFormat = 'standard',
   } = props;
   const defaultTimeFilter = useDefaultTimeFilter();
 
-  const value = props.value ?? defaultTimeFilter;
+  const value = normalizeTimeRangeForCalendarFormat(
+    props.value ?? defaultTimeFilter,
+    calendarFormat,
+  );
   const [actualTimeRange, setActualTimeRange] = useState<string>(value);
 
   const [show, setShow] = useState<boolean>(false);
@@ -281,7 +286,9 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   );
 
   function onSave() {
-    onChange(timeRangeValue);
+    onChange(
+      normalizeTimeRangeForCalendarFormat(timeRangeValue, calendarFormat),
+    );
     setShow(false);
     onClosePopover();
   }
@@ -289,7 +296,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   function onOpen() {
     setTimeRangeValue(
       variant === 'v2' && value === NO_TIME_RANGE
-        ? getDefaultCalendarRangeValue()
+        ? getDefaultV2CalendarRangeValue(calendarFormat)
         : value,
     );
     setFrame(guessedFrame);
@@ -316,7 +323,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     if (value === NO_TIME_RANGE) {
       setTimeRangeValue(NO_TIME_RANGE);
     } else if (value === 'CalendarV2' && timeRangeValue === NO_TIME_RANGE) {
-      setTimeRangeValue(getDefaultCalendarRangeValue());
+      setTimeRangeValue(getDefaultV2CalendarRangeValue(calendarFormat));
     }
     setFrame(value);
   }
@@ -352,6 +359,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           value={timeRangeValue}
           onChange={setTimeRangeValue}
           isOverflowingFilterBar={isOverflowingFilterBar}
+          calendarFormat={calendarFormat}
         />
       )}
       {variant !== 'v2' && frame === 'Common' && (

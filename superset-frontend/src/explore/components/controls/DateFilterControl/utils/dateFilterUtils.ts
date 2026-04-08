@@ -30,7 +30,17 @@ import {
   CURRENT_RANGE_VALUES_SET,
   DAYJS_FORMAT,
 } from '.';
-import { DateFilterControlVariant, FrameType } from '../types';
+import {
+  DateFilterControlCalendarFormat,
+  DateFilterControlVariant,
+  FrameType,
+} from '../types';
+
+const MONTHLY_TIME_RANGE_VALUES = new Set([
+  'previous calendar month',
+  'previous calendar quarter',
+  'previous calendar year',
+]);
 
 export const guessFrame = (
   timeRange: string,
@@ -86,6 +96,8 @@ export const getDefaultCalendarRangeValue = () => {
   const { start, end } = getDefaultCalendarRange();
   return encodeCalendarRange(start, end);
 };
+
+export const getDefaultMonthlyRangeValue = () => 'previous calendar month';
 
 export const parseCalendarRange = (timeRange: string): CalendarRangeValue => {
   const { customRange, matchedFlag } = customTimeRangeDecode(timeRange);
@@ -176,4 +188,42 @@ export const formatActualRangeForTooltip = (actualRange?: string): string => {
       return parsed.isValid() ? formatRussianDateTime(parsed) : match;
     },
   );
+};
+
+export const isFullMonthCalendarRange = (timeRange: string): boolean => {
+  const parsedRange = parseCalendarRange(timeRange);
+
+  return (
+    parsedRange.matchedFlag &&
+    parsedRange.start.isSame(parsedRange.start.startOf('month'), 'day') &&
+    parsedRange.end.isSame(parsedRange.end.endOf('month').startOf('day'), 'day')
+  );
+};
+
+export const isMonthlyCompatibleTimeRange = (timeRange: string): boolean => {
+  if (timeRange === NO_TIME_RANGE) {
+    return true;
+  }
+
+  return (
+    MONTHLY_TIME_RANGE_VALUES.has(timeRange) || isFullMonthCalendarRange(timeRange)
+  );
+};
+
+export const getDefaultV2CalendarRangeValue = (
+  calendarFormat: DateFilterControlCalendarFormat = 'standard',
+) =>
+  calendarFormat === 'monthly'
+    ? getDefaultMonthlyRangeValue()
+    : getDefaultCalendarRangeValue();
+
+export const normalizeTimeRangeForCalendarFormat = (
+  timeRange: string,
+  calendarFormat: DateFilterControlCalendarFormat = 'standard',
+) => {
+  if (calendarFormat !== 'monthly' || isMonthlyCompatibleTimeRange(timeRange)) {
+    return timeRange;
+  }
+
+  return getDefaultMonthlyRangeValue();
 };

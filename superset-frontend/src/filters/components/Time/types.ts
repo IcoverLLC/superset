@@ -27,6 +27,7 @@ import { PluginFilterHooks, PluginFilterStylesProps } from '../types';
 
 interface PluginFilterTimeCustomizeProps {
   defaultValue?: string | null;
+  calendarFormat?: 'standard' | 'monthly';
 }
 
 export type PluginFilterSelectQueryFormData = QueryFormData &
