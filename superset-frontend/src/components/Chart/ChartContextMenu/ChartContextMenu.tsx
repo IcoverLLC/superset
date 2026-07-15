@@ -24,6 +24,7 @@ import {
   useCallback,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import ReactDOM from 'react-dom';
@@ -47,6 +48,7 @@ import { MenuItem } from '@superset-ui/core/components/Menu';
 import { usePermissions } from 'src/hooks/usePermissions';
 import { Dropdown } from '@superset-ui/core/components';
 import { updateDataMask } from 'src/dataMask/actions';
+import copyTextToClipboard from 'src/utils/copy';
 import DrillByModal from 'src/components/Chart/DrillBy/DrillByModal';
 import { useDatasetDrillInfo } from 'src/hooks/apiResources/datasets';
 import { ResourceStatus } from 'src/hooks/apiResources/apiResources';
@@ -83,6 +85,12 @@ export interface ChartContextMenuRef {
   ) => void;
 }
 
+type ContextMenuFiltersWithCopy = ContextMenuFilters & {
+  copyValue?: string;
+};
+
+const AUTO_CLOSE_GUARD_MS = 200;
+
 const ChartContextMenu = (
   {
     id,
@@ -110,6 +118,7 @@ const ChartContextMenu = (
   );
 
   const [visible, setVisible] = useState(false);
+  const lastShowTsRef = useRef<number>(0);
 
   const isDisplayed = (item: ContextMenuItem) =>
     displayedItems === ContextMenuItem.All ||
@@ -246,6 +255,9 @@ const ChartContextMenu = (
   ]);
 
   const showCrossFilters = isDisplayed(ContextMenuItem.CrossFilter);
+  const copyValue = (filters as ContextMenuFiltersWithCopy | undefined)
+    ?.copyValue;
+  const showCopyValue = copyValue !== undefined;
 
   const isCrossFilteringSupportedByChart = getChartMetadataRegistry()
     .get(formData.viz_type)
@@ -253,6 +265,9 @@ const ChartContextMenu = (
 
   let itemsCount = 0;
   if (showCrossFilters) {
+    itemsCount += 1;
+  }
+  if (showCopyValue) {
     itemsCount += 1;
   }
   if (showDrillToDetail) {
@@ -278,6 +293,21 @@ const ChartContextMenu = (
     isLoadingDataset,
     ...additionalConfig?.drillToDetail,
   });
+
+  if (showCopyValue) {
+    menuItems.push(
+      {
+        key: 'copy-cell-value',
+        label: t('Copy cell value'),
+        onClick: () => {
+          copyTextToClipboard(() => Promise.resolve(copyValue ?? ''));
+        },
+      },
+      ...(showCrossFilters || showDrillToDetail || showDrillBy
+        ? [{ key: 'divider-copy', type: 'divider' as const }]
+        : []),
+    );
+  }
 
   if (showCrossFilters) {
     const isCrossFilterDisabled =
@@ -389,6 +419,8 @@ const ChartContextMenu = (
         clientY: adjustedY,
         filters,
       });
+      lastShowTsRef.current = Date.now();
+      setVisible(true);
 
       // Since Ant Design's Dropdown does not offer an imperative API
       // and we can't attach event triggers to charts SVG elements, we
@@ -425,10 +457,16 @@ const ChartContextMenu = (
         )}
         trigger={['click']}
         onOpenChange={value => {
-          setVisible(value);
           if (!value) {
+            const sinceShow = Date.now() - lastShowTsRef.current;
+            if (sinceShow < AUTO_CLOSE_GUARD_MS) {
+              return;
+            }
+            setVisible(false);
             onClose();
+            return;
           }
+          setVisible(true);
         }}
         open={visible}
       >

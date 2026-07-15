@@ -29,17 +29,25 @@ export function useGridColumns(
   coltypes: GenericDataType[] | undefined,
   data: Record<string, any>[] | undefined,
   columnDisplayNames?: Record<string, string>,
+  columnValueKeyMap?: Record<string, string>,
 ) {
   return useMemo(
     () =>
       colnames && data?.length
         ? colnames
-            .filter((column: string) => Object.keys(data[0]).includes(column))
+            .filter((column: string) => {
+              const valueKey = columnValueKeyMap?.[column] ?? column;
+              return (
+                Object.keys(data[0]).includes(valueKey) &&
+                !column.endsWith('__inherit')
+              );
+            })
             .map((key, index) => {
               const colType = coltypes?.[index];
               const headerLabel = columnDisplayNames?.[key] ?? key;
+              const valueKey = columnValueKeyMap?.[key] ?? key;
               return {
-                label: key,
+                label: valueKey,
                 headerName: headerLabel,
                 render: ({ value }: { value: unknown }) => {
                   if (value === true) {
@@ -69,7 +77,7 @@ export function useGridColumns(
               };
             })
         : [],
-    [colnames, data, coltypes, columnDisplayNames],
+    [colnames, data, coltypes, columnDisplayNames, columnValueKeyMap],
   );
 }
 

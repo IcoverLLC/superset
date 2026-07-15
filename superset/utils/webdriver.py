@@ -167,6 +167,123 @@ class WebDriverProxy(ABC):
 
 class WebDriverPlaywright(WebDriverProxy):
     @staticmethod
+    def _wait_for_dashboard_to_draw(page: Page, url: str, locate_wait: int) -> None:
+        try:
+            logger.debug("Wait for chart containers to draw at url: %s", url)
+            page.locator(".chart-container").nth(0).wait_for(
+                state="visible",
+                timeout=locate_wait * 1000,
+            )
+        except PlaywrightTimeout:
+            logger.info(
+                "Timed out waiting for chart containers at url %s; "
+                "falling back to grid container",
+                url,
+            )
+            try:
+                page.locator(".grid-container").nth(0).wait_for(
+                    state="visible",
+                    timeout=locate_wait * 1000,
+                )
+            except PlaywrightTimeout:
+                logger.exception(
+                    "Timed out waiting for dashboard to draw at url %s",
+                    url,
+                )
+                raise
+
+    @staticmethod
+    def _wait_for_dashboard_to_stabilize(page: Page, url: str, load_wait: int) -> None:
+        try:
+            logger.debug("Wait for dashboard to stabilize at url: %s", url)
+            page.wait_for_function(
+                """
+                quietWindowMs => {
+                    const root =
+                      document.querySelector('.standalone') || document.body;
+                    if (
+                      root &&
+                      !window.__supersetPlaywrightDashboardObserverInstalled
+                    ) {
+                      window.__supersetPlaywrightLastDashboardMutationAt = Date.now();
+                      const observer = new MutationObserver(() => {
+                        window.__supersetPlaywrightLastDashboardMutationAt =
+                          Date.now();
+                      });
+                      observer.observe(root, {
+                        subtree: true,
+                        childList: true,
+                        attributes: true,
+                        characterData: true,
+                      });
+                      window.__supersetPlaywrightDashboardObserverInstalled = true;
+                    }
+
+                    const isVisible = selector =>
+                      Array.from(document.querySelectorAll(selector)).some(el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return (
+                          style.display !== 'none' &&
+                          style.visibility !== 'hidden' &&
+                          rect.width > 0 &&
+                          rect.height > 0
+                        );
+                      });
+
+                    const hasStandalone = Boolean(
+                      document.querySelector('.standalone'),
+                    );
+                    const hasContent =
+                      isVisible('.chart-container') || isVisible('.grid-container');
+                    const hasLoadingElements =
+                      document.querySelectorAll('.loading').length > 0;
+                    const currentHref = window.location.href;
+                    const state =
+                      window.__supersetPlaywrightScreenshotState ||
+                      (window.__supersetPlaywrightScreenshotState = {
+                        href: '',
+                        readySince: 0,
+                      });
+                    const now = Date.now();
+                    const lastMutationAt =
+                      window.__supersetPlaywrightLastDashboardMutationAt || now;
+
+                    if (!hasStandalone || !hasContent || hasLoadingElements) {
+                      state.href = currentHref;
+                      state.readySince = 0;
+                      return false;
+                    }
+
+                    if (state.href !== currentHref) {
+                      state.href = currentHref;
+                      state.readySince = 0;
+                      return false;
+                    }
+
+                    if (!state.readySince) {
+                      state.readySince = now;
+                      return false;
+                    }
+
+                    return (
+                      now - state.readySince >= quietWindowMs &&
+                      now - lastMutationAt >= quietWindowMs
+                    );
+                }
+                """,
+                arg=2000,
+                timeout=load_wait * 1000,
+                polling=200,
+            )
+        except PlaywrightTimeout:
+            logger.exception(
+                "Timed out waiting for dashboard to stabilize at url %s",
+                url,
+            )
+            raise
+
+    @staticmethod
     def auth(user: User, context: BrowserContext) -> BrowserContext:
         return machine_auth_provider_factory.instance.authenticate_browser_context(
             context, user
@@ -283,30 +400,49 @@ class WebDriverPlaywright(WebDriverProxy):
                     logger.exception("Timed out requesting url %s", url)
                     raise
 
-                try:
-                    # chart containers didn't render
-                    logger.debug("Wait for chart containers to draw at url: %s", url)
-                    slice_container_locator = page.locator(".chart-container")
-                    for slice_container_elem in slice_container_locator.all():
-                        slice_container_elem.wait_for()
-                except PlaywrightTimeout:
-                    logger.exception(
-                        "Timed out waiting for chart containers to draw at url %s",
+                if element_name == "standalone":
+                    WebDriverPlaywright._wait_for_dashboard_to_draw(
+                        page,
                         url,
+                        self._screenshot_locate_wait,
                     )
-                    raise
-                try:
-                    # charts took too long to load
-                    logger.debug(
-                        "Wait for loading element of charts to be gone at url: %s", url
+                    WebDriverPlaywright._wait_for_dashboard_to_stabilize(
+                        page,
+                        url,
+                        self._screenshot_load_wait,
                     )
-                    for loading_element in page.locator(".loading").all():
-                        loading_element.wait_for(state="detached")
-                except PlaywrightTimeout:
-                    logger.warning(
-                        "Timed out waiting for charts to load at url %s", url
-                    )
-                    raise
+                else:
+                    try:
+                        # chart containers didn't render
+                        logger.debug(
+                            "Wait for chart containers to draw at url: %s", url
+                        )
+                        page.locator(".chart-container").nth(0).wait_for(
+                            state="visible",
+                            timeout=self._screenshot_locate_wait * 1000,
+                        )
+                    except PlaywrightTimeout:
+                        logger.exception(
+                            "Timed out waiting for chart containers to draw at url %s",
+                            url,
+                        )
+                        raise
+                    try:
+                        # charts took too long to load
+                        logger.debug(
+                            "Wait for loading element of charts to be gone at url: %s",
+                            url,
+                        )
+                        page.wait_for_function(
+                            "() => document.querySelectorAll('.loading').length === 0",
+                            timeout=self._screenshot_load_wait * 1000,
+                            polling=200,
+                        )
+                    except PlaywrightTimeout:
+                        logger.exception(
+                            "Timed out waiting for charts to load at url %s", url
+                        )
+                        raise
 
                 selenium_animation_wait = app.config[
                     "SCREENSHOT_SELENIUM_ANIMATION_WAIT"

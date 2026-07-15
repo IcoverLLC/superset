@@ -22,6 +22,12 @@ under the License.
 This file documents any backwards-incompatible changes in Superset and
 assists people when migrating to a new version.
 
+## Fork-Specific Guide
+
+For this repository's `prod` fork, see `docs/internal/prod-customizations.md`.
+It tracks the current fork-only changes relative to the official Superset
+baseline and is the main checklist to review before upgrading this fork.
+
 ## Next
 
 ## 6.1.0

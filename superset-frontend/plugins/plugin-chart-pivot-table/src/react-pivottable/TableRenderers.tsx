@@ -66,6 +66,7 @@ interface TableOptions {
   cellBackgroundColor?: string;
   cellTextColor?: string;
   activeHeaderBackgroundColor?: string;
+  pinRowsBlock?: boolean;
 }
 
 interface SubtotalDisplay {
@@ -103,6 +104,7 @@ interface TableRendererState {
   collapsedCols: Record<string, boolean>;
   sortingOrder: string[];
   activeSortColumn?: number | null;
+  selectedRowKey: string | null;
 }
 
 interface PivotSettings {
@@ -129,6 +131,7 @@ interface PivotSettings {
   maxColVisible?: number;
   rowAttrSpans?: number[][];
   colAttrSpans?: number[][];
+  pinRowsBlock?: boolean;
 }
 
 const parseLabel = (value: unknown): string | number => {
@@ -333,6 +336,9 @@ export class TableRenderer extends Component<
   sortCache: Map<string, string[][]>;
   cachedProps: TableRendererProps | null;
   cachedBasePivotSettings: PivotSettings | null;
+  tableRef: HTMLTableElement | null;
+  resizeObserver: ResizeObserver | null;
+  layoutFrame: number | null;
 
   static propTypes: Record<string, unknown>;
   static defaultProps: Record<string, unknown>;
@@ -343,12 +349,119 @@ export class TableRenderer extends Component<
     // We need state to record which entries are collapsed and which aren't.
     // This is an object with flat-keys indicating if the corresponding rows
     // should be collapsed.
-    this.state = { collapsedRows: {}, collapsedCols: {}, sortingOrder: [] };
+    this.state = {
+      collapsedRows: {},
+      collapsedCols: {},
+      sortingOrder: [],
+      selectedRowKey: null,
+    };
     this.sortCache = new Map();
     this.cachedProps = null;
     this.cachedBasePivotSettings = null;
+    this.tableRef = null;
+    this.resizeObserver = null;
+    this.layoutFrame = null;
     this.clickHeaderHandler = this.clickHeaderHandler.bind(this);
     this.clickHandler = this.clickHandler.bind(this);
+    this.handleResize = this.handleResize.bind(this);
+    this.setTableRef = this.setTableRef.bind(this);
+    this.scheduleStickyLayout = this.scheduleStickyLayout.bind(this);
+    this.syncStickyLayout = this.syncStickyLayout.bind(this);
+  }
+
+  componentDidMount() {
+    window.addEventListener('resize', this.handleResize);
+    this.scheduleStickyLayout();
+  }
+
+  componentDidUpdate() {
+    this.scheduleStickyLayout();
+  }
+
+  setTableRef(node: HTMLTableElement | null) {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.tableRef = node;
+    if (node && typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(this.scheduleStickyLayout);
+      this.resizeObserver.observe(node);
+    }
+  }
+
+  handleResize() {
+    this.scheduleStickyLayout();
+  }
+
+  scheduleStickyLayout() {
+    if (this.layoutFrame !== null) {
+      cancelAnimationFrame(this.layoutFrame);
+    }
+    if (typeof requestAnimationFrame !== 'function') {
+      this.syncStickyLayout();
+      return;
+    }
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = null;
+      this.syncStickyLayout();
+    });
+  }
+
+  syncStickyLayout() {
+    if (!this.tableRef) return;
+
+    const headerRows = Array.from(this.tableRef.querySelectorAll('thead tr'));
+    let top = 0;
+    const topOffsets = headerRows.map(row => {
+      const offset = top;
+      top += row.getBoundingClientRect().height || row.clientHeight;
+      return offset;
+    });
+    this.tableRef
+      .querySelectorAll<HTMLElement>('thead [data-header-row]')
+      .forEach(cell => {
+        const headerRow = Number(cell.dataset.headerRow);
+        cell.style.setProperty(
+          '--pvt-header-top',
+          `${topOffsets[headerRow] || 0}px`,
+        );
+      });
+
+    const stickyCells = this.tableRef.querySelectorAll<HTMLElement>(
+      '[data-sticky-start]',
+    );
+    if (!this.tableRef.classList.contains('pvtTable--pin-rows')) {
+      stickyCells.forEach(cell => {
+        cell.style.removeProperty('--pvt-sticky-left');
+        cell.style.removeProperty('--pvt-sticky-top');
+      });
+      return;
+    }
+
+    const measureCells = Array.from(
+      this.tableRef.querySelectorAll<HTMLElement>(
+        'thead tr.pvtRowHeaderRow [data-sticky-measure="true"]',
+      ),
+    );
+    let left = 0;
+    const offsets = measureCells.map(cell => {
+      const offset = left;
+      left += cell.getBoundingClientRect().width || cell.clientWidth;
+      return offset;
+    });
+
+    stickyCells.forEach(cell => {
+      const startIndex = Number(cell.dataset.stickyStart);
+      cell.style.setProperty(
+        '--pvt-sticky-left',
+        `${offsets[startIndex] || 0}px`,
+      );
+      if (cell.dataset.stickyTopRow !== undefined) {
+        cell.style.setProperty(
+          '--pvt-sticky-top',
+          `${topOffsets[Number(cell.dataset.stickyTopRow)] || 0}px`,
+        );
+      }
+    });
   }
 
   getBasePivotSettings(): PivotSettings {
@@ -363,6 +476,7 @@ export class TableRenderer extends Component<
       colTotals: true,
       ...props.tableOptions,
     };
+    const pinRowsBlock = Boolean(tableOptions.pinRowsBlock && rowAttrs.length);
     const rowTotals = tableOptions.rowTotals || colAttrs.length === 0;
     const colTotals = tableOptions.colTotals || rowAttrs.length === 0;
 
@@ -463,8 +577,20 @@ export class TableRenderer extends Component<
       rowTotalCallbacks,
       colTotalCallbacks,
       grandTotalCallback,
+      pinRowsBlock,
       namesMapping,
       allowRenderHtml: props.allowRenderHtml,
+    };
+  }
+
+  handleRowActivation(flatRowKey: string) {
+    return (event: MouseEvent) => {
+      if (window.getSelection()?.toString()) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.toggle')) return;
+      this.setState(state => ({
+        selectedRowKey: state.selectedRowKey === flatRowKey ? null : flatRowKey,
+      }));
     };
   }
 
@@ -766,6 +892,7 @@ export class TableRenderer extends Component<
       pivotData,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
     const {
       highlightHeaderCellsOnHover,
@@ -788,6 +915,12 @@ export class TableRenderer extends Component<
           colSpan={rowAttrs.length}
           rowSpan={colAttrs.length}
           aria-hidden="true"
+          data-header-row={attrIdx}
+          data-sticky-start={pinRowsBlock ? 0 : undefined}
+          data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
+          data-sticky-boundary={
+            pinRowsBlock && colAttrs.length === 0 ? 'true' : undefined
+          }
         />
       ) : null;
 
@@ -803,7 +936,14 @@ export class TableRenderer extends Component<
       subArrow = attrIdx + 1 < maxColVisible! ? arrowExpanded : arrowCollapsed;
     }
     const attrNameCell = (
-      <th key="label" className="pvtAxisLabel">
+      <th
+        key="label"
+        className="pvtAxisLabel"
+        data-header-row={attrIdx}
+        data-sticky-start={pinRowsBlock ? rowAttrs.length : undefined}
+        data-sticky-top-row={pinRowsBlock ? attrIdx : undefined}
+        data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
+      >
         {displayHeaderCell(
           needToggle,
           subArrow,
@@ -893,6 +1033,7 @@ export class TableRenderer extends Component<
             style={style}
             colSpan={colSpan}
             rowSpan={rowSpan}
+            data-header-row={attrIdx}
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -939,6 +1080,7 @@ export class TableRenderer extends Component<
             key={`colKeyBuffer-${flatKey(colKey)}`}
             colSpan={colSpan}
             rowSpan={rowSpan}
+            data-header-row={attrIdx}
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -963,6 +1105,7 @@ export class TableRenderer extends Component<
           key="total"
           className="pvtTotalLabel"
           rowSpan={colAttrs.length + Math.min(rowAttrs.length, 1)}
+          data-header-row={attrIdx}
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -999,9 +1142,10 @@ export class TableRenderer extends Component<
       pivotData,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
     return (
-      <tr key="rowHdr">
+      <tr key="rowHdr" className="pvtRowHeaderRow">
         {rowAttrs.map((r, i) => {
           const needLabelToggle =
             rowSubtotalDisplay.enabled === true && i !== rowAttrs.length - 1;
@@ -1015,7 +1159,21 @@ export class TableRenderer extends Component<
             subArrow = i + 1 < maxRowVisible! ? arrowExpanded : arrowCollapsed;
           }
           return (
-            <th className="pvtAxisLabel" key={`rowAttr-${i}`}>
+            <th
+              className="pvtAxisLabel"
+              key={`rowAttr-${i}`}
+              data-header-row={colAttrs.length}
+              data-sticky-measure={pinRowsBlock ? 'true' : undefined}
+              data-sticky-start={pinRowsBlock ? i : undefined}
+              data-sticky-top-row={pinRowsBlock ? colAttrs.length : undefined}
+              data-sticky-boundary={
+                pinRowsBlock &&
+                i === rowAttrs.length - 1 &&
+                colAttrs.length === 0
+                  ? 'true'
+                  : undefined
+              }
+            >
               {displayHeaderCell(
                 needLabelToggle,
                 subArrow,
@@ -1030,6 +1188,17 @@ export class TableRenderer extends Component<
         <th
           className="pvtTotalLabel"
           key="padding"
+          data-header-row={colAttrs.length}
+          data-sticky-measure={
+            pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
+          }
+          data-sticky-start={
+            pinRowsBlock && colAttrs.length !== 0 ? rowAttrs.length : undefined
+          }
+          data-sticky-top-row={pinRowsBlock ? colAttrs.length : undefined}
+          data-sticky-boundary={
+            pinRowsBlock && colAttrs.length !== 0 ? 'true' : undefined
+          }
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -1072,6 +1241,7 @@ export class TableRenderer extends Component<
       rowTotalCallbacks,
       namesMapping,
       allowRenderHtml,
+      pinRowsBlock,
     } = pivotSettings;
 
     const {
@@ -1085,6 +1255,7 @@ export class TableRenderer extends Component<
       activeHeaderBackgroundColor = supersetTheme.colorPrimaryBg,
     } = this.props.tableOptions;
     const flatRowKey = flatKey(rowKey);
+    const isSelectedRow = this.state.selectedRowKey === flatRowKey;
 
     const colIncrSpan = colAttrs.length !== 0 ? 1 : 0;
     const attrValueCells = rowKey.map((r: string, i: number) => {
@@ -1137,6 +1308,14 @@ export class TableRenderer extends Component<
             style={style}
             rowSpan={rowSpan}
             colSpan={colSpan}
+            data-sticky-start={pinRowsBlock ? i : undefined}
+            data-sticky-boundary={
+              pinRowsBlock &&
+              i === rowAttrs.length - 1 &&
+              rowKey.length === rowAttrs.length
+                ? 'true'
+                : undefined
+            }
             role="columnheader button"
             onClick={this.clickHeaderHandler(
               pivotData,
@@ -1170,6 +1349,8 @@ export class TableRenderer extends Component<
           key="rowKeyBuffer"
           colSpan={rowAttrs.length - rowKey.length + colIncrSpan}
           rowSpan={1}
+          data-sticky-start={pinRowsBlock ? rowKey.length : undefined}
+          data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
           role="columnheader button"
           onClick={this.clickHeaderHandler(
             pivotData,
@@ -1249,7 +1430,15 @@ export class TableRenderer extends Component<
       totalCell,
     ];
 
-    return <tr key={`keyRow-${flatRowKey}`}>{rowCells}</tr>;
+    return (
+      <tr
+        key={`keyRow-${flatRowKey}`}
+        className={isSelectedRow ? 'pvtRowSelected' : ''}
+        onClick={this.handleRowActivation(flatRowKey)}
+      >
+        {rowCells}
+      </tr>
+    );
   }
 
   renderTotalsRow(pivotSettings: PivotSettings) {
@@ -1263,6 +1452,7 @@ export class TableRenderer extends Component<
       pivotData,
       colTotalCallbacks,
       grandTotalCallback,
+      pinRowsBlock,
     } = pivotSettings;
 
     if (!visibleColKeys) {
@@ -1274,6 +1464,8 @@ export class TableRenderer extends Component<
         key="label"
         className="pvtTotalLabel pvtRowTotalLabel"
         colSpan={rowAttrs.length + Math.min(colAttrs.length, 1)}
+        data-sticky-start={pinRowsBlock ? 0 : undefined}
+        data-sticky-boundary={pinRowsBlock ? 'true' : undefined}
         role="columnheader button"
         onClick={this.clickHeaderHandler(
           pivotData,
@@ -1362,6 +1554,14 @@ export class TableRenderer extends Component<
   }
 
   componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+    this.resizeObserver?.disconnect();
+    if (
+      this.layoutFrame !== null &&
+      typeof cancelAnimationFrame === 'function'
+    ) {
+      cancelAnimationFrame(this.layoutFrame);
+    }
     this.sortCache.clear();
   }
 
@@ -1385,6 +1585,7 @@ export class TableRenderer extends Component<
       rowSubtotalDisplay,
       colSubtotalDisplay,
       allowRenderHtml,
+      pinRowsBlock,
     } = basePivotSettings;
 
     // Need to account for exclusions to compute the effective row
@@ -1402,6 +1603,9 @@ export class TableRenderer extends Component<
       colSubtotalDisplay,
     );
 
+    const isDashboardEditMode = this.isDashboardEditMode();
+    const pinRowsBlockEnabled = Boolean(pinRowsBlock && !isDashboardEditMode);
+
     const pivotSettings: PivotSettings = {
       visibleRowKeys,
       maxRowVisible: Math.max(...visibleRowKeys.map((k: string[]) => k.length)),
@@ -1411,11 +1615,16 @@ export class TableRenderer extends Component<
       colAttrSpans: this.calcAttrSpans(visibleColKeys, colAttrs.length),
       allowRenderHtml,
       ...basePivotSettings,
+      pinRowsBlock: pinRowsBlockEnabled,
     };
 
     return (
-      <Styles isDashboardEditMode={this.isDashboardEditMode()}>
-        <table className="pvtTable" role="grid">
+      <Styles isDashboardEditMode={isDashboardEditMode}>
+        <table
+          className={`pvtTable${pinRowsBlockEnabled ? ' pvtTable--pin-rows' : ''}`}
+          role="grid"
+          ref={this.setTableRef}
+        >
           <thead>
             {colAttrs.map((c: string, j: number) =>
               this.renderColHeaderRow(c, j, pivotSettings),

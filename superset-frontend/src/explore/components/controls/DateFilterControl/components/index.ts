@@ -18,6 +18,7 @@
  */
 export { CommonFrame } from './CommonFrame';
 export { CalendarFrame } from './CalendarFrame';
+export { CalendarRangeFrame } from './CalendarRangeFrame';
 export { CurrentCalendarFrame } from './CurrentCalendarFrame';
 export { CustomFrame } from './CustomFrame';
 export { AdvancedFrame } from './AdvancedFrame';

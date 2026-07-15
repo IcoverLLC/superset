@@ -24,10 +24,12 @@ import {
   FeatureFlag,
   SupersetClient,
 } from '@superset-ui/core';
+import { styled } from '@apache-superset/core/theme';
 import { CardStyles } from 'src/views/CRUD/utils';
 import {
   Dropdown,
   Button,
+  CertifiedBadge,
   FaveStar,
   PublishedLabel,
   ListViewCard,
@@ -35,12 +37,48 @@ import {
 import { MenuItem } from '@superset-ui/core/components/Menu';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { Dashboard } from 'src/views/CRUD/types';
-import { assetUrl } from 'src/utils/assetUrl';
-import { FacePile } from 'src/components';
+import { FacePile, TagsList, type TagType } from 'src/components';
+import { TagTypeEnum } from 'src/components/Tag/TagType';
+
+const DashboardCardStyles = styled(CardStyles)`
+  && .ant-card.ant-card-bordered {
+    border: 1px solid ${({ theme }) => theme.colorTextLabel};
+    background-color: ${({ theme }) => theme.colorBgContainer};
+    box-shadow: 0 1px 2px ${({ theme }) => theme.colorBorderSecondary};
+    transition:
+      border-color ${({ theme }) => theme.motionDurationMid} ease,
+      box-shadow ${({ theme }) => theme.motionDurationMid} ease;
+  }
+
+  &:hover .ant-card.ant-card-bordered {
+    border-color: ${({ theme }) => theme.colorPrimaryBorderHover};
+    box-shadow:
+      0 0 0 1px ${({ theme }) => theme.colorPrimaryBorderHover},
+      0 8px 24px -8px ${({ theme }) => theme.colorPrimaryBgHover};
+  }
+`;
+
+const DeferredThumbnailCover = styled.div`
+  ${({ theme }) => `
+    height: 264px;
+    border-bottom: 1px solid ${theme.colorSplit};
+    background:
+      linear-gradient(
+        180deg,
+        ${theme.colorFillTertiary} 0%,
+        ${theme.colorBgLayout} 100%
+      );
+  `}
+`;
+
+const DASHBOARD_CARD_FALLBACK_DATA_URI =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%23f3f4f6'/%3E%3C/svg%3E";
 
 interface DashboardCardProps {
   isChart?: boolean;
   dashboard: Dashboard;
+  description?: string;
+  showPublishedLabel?: boolean;
   hasPerm: (name: string) => boolean;
   bulkSelectEnabled: boolean;
   loading: boolean;
@@ -49,12 +87,16 @@ interface DashboardCardProps {
   favoriteStatus: boolean;
   userId?: string | number;
   showThumbnails?: boolean;
+  thumbnailLoadBehavior?: 'eager' | 'deferred';
+  thumbnailLoadDelayMs?: number;
   handleBulkDashboardExport: (dashboardsToExport: Dashboard[]) => void;
   onDelete: (dashboard: Dashboard) => void;
 }
 
 function DashboardCard({
   dashboard,
+  description,
+  showPublishedLabel = true,
   hasPerm,
   bulkSelectEnabled,
   userId,
@@ -62,6 +104,8 @@ function DashboardCard({
   favoriteStatus,
   saveFavoriteStatus,
   showThumbnails,
+  thumbnailLoadBehavior = 'eager',
+  thumbnailLoadDelayMs = 0,
   handleBulkDashboardExport,
   onDelete,
 }: DashboardCardProps) {
@@ -69,16 +113,80 @@ function DashboardCard({
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
   const canExport = hasPerm('can_export');
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
+    dashboard.thumbnail_url || null,
+  );
   const [fetchingThumbnail, setFetchingThumbnail] = useState<boolean>(false);
+  const [thumbnailLoadEnabled, setThumbnailLoadEnabled] = useState(
+    thumbnailLoadBehavior === 'eager',
+  );
+  const thumbnailsFeatureEnabled =
+    isFeatureEnabled(FeatureFlag.Thumbnails) && !!showThumbnails;
+
+  useEffect(() => {
+    setThumbnailUrl(dashboard.thumbnail_url || null);
+    setFetchingThumbnail(false);
+  }, [dashboard.id, dashboard.thumbnail_url]);
+
+  useEffect(() => {
+    if (!thumbnailsFeatureEnabled) {
+      setThumbnailLoadEnabled(false);
+      return undefined;
+    }
+
+    if (thumbnailLoadBehavior === 'eager') {
+      setThumbnailLoadEnabled(true);
+      return undefined;
+    }
+
+    setThumbnailLoadEnabled(false);
+    const enableThumbnailLoading = () => setThumbnailLoadEnabled(true);
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+
+    const scheduleIdleLoading = () => {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        idleHandle = window.requestIdleCallback(enableThumbnailLoading, {
+          timeout: 1200,
+        });
+        return;
+      }
+
+      timeoutHandle = globalThis.setTimeout(enableThumbnailLoading, 0);
+    };
+
+    if (thumbnailLoadDelayMs > 0) {
+      timeoutHandle = globalThis.setTimeout(
+        scheduleIdleLoading,
+        thumbnailLoadDelayMs,
+      );
+    } else {
+      scheduleIdleLoading();
+    }
+
+    return () => {
+      if (idleHandle !== null) {
+        window.cancelIdleCallback?.(idleHandle);
+      }
+      if (timeoutHandle !== null) {
+        globalThis.clearTimeout(timeoutHandle);
+      }
+    };
+  }, [
+    dashboard.id,
+    thumbnailLoadBehavior,
+    thumbnailLoadDelayMs,
+    thumbnailsFeatureEnabled,
+  ]);
 
   useEffect(() => {
     // fetch thumbnail only if it's not already fetched
     if (
       !fetchingThumbnail &&
       dashboard.id &&
-      (thumbnailUrl === undefined || thumbnailUrl === null) &&
-      isFeatureEnabled(FeatureFlag.Thumbnails)
+      thumbnailLoadEnabled &&
+      thumbnailsFeatureEnabled &&
+      (thumbnailUrl === undefined || thumbnailUrl === null)
     ) {
       // fetch thumbnail
       if (dashboard.thumbnail_url) {
@@ -95,9 +203,23 @@ function DashboardCard({
         setFetchingThumbnail(false);
       });
     }
-  }, [dashboard, thumbnailUrl]);
+  }, [
+    dashboard,
+    fetchingThumbnail,
+    thumbnailLoadEnabled,
+    thumbnailUrl,
+    thumbnailsFeatureEnabled,
+  ]);
+
+  const shouldRenderThumbnail = Boolean(
+    thumbnailsFeatureEnabled && thumbnailLoadEnabled && thumbnailUrl,
+  );
 
   const menuItems: MenuItem[] = [];
+  const customTags = (dashboard.tags || []).filter(
+    (tag: TagType) =>
+      tag.type === 'TagTypes.custom' || tag.type === TagTypeEnum.Custom,
+  );
 
   if (canEdit && openDashboardEditModal) {
     menuItems.push({
@@ -151,7 +273,7 @@ function DashboardCard({
   }
 
   return (
-    <CardStyles
+    <DashboardCardStyles
       onClick={() => {
         if (!bulkSelectEnabled) {
           history.push(dashboard.url);
@@ -161,22 +283,29 @@ function DashboardCard({
       <ListViewCard
         loading={dashboard.loading || false}
         title={dashboard.dashboard_title}
-        certifiedBy={dashboard.certified_by}
-        certificationDetails={dashboard.certification_details}
-        titleRight={<PublishedLabel isPublished={dashboard.published} />}
+        titleRight={
+          showPublishedLabel ? (
+            <PublishedLabel isPublished={dashboard.published} />
+          ) : null
+        }
         cover={
-          !isFeatureEnabled(FeatureFlag.Thumbnails) || !showThumbnails ? (
+          !thumbnailsFeatureEnabled ? (
             <></>
+          ) : !shouldRenderThumbnail ? (
+            <DeferredThumbnailCover />
           ) : null
         }
         url={bulkSelectEnabled ? undefined : dashboard.url}
         linkComponent={Link}
-        imgURL={thumbnailUrl}
-        imgFallbackURL={assetUrl(
-          '/static/assets/images/dashboard-card-fallback.svg',
-        )}
-        description={t('Modified %s', dashboard.changed_on_delta_humanized)}
+        imgURL={shouldRenderThumbnail ? thumbnailUrl : ''}
+        imgFallbackURL={DASHBOARD_CARD_FALLBACK_DATA_URI}
+        description={
+          description ?? t('Modified %s', dashboard.changed_on_delta_humanized)
+        }
         coverLeft={<FacePile users={dashboard.owners || []} />}
+        coverRight={
+          customTags.length ? <TagsList tags={customTags} maxTags={2} /> : null
+        }
         actions={
           <ListViewCard.Actions
             onClick={e => {
@@ -191,6 +320,14 @@ function DashboardCard({
                 isStarred={favoriteStatus}
               />
             )}
+            {dashboard.certified_by && (
+              <CertifiedBadge
+                certifiedBy={dashboard.certified_by}
+                details={dashboard.certification_details}
+                headline={dashboard.dashboard_title}
+                showCertifiedBy={false}
+              />
+            )}
             <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
               <Button buttonSize="xsmall" buttonStyle="link">
                 <Icons.MoreOutlined iconSize="xl" />
@@ -199,7 +336,7 @@ function DashboardCard({
           </ListViewCard.Actions>
         }
       />
-    </CardStyles>
+    </DashboardCardStyles>
   );
 }
 

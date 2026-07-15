@@ -265,7 +265,9 @@ export type ComponentType = (typeof componentTypes)[ComponentTypesKeys];
 
 export type LayoutItemMeta = {
   chartId?: number;
+  collapsedByDefault?: boolean;
   defaultText?: string;
+  enableCollapse?: boolean;
   height?: number;
   placeholder?: string;
   sliceName?: string;

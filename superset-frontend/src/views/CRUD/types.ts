@@ -20,6 +20,7 @@ import { QueryState } from '@superset-ui/core';
 import { User } from 'src/types/bootstrapTypes';
 import Database from 'src/types/Database';
 import Owner from 'src/types/Owner';
+import type { TagType } from 'src/types/TagType';
 
 export type FavoriteStatus = {
   [id: number]: boolean;
@@ -58,6 +59,7 @@ export interface Dashboard {
   changed_on_delta_humanized?: string;
   changed_on_utc?: string;
   changed_by: string;
+  created_by?: object;
   dashboard_title: string;
   slice_name?: string;
   id: number;
@@ -65,6 +67,7 @@ export interface Dashboard {
   url: string;
   thumbnail_url: string;
   owners: Owner[];
+  tags?: TagType[];
   loading?: boolean;
 }
 

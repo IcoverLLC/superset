@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
+import type { ReactNode } from 'react';
 import {
   fireEvent,
   render,
@@ -51,17 +51,15 @@ jest.mock('src/dashboard/util/isEmbedded', () => ({
 }));
 
 jest.mock('src/dashboard/components/dnd/DragDroppable', () => ({
-  Draggable: ({
-    children,
-  }: {
-    children: (args: object) => React.ReactNode;
-  }) => <div data-test="mock-draggable">{children({})}</div>,
+  Draggable: ({ children }: { children: (args: object) => ReactNode }) => (
+    <div data-test="mock-draggable">{children({})}</div>
+  ),
 
   Droppable: ({
     children,
     depth,
   }: {
-    children: (args: object) => React.ReactNode;
+    children: (args: object) => ReactNode;
     depth: number;
   }) => (
     <div data-test="mock-droppable" data-depth={depth}>
@@ -89,7 +87,7 @@ jest.mock(
 jest.mock(
   'src/dashboard/components/menu/WithPopoverMenu',
   () =>
-    ({ children }: { children: React.ReactNode }) => (
+    ({ children }: { children: ReactNode }) => (
       <div data-test="mock-with-popover-menu">{children}</div>
     ),
 );
@@ -132,6 +130,7 @@ interface RowTestProps {
   isComponentVisible: boolean;
   maxChildrenHeight: number;
   onChangeTab: () => void;
+  dashboardId?: number;
 }
 
 const props: RowTestProps = {
@@ -222,7 +221,9 @@ test('should render a DeleteComponentButton in editMode', () => {
 /* oxlint-disable-next-line jest/no-disabled-tests */
 test.skip('should render a BackgroundStyleDropdown when focused', () => {
   const { rerender } = setup({ component: rowWithoutChildren });
-  expect(screen.queryByTestId('background-style-dropdown')).toBeFalsy();
+  expect(
+    screen.queryByTestId('background-style-dropdown'),
+  ).not.toBeInTheDocument();
 
   // we cannot set props on the Row because of the WithDragDropContext wrapper
   rerender(<Row {...props} component={rowWithoutChildren} editMode />);
@@ -230,7 +231,7 @@ test.skip('should render a BackgroundStyleDropdown when focused', () => {
   const settingsButton = buttons[1];
   fireEvent.click(settingsButton);
 
-  expect(screen.queryByTestId('background-style-dropdown')).toBeTruthy();
+  expect(screen.queryByTestId('background-style-dropdown')).toBeInTheDocument();
 });
 
 test('should call deleteComponent when deleted', () => {
@@ -253,6 +254,44 @@ test('should increment the depth of its children', () => {
     'data-depth',
     `${props.depth + 1}`,
   );
+});
+
+test('should hide children when row is collapsed by default', () => {
+  const collapsedRow = {
+    ...props.component,
+    meta: {
+      ...props.component.meta,
+      enableCollapse: true,
+      collapsedByDefault: true,
+    },
+  };
+
+  const { queryByTestId, getByRole } = setup({
+    component: collapsedRow,
+    dashboardId: 10,
+  });
+
+  expect(queryByTestId('mock-dashboard-component')).not.toBeInTheDocument();
+  expect(getByRole('button', { name: 'Expand row' })).toBeInTheDocument();
+});
+
+test('should expand collapsed row on toggle click', () => {
+  const collapsedRow = {
+    ...props.component,
+    meta: {
+      ...props.component.meta,
+      enableCollapse: true,
+      collapsedByDefault: true,
+    },
+  };
+
+  const { getByRole, getByTestId } = setup({
+    component: collapsedRow,
+    dashboardId: 10,
+  });
+
+  fireEvent.click(getByRole('button', { name: 'Expand row' }));
+  expect(getByTestId('mock-dashboard-component')).toBeInTheDocument();
 });
 
 // eslint-disable-next-line no-restricted-globals -- TODO: Migrate from describe blocks

@@ -32,7 +32,11 @@ import {
 import { useSelector } from 'react-redux';
 import cx from 'classnames';
 import { t } from '@apache-superset/core/translation';
-import { styled, useTheme } from '@apache-superset/core/theme';
+import {
+  styled,
+  type SupersetTheme,
+  useTheme,
+} from '@apache-superset/core/theme';
 import { RootState } from 'src/dashboard/types';
 import { DataMaskStateWithId } from '@superset-ui/core';
 import { Icons } from '@superset-ui/core/components/Icons';
@@ -113,6 +117,42 @@ const FilterBarEmptyStateContainer = styled.div`
   margin-top: ${({ theme }) => theme.sizeUnit * 8}px;
 `;
 
+const getScrollbarStyles = (theme: SupersetTheme) => `
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colorFillSecondary} ${theme.colorFillQuaternary};
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colorFillQuaternary};
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colorFillSecondary};
+    border-radius: ${theme.borderRadiusSM}px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${theme.colorFillTertiary};
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: ${theme.colorFillQuaternary};
+  }
+`;
+
+const ScrollableContent = styled.div<{ height: number | string }>`
+  ${({ theme, height }) => `
+    overflow: auto;
+    height: ${typeof height === 'number' ? `${height}px` : height};
+    overscroll-behavior: contain;
+    ${getScrollbarStyles(theme)}
+  `}
+`;
+
 const FilterControlsWrapper = styled.div`
   ${({ theme }) => `
     display: flex;
@@ -171,11 +211,6 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
     };
   }, [onScroll]);
 
-  const tabPaneStyle = useMemo(
-    () => ({ overflow: 'auto', height, overscrollBehavior: 'contain' }),
-    [height],
-  );
-
   const dataMask = useSelector<RootState, DataMaskStateWithId>(
     state => state.dataMask,
   );
@@ -223,6 +258,8 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
         <FilterControls
           dataMaskSelected={dataMaskSelected}
           onFilterSelectionChange={onSelectionChange}
+          clearAllTriggers={clearAllTriggers}
+          onClearAllComplete={onClearAllComplete}
           onPendingCustomizationDataMaskChange={
             onPendingCustomizationDataMaskChange
           }
@@ -252,7 +289,9 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
     onSelectionChange,
     onPendingCustomizationDataMaskChange,
     chartCustomizationValues,
+    clearAllTriggers,
     hasOnlyOneSectionType,
+    onClearAllComplete,
   ]);
 
   return (
@@ -299,12 +338,12 @@ const VerticalFilterBar: FC<VerticalBarProps> = ({
               <Loading position="inline-centered" size="s" muted />
             </div>
           ) : (
-            <div css={tabPaneStyle} onScroll={onScroll}>
+            <ScrollableContent height={height} onScroll={onScroll}>
               <>
                 <CrossFiltersVertical hideHeader={hasOnlyOneSectionType} />
                 {filterControls}
               </>
-            </div>
+            </ScrollableContent>
           )}
           {actions}
         </Bar>

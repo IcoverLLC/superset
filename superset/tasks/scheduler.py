@@ -37,6 +37,7 @@ from superset.commands.sql_lab.query import QueryPruneCommand
 from superset.commands.tasks.prune import TaskPruneCommand
 from superset.daos.report import ReportScheduleDAO
 from superset.daos.tasks import TaskDAO
+from superset.dashboards.welcome_top import refresh_welcome_dashboard_rankings
 from superset.extensions import celery_app
 from superset.stats_logger import BaseStatsLogger
 from superset.tasks.ambient_context import use_context
@@ -456,3 +457,15 @@ def execute_task(  # noqa: C901
             TaskManager.publish_completion(native_uuid, final_status)
 
     return {"status": final_status, "task_uuid": task_uuid}
+
+
+@celery_app.task(name="welcome_dashboard_top.refresh_snapshots")
+def refresh_welcome_dashboard_snapshots(
+    include_users: bool = True,
+) -> dict[str, Any]:
+    stats_logger: BaseStatsLogger = current_app.config["STATS_LOGGER"]
+    stats_logger.incr("welcome_dashboard_top.refresh_snapshots")
+
+    result = refresh_welcome_dashboard_rankings(include_users=include_users)
+    logger.info("Refreshed welcome dashboard snapshots: %s", result)
+    return result

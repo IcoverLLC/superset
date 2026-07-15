@@ -74,8 +74,10 @@ import {
   SelectFilterPlugin,
   RangeFilterPlugin,
   TimeFilterPlugin,
+  TimeFilterV2Plugin,
   TimeColumnFilterPlugin,
   TimeGrainFilterPlugin,
+  TimeGrainV2FilterPlugin,
 } from 'src/filters/components';
 import {
   ChartCustomizationTimeGrainPlugin,
@@ -87,6 +89,7 @@ import { PivotTableChartPlugin as PivotTableChartPluginV2 } from '@superset-ui/p
 import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { ChartCustomizationPlugins, FilterPlugins } from 'src/constants';
 import AgGridTableChartPlugin from '@superset-ui/plugin-chart-ag-grid-table';
+import AgGridTableChartPluginCustom from '@superset-ui/plugin-chart-ag-grid-table-custom';
 import TimeTableChartPlugin from '../TimeTable';
 
 export default class MainPreset extends Preset {
@@ -103,6 +106,16 @@ export default class MainPreset extends Preset {
 
     const agGridTablePlugin = isFeatureEnabled(FeatureFlag.AgGridTableEnabled)
       ? [new AgGridTableChartPlugin().configure({ key: VizType.TableAgGrid })]
+      : [];
+
+    const agGridTablePluginCustom = isFeatureEnabled(
+      FeatureFlag.AgGridTableEnabled,
+    )
+      ? [
+          new AgGridTableChartPluginCustom().configure({
+            key: VizType.TableAgGridCustom,
+          }),
+        ]
       : [];
 
     super({
@@ -174,11 +187,15 @@ export default class MainPreset extends Preset {
         new SelectFilterPlugin().configure({ key: FilterPlugins.Select }),
         new RangeFilterPlugin().configure({ key: FilterPlugins.Range }),
         new TimeFilterPlugin().configure({ key: FilterPlugins.Time }),
+        new TimeFilterV2Plugin().configure({ key: FilterPlugins.TimeV2 }),
         new TimeColumnFilterPlugin().configure({
           key: FilterPlugins.TimeColumn,
         }),
         new TimeGrainFilterPlugin().configure({
           key: FilterPlugins.TimeGrain,
+        }),
+        new TimeGrainV2FilterPlugin().configure({
+          key: FilterPlugins.TimeGrainV2,
         }),
         new ChartCustomizationTimeGrainPlugin().configure({
           key: ChartCustomizationPlugins.TimeGrain,
@@ -211,6 +228,7 @@ export default class MainPreset extends Preset {
         }).configure({ key: VizType.Cartodiagram }),
         ...experimentalPlugins,
         ...agGridTablePlugin,
+        ...agGridTablePluginCustom,
       ],
     });
   }

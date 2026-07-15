@@ -36,6 +36,8 @@ const ImageContainer = styled.div<ImageContainerProps>`
   width: calc(100% - 2px);
   margin: 1px 1px 0 1px;
 `;
+const THUMBNAIL_RETRY_DELAYS_MS = [1500, 5000, 15000];
+
 interface ImageLoaderProps extends DetailedHTMLProps<
   HTMLAttributes<HTMLDivElement>,
   HTMLDivElement
@@ -56,22 +58,57 @@ export function ImageLoader({
   const [imgSrc, setImgSrc] = useState<string>(fallback);
 
   useEffect(() => {
-    if (src) {
-      fetch(src)
-        .then(response => response.blob())
-        .then(blob => {
-          if (/image/.test(blob.type)) {
-            const imgURL = URL.createObjectURL(blob);
+    let isActive = true;
+    let imgURL: string | null = null;
+    let retryHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+
+    const loadImage = async (attempt = 0) => {
+      if (!src) {
+        return;
+      }
+
+      try {
+        const response = await fetch(src);
+        if (response.status === 202) {
+          const retryDelayMs = THUMBNAIL_RETRY_DELAYS_MS[attempt];
+          if (retryDelayMs !== undefined && isActive) {
+            retryHandle = globalThis.setTimeout(() => {
+              void loadImage(attempt + 1);
+            }, retryDelayMs);
+          }
+          return;
+        }
+
+        const blob = await response.blob();
+        if (/image/.test(blob.type)) {
+          imgURL = URL.createObjectURL(blob);
+          if (isActive) {
             setImgSrc(imgURL);
           }
-        })
-        .catch(errMsg => {
-          logging.error(errMsg);
-          setImgSrc(fallback);
-        });
+          return;
+        }
+      } catch (errMsg) {
+        logging.error(errMsg);
+      }
+
+      if (isActive) {
+        setImgSrc(fallback);
+      }
+    };
+
+    setImgSrc(fallback);
+    if (src) {
+      void loadImage();
     }
 
     return () => {
+      isActive = false;
+      if (retryHandle !== null) {
+        globalThis.clearTimeout(retryHandle);
+      }
+      if (imgURL) {
+        URL.revokeObjectURL(imgURL);
+      }
       // theres a very brief period where isLoading is false and this component is about to unmount
       // where the stale imgSrc is briefly rendered. Setting imgSrc to fallback smoothes the transition.
       setImgSrc(fallback);

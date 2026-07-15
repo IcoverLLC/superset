@@ -25,7 +25,7 @@ import {
   getClientErrorObject,
   lruCache,
 } from '@superset-ui/core';
-import { styled } from '@apache-superset/core/theme';
+import { css, styled, type SupersetTheme } from '@apache-superset/core/theme';
 import Chart from 'src/types/Chart';
 import { intersection } from 'lodash';
 import rison from 'rison';
@@ -437,15 +437,35 @@ export const CardContainer = styled.div<{
   `}
 `;
 
+export const listViewCardBorderStyles = (theme: SupersetTheme) => css`
+  .ant-card.ant-card-bordered {
+    border: 1px solid ${theme.colorTextLabel};
+    transition:
+      border-color ${theme.motionDurationMid} ease,
+      box-shadow ${theme.motionDurationMid} ease;
+  }
+
+  &:hover .ant-card.ant-card-bordered {
+    border-color: ${theme.colorPrimaryBorderHover};
+    box-shadow:
+      0 0 0 1px ${theme.colorPrimaryBorderHover},
+      0 8px 24px -8px ${theme.colorPrimaryBgHover};
+  }
+`;
+
 export const CardStyles = styled.div`
   cursor: pointer;
+
   a {
     text-decoration: none;
   }
+
   .ant-card-cover > div {
     /* Height is calculated based on 300px width, to keep the same aspect ratio as the 800*450 thumbnails */
     height: 168px;
   }
+
+  ${({ theme }) => listViewCardBorderStyles(theme)}
 `;
 
 export /* eslint-disable no-underscore-dangle */

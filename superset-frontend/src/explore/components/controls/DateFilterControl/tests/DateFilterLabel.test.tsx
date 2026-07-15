@@ -81,7 +81,7 @@ test('Open and close popover', () => {
   userEvent.click(screen.getByText(NO_TIME_RANGE));
   expect(defaultProps.onOpenPopover).toHaveBeenCalled();
   expect(screen.getByText('Edit time range')).toBeInTheDocument();
-  userEvent.click(screen.getByText('CANCEL'));
+  userEvent.click(screen.getByTestId('cancel-button'));
   expect(defaultProps.onClosePopover).toHaveBeenCalled();
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
 
@@ -89,7 +89,7 @@ test('Open and close popover', () => {
   userEvent.click(screen.getByText(NO_TIME_RANGE));
   expect(defaultProps.onOpenPopover).toHaveBeenCalled();
   expect(screen.getByText('Edit time range')).toBeInTheDocument();
-  userEvent.click(screen.getByText('APPLY'));
+  userEvent.click(screen.getByTestId('date-filter-control__apply-button'));
   expect(defaultProps.onClosePopover).toHaveBeenCalled();
   expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
 });
@@ -124,7 +124,7 @@ test('DateFilter should properly handle isOverflowingFilterBar prop changes', ()
   const popover = document.querySelector('.time-range-popover');
   expect(popover?.parentElement).toBe(document.body);
 
-  userEvent.click(screen.getByText('CANCEL'));
+  userEvent.click(screen.getByTestId('cancel-button'));
 
   // When overflowing, popover should attach to parent node
   rerender(setup({ ...defaultProps, isOverflowingFilterBar: true }));
@@ -135,4 +135,62 @@ test('DateFilter should properly handle isOverflowingFilterBar prop changes', ()
 
   expect(popoverAfterRerender?.parentElement).toBe(trigger.parentElement);
   expect(popoverAfterRerender?.parentElement).not.toBe(document.body);
+});
+
+test('DateFilter v2 hides title and selected range section', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: 'Last week',
+      variant: 'v2',
+    }),
+  );
+
+  userEvent.click(screen.getByText('Last week'));
+
+  expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:'),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
+});
+
+test('DateFilter v2 opens calendar frame and shows reset button', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: NO_TIME_RANGE,
+      variant: 'v2',
+    }),
+  );
+
+  userEvent.click(screen.getByText(NO_TIME_RANGE));
+
+  expect(
+    screen.getByTestId(DateFilterTestKey.CalendarV2Frame),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId(DateFilterTestKey.ResetButton)).toBeInTheDocument();
+  expect(screen.queryByText('Edit time range')).not.toBeInTheDocument();
+});
+
+test('DateFilter v2 monthly format hides partial-month controls', () => {
+  render(
+    setup({
+      ...defaultProps,
+      value: NO_TIME_RANGE,
+      variant: 'v2',
+      calendarFormat: 'monthly',
+    }),
+  );
+
+  userEvent.click(screen.getByText(NO_TIME_RANGE));
+
+  expect(
+    screen.getByTestId(DateFilterTestKey.CalendarV2Frame),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Пользовательский')).not.toBeInTheDocument();
+  expect(screen.queryByPlaceholderText('Дата начала')).not.toBeInTheDocument();
+  expect(
+    screen.queryByPlaceholderText('Дата окончания'),
+  ).not.toBeInTheDocument();
 });

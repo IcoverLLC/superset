@@ -23,7 +23,13 @@ import {
   fetchTimeRange,
   getTimeOffset,
 } from '@superset-ui/core';
-import { css, styled, useTheme } from '@apache-superset/core/theme';
+import {
+  css,
+  styled,
+  type SupersetTheme,
+  useTheme,
+} from '@apache-superset/core/theme';
+import { t } from '@apache-superset/core/translation';
 import { Tooltip } from '@superset-ui/core/components';
 import {
   DEFAULT_DATE_PATTERN,
@@ -47,15 +53,45 @@ const MetricNameText = styled.div<{ metricNameFontSize?: number }>`
   `}
 `;
 
+const getScrollbarStyles = (theme: SupersetTheme) => css`
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colorFillSecondary} ${theme.colorFillQuaternary};
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colorFillQuaternary};
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colorFillSecondary};
+    border-radius: ${theme.borderRadiusSM}px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${theme.colorFillTertiary};
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: ${theme.colorFillQuaternary};
+  }
+`;
+
 const NumbersContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  padding: 12px;
+  ${({ theme }) => css`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 12px;
+    ${getScrollbarStyles(theme)};
+  `}
 `;
 
 const ComparisonValue = styled.div<PopKPIComparisonValueStyleProps>`
@@ -148,6 +184,7 @@ export default function PopKPI(props: PopKPIProps) {
     height: ${height}px;
     width: ${width}px;
     overflow: auto;
+    ${getScrollbarStyles(theme)};
   `;
 
   const bigValueContainerStyles = css`
@@ -215,6 +252,8 @@ export default function PopKPI(props: PopKPIProps) {
     comparisonColorScheme,
     comparisonColorEnabled,
     percentDifferenceNumber,
+    defaultBackgroundColor,
+    defaultTextColor,
   ]);
 
   const SYMBOLS_WITH_VALUES = useMemo(

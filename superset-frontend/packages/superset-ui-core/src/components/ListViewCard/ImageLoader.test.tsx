@@ -18,10 +18,11 @@
  */
 import fetchMock from 'fetch-mock';
 
-import { render, screen } from '@superset-ui/core/spec';
+import { render, screen, waitFor } from '@superset-ui/core/spec';
 import { ImageLoader, type BackgroundPosition } from './ImageLoader';
 
 global.URL.createObjectURL = jest.fn(() => '/local_url');
+global.URL.revokeObjectURL = jest.fn();
 const blob = new Blob([], { type: 'image/png' });
 
 beforeAll(() => {
@@ -50,7 +51,10 @@ describe('ImageLoader', () => {
     return render(<ImageLoader {...props} />);
   };
 
-  afterEach(() => fetchMock.clearHistory());
+  afterEach(() => {
+    fetchMock.clearHistory();
+    jest.useRealTimers();
+  });
 
   test('is a valid element', async () => {
     setup();
@@ -83,6 +87,40 @@ describe('ImageLoader', () => {
     expect(await screen.findByTestId('image-loader')).toHaveAttribute(
       'src',
       '/fallback',
+    );
+  });
+
+  it('retries pending thumbnail responses before falling back', async () => {
+    jest.useFakeTimers();
+    fetchMock.once(
+      '/thumbnail-pending',
+      { status: 202, body: { task_status: 'Pending' } },
+      { overwriteRoutes: false },
+    );
+    fetchMock.once(
+      '/thumbnail-pending',
+      { body: blob, headers: { 'Content-Type': 'image/png' } },
+      {
+        overwriteRoutes: false,
+        sendAsJson: false,
+      },
+    );
+
+    setup({ src: '/thumbnail-pending' });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(/thumbnail-pending/)).toHaveLength(1);
+    });
+
+    jest.advanceTimersByTime(1500);
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(/thumbnail-pending/)).toHaveLength(2);
+    });
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    expect(await screen.findByTestId('image-loader')).toHaveAttribute(
+      'src',
+      '/local_url',
     );
   });
 });

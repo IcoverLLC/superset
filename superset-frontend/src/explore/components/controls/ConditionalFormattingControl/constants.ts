@@ -16,7 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Comparator, ObjectFormattingEnum } from '@superset-ui/chart-controls';
+import {
+  Comparator,
+  CustomConditionalFormattingColorScheme,
+  ObjectFormattingEnum,
+} from '@superset-ui/chart-controls';
 import { t } from '@apache-superset/core/translation';
 
 export const operatorOptions = [
@@ -69,4 +73,24 @@ export const colorSchemeOptions = () => [
   { value: 'colorSuccess', label: t('success') },
   { value: 'colorWarning', label: t('alert') },
   { value: 'colorError', label: t('error') },
+  {
+    value: CustomConditionalFormattingColorScheme.ThreeLevels,
+    label: t('CF: Red Yellow Green'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.TwoLevels,
+    label: t('CF: Red Green'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.ReverseThreeLevels,
+    label: t('CF: Green Yellow Red'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.RedWhiteGreen,
+    label: t('CF: Red White Green'),
+  },
+  {
+    value: CustomConditionalFormattingColorScheme.ReverseTwoLevels,
+    label: t('CF: Green Red'),
+  },
 ];

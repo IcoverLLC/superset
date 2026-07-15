@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from parameterized import parameterized
 
-from superset.models.slice import id_or_uuid_filter, Slice
+from superset.models.slice import event_after_chart_changed, id_or_uuid_filter, Slice
 
 
 class TestSlice:
@@ -123,3 +123,37 @@ class TestSlice:
 
         result = slc.datasource_url()
         assert result is None
+
+    @patch("superset.models.slice.cache_chart_thumbnail.delay")
+    @patch("superset.models.slice.get_current_user", return_value="admin")
+    def test_event_after_chart_changed_triggers_thumbnail_task_by_default(
+        self, mock_get_current_user, mock_delay
+    ):
+        target = MagicMock(id=123)
+        mock_current_app = MagicMock()
+        mock_current_app.config = {}
+
+        with patch("superset.models.slice.current_app", mock_current_app):
+            event_after_chart_changed(None, None, target)
+
+        mock_get_current_user.assert_called_once_with()
+        mock_delay.assert_called_once_with(
+            current_user="admin",
+            chart_id=123,
+            force=True,
+        )
+
+    @patch("superset.models.slice.cache_chart_thumbnail.delay")
+    @patch("superset.models.slice.get_current_user", return_value="admin")
+    def test_event_after_chart_changed_skips_thumbnail_task_when_disabled(
+        self, mock_get_current_user, mock_delay
+    ):
+        target = MagicMock(id=123)
+        mock_current_app = MagicMock()
+        mock_current_app.config = {"DISABLE_CHART_THUMBNAILS": True}
+
+        with patch("superset.models.slice.current_app", mock_current_app):
+            event_after_chart_changed(None, None, target)
+
+        mock_get_current_user.assert_not_called()
+        mock_delay.assert_not_called()

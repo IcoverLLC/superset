@@ -37,7 +37,11 @@ from superset.utils.screenshots import (
     ScreenshotCachePayload,
 )
 from superset.utils.urls import get_url_path
-from superset.utils.webdriver import WebDriverSelenium
+from superset.utils.webdriver import (
+    PlaywrightTimeout,
+    WebDriverPlaywright,
+    WebDriverSelenium,
+)
 from tests.integration_tests.base_tests import SupersetTestCase
 from tests.integration_tests.conftest import with_feature_flags
 from tests.integration_tests.constants import ADMIN_USERNAME, ALPHA_USERNAME
@@ -186,6 +190,51 @@ class TestWebDriverSelenium(SupersetTestCase):
         app.config["SCREENSHOT_SELENIUM_ANIMATION_WAIT"] = 4
         webdriver.get_screenshot(url, "chart-container", user=user)
         assert mock_sleep.call_args_list[1] == call(4)
+
+
+class TestWebDriverPlaywright(SupersetTestCase):
+    def test_wait_for_dashboard_to_draw_falls_back_to_grid_container(self):
+        page = MagicMock()
+        chart_locator = MagicMock()
+        chart_container = MagicMock()
+        chart_locator.nth.return_value = chart_container
+        chart_container.wait_for.side_effect = PlaywrightTimeout("timed out")
+
+        grid_locator = MagicMock()
+        grid_container = MagicMock()
+        grid_locator.nth.return_value = grid_container
+
+        page.locator.side_effect = lambda selector: {
+            ".chart-container": chart_locator,
+            ".grid-container": grid_locator,
+        }[selector]
+
+        WebDriverPlaywright._wait_for_dashboard_to_draw(page, "http://example", 12)
+
+        chart_container.wait_for.assert_called_once_with(
+            state="visible",
+            timeout=12000,
+        )
+        grid_container.wait_for.assert_called_once_with(
+            state="visible",
+            timeout=12000,
+        )
+
+    def test_wait_for_dashboard_to_stabilize_uses_quiet_window(self):
+        page = MagicMock()
+
+        WebDriverPlaywright._wait_for_dashboard_to_stabilize(
+            page,
+            "http://example",
+            15,
+        )
+
+        args, kwargs = page.wait_for_function.call_args
+        assert "MutationObserver" in args[0]
+        assert "window.__supersetPlaywrightScreenshotState" in args[0]
+        assert kwargs["arg"] == 2000
+        assert kwargs["timeout"] == 15000
+        assert kwargs["polling"] == 200
 
 
 class TestThumbnails(SupersetTestCase):
@@ -354,6 +403,66 @@ class TestThumbnails(SupersetTestCase):
 
             rv = self.client.get(thumbnail_url)
             assert rv.status_code == 202
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.charts.api.cache_chart_thumbnail.delay")
+    def test_chart_thumbnail_returns_404_when_chart_thumbnails_disabled(
+        self, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            _, thumbnail_url = self._get_id_and_thumbnail_url(CHART_URL)
+            rv = self.client.get(thumbnail_url)
+
+        assert rv.status_code == 404
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.charts.api.cache_chart_thumbnail.delay")
+    def test_chart_cache_screenshot_returns_404_when_chart_thumbnails_disabled(
+        self, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            chart_id, _ = self._get_id_and_thumbnail_url(CHART_URL)
+            rv = self.client.get(
+                f"{CHART_URL}{chart_id}/cache_screenshot/",
+                query_string={"q": "(force:!f)"},
+            )
+
+        assert rv.status_code == 404
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @with_feature_flags(THUMBNAILS=True)
+    @patch("superset.dashboards.api.cache_dashboard_thumbnail.delay")
+    @patch.object(
+        DashboardScreenshot,
+        "get_from_cache_key",
+        return_value=ScreenshotCachePayload(),
+    )
+    def test_dashboard_thumbnail_still_triggers_async_when_chart_thumbnails_disabled(
+        self, mock_get_from_cache_key, mock_delay
+    ):
+        self.login(ADMIN_USERNAME)
+        with patch.dict(
+            "flask.current_app.config",
+            {"DISABLE_CHART_THUMBNAILS": True},
+        ):
+            _, thumbnail_url = self._get_id_and_thumbnail_url(DASHBOARD_URL)
+            rv = self.client.get(thumbnail_url)
+
+        assert rv.status_code == 202
+        mock_get_from_cache_key.assert_called()
+        mock_delay.assert_called_once()
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     @with_feature_flags(THUMBNAILS=True)

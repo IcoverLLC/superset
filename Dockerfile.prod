@@ -1,0 +1,18 @@
+FROM superset:prod-base
+
+USER root
+WORKDIR /app
+
+COPY docker/requirements-local.txt /app/docker/requirements-local.txt
+
+RUN /app/docker/apt-install.sh build-essential python3-dev \
+ && if command -v uv > /dev/null 2>&1; then \
+      uv pip install --no-cache-dir -r /app/docker/requirements-local.txt; \
+    else \
+      pip install --no-cache-dir -r /app/docker/requirements-local.txt; \
+    fi
+
+# Keep the final prod image healthy even if /app/docker contents differ from the base image.
+HEALTHCHECK CMD APP_ROOT="${SUPERSET_APP_ROOT:-}"; APP_ROOT="${APP_ROOT#/}"; curl -f "http://localhost:${SUPERSET_PORT:-8088}/${APP_ROOT:+$APP_ROOT/}health" || exit 1
+
+USER superset

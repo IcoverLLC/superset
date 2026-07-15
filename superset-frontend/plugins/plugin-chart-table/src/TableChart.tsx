@@ -39,6 +39,7 @@ import { FaSort } from 'react-icons/fa';
 import { FaSortDown as FaSortDesc } from 'react-icons/fa';
 import { FaSortUp as FaSortAsc } from 'react-icons/fa';
 import cx from 'classnames';
+import tinycolor from 'tinycolor2';
 import {
   DataRecord,
   DataRecordValue,
@@ -109,6 +110,50 @@ const ACTION_KEYS = {
   enter: 'Enter',
   spacebar: 'Spacebar',
   space: ' ',
+};
+
+const MAX_CROSS_FILTER_VALUES = 10;
+
+const getComparisonKeyPortion = (columnKey: string) => {
+  if (columnKey.startsWith('Main ')) {
+    return columnKey.substring('Main'.length);
+  }
+  if (columnKey.startsWith('# ')) {
+    return columnKey.substring('#'.length);
+  }
+  if (columnKey.startsWith('△ ')) {
+    return columnKey.substring('△'.length);
+  }
+  if (columnKey.startsWith('% ')) {
+    return columnKey.substring('%'.length);
+  }
+  return columnKey;
+};
+
+const DARK_THEME_CONDITIONAL_FORMATTING_MIX = 72;
+
+const getAdaptiveConditionalFormattingBackground = ({
+  backgroundColor,
+  themeBackgroundColor,
+}: {
+  backgroundColor?: string;
+  themeBackgroundColor?: string;
+}) => {
+  if (
+    !backgroundColor?.startsWith('#') ||
+    !themeBackgroundColor ||
+    !tinycolor(themeBackgroundColor).isDark()
+  ) {
+    return backgroundColor;
+  }
+
+  return tinycolor
+    .mix(
+      themeBackgroundColor,
+      backgroundColor,
+      DARK_THEME_CONDITIONAL_FORMATTING_MIX,
+    )
+    .toHex8String();
 };
 
 /**
@@ -428,9 +473,24 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   const getCrossFilterDataMask = useCallback(
-    (key: string, value: DataRecordValue) => {
-      let updatedFilters = { ...filters };
-      if (filters && isActiveFilterValue(key, value)) {
+    (
+      key: string,
+      value: DataRecordValue,
+      altPressed: boolean = false,
+    ) => {
+      const currentColumn = Object.keys(filters || {})[0];
+      let updatedFilters = { ...(filters || {}) };
+      const currentValues = ensureIsArray(updatedFilters[key]);
+      const isCurrentValueSelected =
+        currentColumn === key && isActiveFilterValue(key, value);
+
+      if (altPressed && currentColumn === key) {
+        updatedFilters = {
+          [key]: isCurrentValueSelected
+            ? currentValues.filter(currentValue => currentValue !== value)
+            : [...currentValues, value].slice(0, MAX_CROSS_FILTER_VALUES),
+        };
+      } else if (isCurrentValueSelected && currentValues.length === 1) {
         updatedFilters = {};
       } else {
         updatedFilters = {
@@ -493,7 +553,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 : null,
           },
         },
-        isCurrentValueSelected: isActiveFilterValue(key, value),
+        isCurrentValueSelected,
       };
     },
     [
@@ -506,11 +566,15 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   const toggleFilter = useCallback(
-    function toggleFilter(key: string, val: DataRecordValue) {
+    function toggleFilter(
+      key: string,
+      val: DataRecordValue,
+      altPressed: boolean = false,
+    ) {
       if (!emitCrossFilters) {
         return;
       }
-      setDataMask(getCrossFilterDataMask(key, val).dataMask);
+      setDataMask(getCrossFilterDataMask(key, val, altPressed).dataMask);
     },
     [emitCrossFilters, getCrossFilterDataMask, setDataMask],
   );
@@ -540,7 +604,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
     return columnsMeta.filter(({ label, key }) => {
       // Extract the key portion after the space, assuming the format is always "label key"
-      const keyPortion = key.substring(label.length);
+      const keyPortion = getComparisonKeyPortion(key);
       const isKeyHidded = hideComparisonKeys.includes(keyPortion);
       const isLableMain = label === main;
 
@@ -627,7 +691,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         // Check if element's label is one of the comparison labels
         if (comparisonLabels.includes(element.label)) {
           // Extract the key portion after the space, assuming the format is always "label key"
-          const keyPortion = element.key.substring(element.label.length);
+          const keyPortion = getComparisonKeyPortion(element.key);
 
           // If the key portion is not in the map, initialize it with the current index
           if (!resultMap[keyPortion]) {
@@ -859,12 +923,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       const label = config.customColumnName || originalLabel;
       let displayLabel = label;
 
-      const isComparisonColumn = ['#', '△', '%', t('Main')].includes(
-        column.label,
-      );
+      const isMainComparisonColumn = column.key.startsWith('Main ');
+      const isComparisonColumn =
+        isMainComparisonColumn || ['#', '△', '%'].includes(column.label);
 
       if (isComparisonColumn) {
-        if (column.label === t('Main')) {
+        if (isMainComparisonColumn) {
           displayLabel = config.customColumnName || column.originalLabel || '';
         } else if (config.customColumnName) {
           displayLabel =
@@ -918,7 +982,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       if (!isMetric && !isPercentMetric) {
         className += ' right-border-only';
       } else if (comparisonLabels.includes(label)) {
-        const groupinHeader = key.substring(label.length);
+        const groupinHeader = getComparisonKeyPortion(key);
         const columnsUnderHeader = groupHeaderColumns[groupinHeader] || [];
         if (i === columnsUnderHeader[columnsUnderHeader.length - 1]) {
           className += ' right-border-only';
@@ -944,7 +1008,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           let backgroundColorCellBar;
           let valueRangeFlag = true;
           let arrow = '';
-          const originKey = column.key.substring(column.label.length).trim();
+          const originKey = getComparisonKeyPortion(column.key).trim();
           if (!hasColumnColorFormatters && hasBasicColorFormatters) {
             backgroundColor =
               basicColorFormatters[row.index][originKey]?.backgroundColor;
@@ -1021,8 +1085,13 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           }
           const rowSurfaceColor =
             row.index % 2 === 0 ? theme.colorBgLayout : theme.colorBgBase;
+          const adaptiveBackgroundColor =
+            getAdaptiveConditionalFormattingBackground({
+              backgroundColor,
+              themeBackgroundColor: theme.colorBgContainer,
+            }) || backgroundColor;
           const resolvedTextColor = getTextColorForBackground(
-            { backgroundColor, color },
+            { backgroundColor: adaptiveBackgroundColor, color },
             rowSurfaceColor,
           );
           const StyledCell = styled.td`
@@ -1032,7 +1101,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             font-weight: ${color
               ? `${theme.fontWeightBold}`
               : `${theme.fontWeightNormal}`};
-            background: ${backgroundColor || undefined};
+            background: ${adaptiveBackgroundColor || undefined};
             padding-left: ${column.isChildColumn
               ? `${theme.sizeUnit * 5}px`
               : `${theme.sizeUnit}px`};
@@ -1097,10 +1166,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             title: typeof value === 'number' ? String(value) : undefined,
             onClick:
               emitCrossFilters && !valueRange && !isMetric
-                ? () => {
+                ? (event: MouseEvent) => {
                     // allow selecting text in a cell
                     if (!getSelectedText()) {
-                      toggleFilter(key, value);
+                      toggleFilter(key, value, event.altKey);
                     }
                   }
                 : undefined,

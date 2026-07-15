@@ -37,12 +37,12 @@ const CertificationSection = ({ isLoading }: CertificationSectionProps) => (
     <ModalFormField
       label={t('Certification details')}
       helperText={t(
-        'Any additional detail to show in the certification tooltip.',
+        'Shown in the certification tooltip. Supports line breaks, <br>, and Markdown such as **bold**.',
       )}
       bottomSpacing={false}
     >
       <FormItem name="certificationDetails" noStyle>
-        <Input type="text" disabled={isLoading} />
+        <Input.TextArea rows={3} disabled={isLoading} />
       </FormItem>
     </ModalFormField>
   </>

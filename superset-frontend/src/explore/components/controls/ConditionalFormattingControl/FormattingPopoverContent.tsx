@@ -22,6 +22,7 @@ import { styled } from '@apache-superset/core/theme';
 import { GenericDataType } from '@apache-superset/core/common';
 import {
   Comparator,
+  CustomConditionalFormattingColorScheme,
   MultipleValueComparators,
   ObjectFormattingEnum,
   ColorSchemeEnum,
@@ -93,6 +94,11 @@ const isOperatorMultiValue = (operator?: Comparator) =>
 const isOperatorNone = (operator?: Comparator) =>
   !operator || operator === Comparator.None;
 
+const isThreeColorScale = (colorScheme?: string) =>
+  colorScheme === CustomConditionalFormattingColorScheme.ThreeLevels ||
+  colorScheme === CustomConditionalFormattingColorScheme.ReverseThreeLevels ||
+  colorScheme === CustomConditionalFormattingColorScheme.RedWhiteGreen;
+
 const rulesRequired = [{ required: true, message: t('Required') }];
 
 type GetFieldValue = Pick<Required<FormProps>['form'], 'getFieldValue'>;
@@ -121,6 +127,13 @@ const shouldFormItemUpdate = (
     isOperatorNone(currentValues.operator) ||
   isOperatorMultiValue(prevValues.operator) !==
     isOperatorMultiValue(currentValues.operator);
+
+const shouldMidpointUpdate = (
+  prevValues: ConditionalFormattingConfig,
+  currentValues: ConditionalFormattingConfig,
+) =>
+  prevValues.colorScheme !== currentValues.colorScheme ||
+  prevValues.operator !== currentValues.operator;
 
 const renderOperator = ({
   showOnlyNone,
@@ -477,6 +490,25 @@ export const FormattingPopoverContent = ({
             </Col>
           </Row>
         )}
+      </FormItem>
+      <FormItem noStyle shouldUpdate={shouldMidpointUpdate}>
+        {({ getFieldValue }) =>
+          isThreeColorScale(getFieldValue('colorScheme')) ? (
+            <Row gutter={12}>
+              <Col span={12}>
+                <FormItem
+                  name="midpoint"
+                  label={t('Midpoint')}
+                  extra={t(
+                    'Optional midpoint within the applied range for three-color scales',
+                  )}
+                >
+                  <FullWidthInputNumber />
+                </FormItem>
+              </Col>
+            </Row>
+          ) : null
+        }
       </FormItem>
       <FormItem>
         <JustifyEnd>

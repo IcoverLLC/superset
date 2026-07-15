@@ -55,12 +55,14 @@ import ActivityTable from 'src/features/home/ActivityTable';
 import ChartTable from 'src/features/home/ChartTable';
 import SavedQueries from 'src/features/home/SavedQueries';
 import DashboardTable from 'src/features/home/DashboardTable';
+import DashboardWelcome from 'src/features/home/DashboardWelcome';
 
 const extensionsRegistry = getExtensionsRegistry();
 
 interface WelcomeProps {
   user: User;
   addDangerToast: (arg0: string) => void;
+  addSuccessToast: (arg0: string) => void;
 }
 
 export interface ActivityData {
@@ -104,7 +106,7 @@ const WelcomeContainer = styled.div`
   }
 
   .ant-card.ant-card-bordered {
-    border: 1px solid ${({ theme }) => theme.colorBorder};
+    border: 1px solid ${({ theme }) => theme.colorTextLabel};
   }
 
   .loading-cards {
@@ -146,7 +148,15 @@ export const LoadingCards = ({ cover }: LoadingProps) => (
   </CardContainer>
 );
 
-function Welcome({ user, addDangerToast }: WelcomeProps) {
+function getHomeThumbnailsLabel(locale: string) {
+  const translatedLabel = t('Thumbnails');
+  return locale.toLowerCase().startsWith('ru') &&
+    translatedLabel === 'Thumbnails'
+    ? '\u041c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b'
+    : translatedLabel;
+}
+
+function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   const canReadSavedQueries = userHasPermission(user, 'SavedQuery', 'can_read');
   const userid = user.userId;
   const id = userid!.toString(); // confident that user is not a guest user
@@ -183,6 +193,12 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   const WelcomeMainExtension = extensionsRegistry.get(
     'welcome.main.replacement',
   );
+  const useDashboardCatalogWelcome = isFeatureEnabled(
+    FeatureFlag.WelcomeDashboardCatalog,
+  );
+  const thumbnailsLabel = getHomeThumbnailsLabel(
+    bootstrapData.common.locale || 'en',
+  );
 
   const [otherTabTitle, otherTabFilters] = useMemo(() => {
     const lastTab = bootstrapData.common?.conf
@@ -209,7 +225,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   }, []);
 
   useEffect(() => {
-    if (!otherTabFilters || WelcomeMainExtension) {
+    if (!otherTabFilters || WelcomeMainExtension || useDashboardCatalogWelcome) {
       return;
     }
     const activeTab = getItem(LocalStorageKeys.HomepageActivityFilter, null);
@@ -242,7 +258,6 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         }),
       );
 
-    // Sets other activity data in parallel with recents api call
     const ownSavedQueryFilters = [
       {
         col: 'created_by',
@@ -290,7 +305,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
     ]).then(() => {
       setIsFetchingActivityData(false);
     });
-  }, [otherTabFilters]);
+  }, [otherTabFilters, useDashboardCatalogWelcome]);
 
   const handleToggle = () => {
     setChecked(!checked);
@@ -298,6 +313,9 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   };
 
   useEffect(() => {
+    if (useDashboardCatalogWelcome) {
+      return;
+    }
     if (!collapseState && queryData?.length) {
       setActiveState(activeState => [...activeState, '4']);
     }
@@ -309,20 +327,25 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         ...(queryData?.slice(0, 3) || []),
       ],
     }));
-  }, [chartData, queryData, dashboardData]);
+  }, [chartData, queryData, dashboardData, useDashboardCatalogWelcome]);
 
   useEffect(() => {
+    if (useDashboardCatalogWelcome) {
+      return;
+    }
     if (!collapseState && activityData?.[TableTab.Viewed]?.length) {
       setActiveState(activeState => ['1', ...activeState]);
     }
-  }, [activityData]);
+  }, [activityData, useDashboardCatalogWelcome]);
 
   const isRecentActivityLoading =
     !activityData?.[TableTab.Other] && !activityData?.[TableTab.Viewed];
 
   const menuData: SubMenuProps = {
     activeChild: 'Home',
-    name: t('Home'),
+    name: useDashboardCatalogWelcome
+      ? t('\u0413\u043b\u0430\u0432\u043d\u0430\u044f')
+      : t('Home'),
   };
 
   if (isThumbnailsEnabled) {
@@ -332,7 +355,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
           <WelcomeNav>
             <div className="switch">
               <Switch checked={checked} onClick={handleToggle} />
-              <span>{t('Thumbnails')}</span>
+              <span>{thumbnailsLabel}</span>
             </div>
           </WelcomeNav>
         ),
@@ -352,89 +375,95 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
       <WelcomeContainer>
         {WelcomeMessageExtension && <WelcomeMessageExtension />}
         {WelcomeTopExtension && <WelcomeTopExtension />}
-        {WelcomeMainExtension && <WelcomeMainExtension />}
-        {(!WelcomeTopExtension || !WelcomeMainExtension) && (
-          <>
-            <Collapse
-              activeKey={activeState}
-              onChange={handleCollapse}
-              ghost
-              items={[
-                {
-                  key: 'recents',
-                  label: t('Recents'),
-                  children:
-                    activityData &&
-                    (activityData[TableTab.Viewed] ||
-                      activityData[TableTab.Other] ||
-                      activityData[TableTab.Created]) &&
-                    activeChild !== 'Loading' ? (
-                      <ActivityTable
-                        user={{ userId: user.userId! }} // user is definitely not a guest user on this page
-                        activeChild={activeChild}
-                        setActiveChild={setActiveChild}
-                        activityData={activityData}
-                        isFetchingActivityData={isFetchingActivityData}
-                      />
-                    ) : (
-                      <LoadingCards />
-                    ),
-                },
-                {
-                  key: 'dashboards',
-                  label: t('Dashboards'),
-                  children:
-                    !dashboardData || isRecentActivityLoading ? (
-                      <LoadingCards cover={checked} />
-                    ) : (
-                      <DashboardTable
-                        user={user}
-                        mine={dashboardData}
-                        showThumbnails={checked}
-                        otherTabData={activityData?.[TableTab.Other]}
-                        otherTabFilters={otherTabFilters}
-                        otherTabTitle={otherTabTitle}
-                      />
-                    ),
-                },
-                {
-                  key: 'charts',
-                  label: t('Charts'),
-                  children:
-                    !chartData || isRecentActivityLoading ? (
-                      <LoadingCards cover={checked} />
-                    ) : (
-                      <ChartTable
-                        showThumbnails={checked}
-                        user={user}
-                        mine={chartData}
-                        otherTabData={activityData?.[TableTab.Other]}
-                        otherTabFilters={otherTabFilters}
-                        otherTabTitle={otherTabTitle}
-                      />
-                    ),
-                },
-                ...(canReadSavedQueries
-                  ? [
-                      {
-                        key: 'saved-queries',
-                        label: t('Saved queries'),
-                        children: !queryData ? (
-                          <LoadingCards cover={checked} />
-                        ) : (
-                          <SavedQueries
-                            showThumbnails={checked}
-                            user={user}
-                            mine={queryData}
-                            featureFlag={isThumbnailsEnabled}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </>
+        {WelcomeMainExtension ? (
+          <WelcomeMainExtension />
+        ) : useDashboardCatalogWelcome ? (
+          <DashboardWelcome
+            user={user}
+            showThumbnails={checked}
+            addDangerToast={addDangerToast}
+            addSuccessToast={addSuccessToast}
+          />
+        ) : (
+          <Collapse
+            activeKey={activeState}
+            onChange={handleCollapse}
+            ghost
+            items={[
+              {
+                key: 'recents',
+                label: t('Recents'),
+                children:
+                  activityData &&
+                  (activityData[TableTab.Viewed] ||
+                    activityData[TableTab.Other] ||
+                    activityData[TableTab.Created]) &&
+                  activeChild !== 'Loading' ? (
+                    <ActivityTable
+                      user={{ userId: user.userId! }}
+                      activeChild={activeChild}
+                      setActiveChild={setActiveChild}
+                      activityData={activityData}
+                      isFetchingActivityData={isFetchingActivityData}
+                    />
+                  ) : (
+                    <LoadingCards />
+                  ),
+              },
+              {
+                key: 'dashboards',
+                label: t('Dashboards'),
+                children:
+                  !dashboardData || isRecentActivityLoading ? (
+                    <LoadingCards cover={checked} />
+                  ) : (
+                    <DashboardTable
+                      user={user}
+                      mine={dashboardData}
+                      showThumbnails={checked}
+                      otherTabData={activityData?.[TableTab.Other]}
+                      otherTabFilters={otherTabFilters}
+                      otherTabTitle={otherTabTitle}
+                    />
+                  ),
+              },
+              {
+                key: 'charts',
+                label: t('Charts'),
+                children:
+                  !chartData || isRecentActivityLoading ? (
+                    <LoadingCards cover={checked} />
+                  ) : (
+                    <ChartTable
+                      showThumbnails={checked}
+                      user={user}
+                      mine={chartData}
+                      otherTabData={activityData?.[TableTab.Other]}
+                      otherTabFilters={otherTabFilters}
+                      otherTabTitle={otherTabTitle}
+                    />
+                  ),
+              },
+              ...(canReadSavedQueries
+                ? [
+                    {
+                      key: 'saved-queries',
+                      label: t('Saved queries'),
+                      children: !queryData ? (
+                        <LoadingCards cover={checked} />
+                      ) : (
+                        <SavedQueries
+                          showThumbnails={checked}
+                          user={user}
+                          mine={queryData}
+                          featureFlag={isThumbnailsEnabled}
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
       </WelcomeContainer>
     </>

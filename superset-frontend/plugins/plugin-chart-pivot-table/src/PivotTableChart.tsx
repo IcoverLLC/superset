@@ -23,6 +23,7 @@ import {
 } from 'react';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import { t } from '@apache-superset/core/translation';
+import tinycolor from 'tinycolor2';
 import {
   AdhocMetric,
   BinaryQueryObjectFilterClause,
@@ -230,6 +231,7 @@ export default function PivotTableChart(props: PivotTableProps) {
     groupbyRows: groupbyRowsRaw,
     groupbyColumns: groupbyColumnsRaw,
     metrics,
+    pinRowsBlock = false,
     colOrder,
     rowOrder,
     aggregateFunction,
@@ -595,6 +597,9 @@ export default function PivotTableChart(props: PivotTableProps) {
       cellBackgroundColor: theme.colorBgBase,
       cellTextColor: theme.colorPrimaryText,
       activeHeaderBackgroundColor: theme.colorPrimaryBg,
+      isDarkTheme: tinycolor(theme.colorBgContainer).isDark(),
+      themeBackgroundColor: theme.colorBgContainer,
+      pinRowsBlock,
     }),
     [
       colTotals,
@@ -608,6 +613,8 @@ export default function PivotTableChart(props: PivotTableProps) {
       theme.colorBgBase,
       theme.colorPrimaryBg,
       theme.colorPrimaryText,
+      theme.colorBgContainer,
+      pinRowsBlock,
       toggleFilter,
     ],
   );

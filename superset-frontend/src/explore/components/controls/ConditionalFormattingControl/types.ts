@@ -31,6 +31,7 @@ export type ConditionalFormattingConfig = {
   targetValue?: number;
   targetValueLeft?: number;
   targetValueRight?: number;
+  midpoint?: number;
   column?: string;
   colorScheme?: string;
   toAllRow?: boolean;

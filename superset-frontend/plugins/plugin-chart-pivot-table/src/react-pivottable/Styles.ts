@@ -35,8 +35,6 @@ export const Styles = styled.div<{ isDashboardEditMode: boolean }>`
 
     table thead {
       background-color: ${theme.colorBgBase};
-      position: ${isDashboardEditMode ? 'inherit' : 'sticky'};
-      top: 0;
     }
 
     table tbody tr {
@@ -50,6 +48,14 @@ export const Styles = styled.div<{ isDashboardEditMode: boolean }>`
       font-size: ${theme.fontSizeSM}px;
       padding: ${theme.sizeUnit}px;
       font-weight: ${theme.fontWeightNormal};
+    }
+
+    table.pvtTable thead tr th {
+      position: ${isDashboardEditMode ? 'inherit' : 'sticky'};
+      top: var(--pvt-header-top, 0px);
+      z-index: 3;
+      background-color: ${theme.colorBgBase};
+      background-clip: border-box;
     }
 
     table.pvtTable tbody tr.pvtRowTotals {
@@ -95,6 +101,32 @@ export const Styles = styled.div<{ isDashboardEditMode: boolean }>`
       border-right: none;
     }
 
+    table.pvtTable.pvtTable--pin-rows [data-sticky-start] {
+      position: sticky;
+      left: var(--pvt-sticky-left, 0px);
+      z-index: 2;
+      background-color: ${theme.colorBgBase};
+      background-clip: border-box;
+    }
+
+    table.pvtTable.pvtTable--pin-rows thead [data-sticky-start] {
+      top: var(--pvt-sticky-top, 0px);
+      z-index: 4;
+    }
+
+    table.pvtTable.pvtTable--pin-rows
+      tbody
+      tr.pvtRowTotals
+      [data-sticky-start] {
+      z-index: 5;
+    }
+
+    table.pvtTable.pvtTable--pin-rows [data-sticky-boundary='true'] {
+      box-shadow:
+        1px 0 0 ${theme.colorSplit},
+        12px 0 16px -14px ${theme.colorFillSecondary};
+    }
+
     table.pvtTable tr th.active {
       background-color: ${theme.colorPrimaryBg};
     }
@@ -109,13 +141,33 @@ export const Styles = styled.div<{ isDashboardEditMode: boolean }>`
     }
 
     table.pvtTable tbody tr td {
-      color: ${theme.colorPrimaryText};
+      color: ${theme.colorText};
       padding: ${theme.sizeUnit}px;
       background-color: ${theme.colorBgBase};
       border-top: 1px solid ${theme.colorSplit};
       border-left: 1px solid ${theme.colorSplit};
       vertical-align: top;
       text-align: right;
+    }
+
+    table.pvtTable tbody tr:hover > th,
+    table.pvtTable tbody tr:hover > td {
+      background-color: ${theme.colorFillTertiary} !important;
+      color: ${theme.colorText} !important;
+    }
+
+    table.pvtTable tbody tr:hover > th:hover,
+    table.pvtTable tbody tr:hover > td:hover {
+      background-color: ${theme.colorPrimaryBg} !important;
+      color: ${theme.colorText} !important;
+    }
+
+    table.pvtTable tbody tr.pvtRowSelected > th,
+    table.pvtTable tbody tr.pvtRowSelected > td,
+    table.pvtTable tbody tr.pvtRowSelected > th:hover,
+    table.pvtTable tbody tr.pvtRowSelected > td:hover {
+      background-color: ${theme.colorPrimaryBg} !important;
+      color: ${theme.colorText} !important;
     }
 
     table.pvtTable tbody tr th.pvtRowLabel {

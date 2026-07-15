@@ -186,8 +186,10 @@ export enum FilterPlugins {
   Select = 'filter_select',
   Range = 'filter_range',
   Time = 'filter_time',
+  TimeV2 = 'filter_time_v2',
   TimeColumn = 'filter_timecolumn',
   TimeGrain = 'filter_timegrain',
+  TimeGrainV2 = 'filter_timegrain_v2',
 }
 
 export enum ChartCustomizationPlugins {

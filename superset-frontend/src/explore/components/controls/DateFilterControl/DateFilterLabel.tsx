@@ -52,18 +52,26 @@ import {
 import {
   CommonFrame,
   CalendarFrame,
+  CalendarRangeFrame,
   CustomFrame,
   AdvancedFrame,
   DateLabel,
 } from './components';
 import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
+import {
+  formatCalendarRangeLabel,
+  formatActualRangeForTooltip,
+  getDefaultV2CalendarRangeValue,
+  normalizeTimeRangeForCalendarFormat,
+  parseCalendarRange,
+} from './utils/dateFilterUtils';
 
 const StyledRangeType = styled(Select)`
   width: 272px;
 `;
 
-const ContentStyleWrapper = styled.div`
-  ${({ theme }) => css`
+const ContentStyleWrapper = styled.div<{ $variant?: 'default' | 'v2' }>`
+  ${({ theme, $variant }) => css`
     .ant-row {
       margin-top: 8px;
     }
@@ -74,7 +82,7 @@ const ContentStyleWrapper = styled.div`
     }
 
     .ant-divider-horizontal {
-      margin: 16px 0;
+      margin: ${$variant === 'v2' ? '12px 0' : '16px 0'};
     }
 
     .control-label {
@@ -100,7 +108,29 @@ const ContentStyleWrapper = styled.div`
     }
 
     .footer {
+      margin-bottom: ${$variant === 'v2' ? '-4px' : 0};
+      margin-top: ${$variant === 'v2' ? '-2px' : 0};
       text-align: right;
+    }
+
+    .selected-range {
+      display: flex;
+      align-items: flex-start;
+      gap: ${theme.sizeUnit}px;
+    }
+
+    .selected-range-label {
+      font-style: normal;
+      font-weight: ${theme.fontWeightStrong};
+      font-size: 15px;
+      line-height: 24px;
+      white-space: nowrap;
+    }
+
+    .selected-range-value {
+      font-size: 15px;
+      line-height: 24px;
+      word-break: break-word;
     }
   `}
 `;
@@ -147,14 +177,22 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     onOpenPopover = noOp,
     onClosePopover = noOp,
     isOverflowingFilterBar = false,
+    variant = 'default',
+    calendarFormat = 'standard',
   } = props;
   const defaultTimeFilter = useDefaultTimeFilter();
 
-  const value = props.value ?? defaultTimeFilter;
+  const value = normalizeTimeRangeForCalendarFormat(
+    props.value ?? defaultTimeFilter,
+    calendarFormat,
+  );
   const [actualTimeRange, setActualTimeRange] = useState<string>(value);
 
   const [show, setShow] = useState<boolean>(false);
-  const guessedFrame = useMemo(() => guessFrame(value), [value]);
+  const guessedFrame = useMemo(
+    () => guessFrame(value, variant),
+    [value, variant],
+  );
   const [frame, setFrame] = useState<FrameType>(guessedFrame);
   const [lastFetchedTimeRange, setLastFetchedTimeRange] = useState(value);
   const [timeRangeValue, setTimeRangeValue] = useState(value);
@@ -177,6 +215,8 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         setValidTimeRange(false);
         setTooltipTitle(value || null);
       } else {
+        const tooltipRange =
+          variant === 'v2' ? formatActualRangeForTooltip(actualRange) : actualRange;
         /*
           HRT == human readable text
           ADR == actual datetime range
@@ -188,7 +228,18 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           | tooltip      | ADR  | ADR      | HRT    | HRT      |   ADR     |
           +--------------+------+----------+--------+----------+-----------+
         */
-        if (
+        const calendarRange =
+          variant === 'v2' ? parseCalendarRange(value) : undefined;
+        if (calendarRange?.matchedFlag) {
+          const formattedRange = formatCalendarRangeLabel(
+            calendarRange.start,
+            calendarRange.end,
+          );
+          setActualTimeRange(formattedRange);
+          setTooltipTitle(
+            getTooltipTitle(labelIsTruncated, formattedRange, tooltipRange),
+          );
+        } else if (
           guessedFrame === 'Common' ||
           guessedFrame === 'Calendar' ||
           guessedFrame === 'Current' ||
@@ -196,12 +247,12 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         ) {
           setActualTimeRange(value);
           setTooltipTitle(
-            getTooltipTitle(labelIsTruncated, value, actualRange),
+            getTooltipTitle(labelIsTruncated, value, tooltipRange),
           );
         } else {
           setActualTimeRange(actualRange || '');
           setTooltipTitle(
-            getTooltipTitle(labelIsTruncated, actualRange, value),
+            getTooltipTitle(labelIsTruncated, tooltipRange, value),
           );
         }
         setValidTimeRange(true);
@@ -209,7 +260,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       setLastFetchedTimeRange(value);
       setEvalResponse(actualRange || value);
     });
-  }, [guessedFrame, labelIsTruncated, labelRef, value]);
+  }, [guessedFrame, labelIsTruncated, labelRef, value, variant]);
 
   useDebouncedEffect(
     () => {
@@ -237,13 +288,19 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   );
 
   function onSave() {
-    onChange(timeRangeValue);
+    onChange(
+      normalizeTimeRangeForCalendarFormat(timeRangeValue, calendarFormat),
+    );
     setShow(false);
     onClosePopover();
   }
 
   function onOpen() {
-    setTimeRangeValue(value);
+    setTimeRangeValue(
+      variant === 'v2' && value === NO_TIME_RANGE
+        ? getDefaultV2CalendarRangeValue(calendarFormat)
+        : value,
+    );
     setFrame(guessedFrame);
     setShow(true);
     onOpenPopover();
@@ -267,60 +324,109 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   function onChangeFrame(value: FrameType) {
     if (value === NO_TIME_RANGE) {
       setTimeRangeValue(NO_TIME_RANGE);
+    } else if (value === 'CalendarV2' && timeRangeValue === NO_TIME_RANGE) {
+      setTimeRangeValue(getDefaultV2CalendarRangeValue(calendarFormat));
     }
     setFrame(value);
   }
 
+  function onReset() {
+    setTimeRangeValue(NO_TIME_RANGE);
+    setFrame(variant === 'v2' ? 'CalendarV2' : 'No filter');
+    setEvalResponse(NO_TIME_RANGE);
+    setLastFetchedTimeRange(NO_TIME_RANGE);
+    setValidTimeRange(true);
+  }
+
+  const frameOptions = FRAME_OPTIONS;
+
   const overlayContent = (
-    <ContentStyleWrapper>
-      <div className="control-label">{t('Range type')}</div>
-      <StyledRangeType
-        ariaLabel={t('Range type')}
-        options={FRAME_OPTIONS}
-        value={frame}
-        onChange={onChangeFrame}
-      />
-      {frame !== 'No filter' && <Divider />}
-      {frame === 'Common' && (
+    <ContentStyleWrapper $variant={variant}>
+      {variant !== 'v2' && (
+        <>
+          <div className="control-label">
+            {t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
+          </div>
+          <StyledRangeType
+            ariaLabel={t('\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b')}
+            options={frameOptions}
+            value={frame}
+            onChange={onChangeFrame}
+          />
+        </>
+      )}
+      {variant !== 'v2' && frame !== 'No filter' && <Divider />}
+      {variant === 'v2' && (
+        <CalendarRangeFrame
+          value={timeRangeValue}
+          onChange={setTimeRangeValue}
+          isOverflowingFilterBar={isOverflowingFilterBar}
+          calendarFormat={calendarFormat}
+        />
+      )}
+      {variant !== 'v2' && frame === 'Common' && (
         <CommonFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Calendar' && (
+      {variant !== 'v2' && frame === 'Calendar' && (
         <CalendarFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Current' && (
+      {variant !== 'v2' && frame === 'Current' && (
         <CurrentCalendarFrame
           value={timeRangeValue}
           onChange={setTimeRangeValue}
         />
       )}
-      {frame === 'Advanced' && (
+      {variant !== 'v2' && frame === 'Advanced' && (
         <AdvancedFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Custom' && (
+      {variant !== 'v2' && frame === 'Custom' && (
         <CustomFrame
           value={timeRangeValue}
           onChange={setTimeRangeValue}
           isOverflowingFilterBar={isOverflowingFilterBar}
         />
       )}
-      {frame === 'No filter' && <div data-test={DateFilterTestKey.NoFilter} />}
-      <Divider />
+      {variant !== 'v2' && frame === 'No filter' && (
+        <div data-test={DateFilterTestKey.NoFilter} />
+      )}
+      {variant !== 'v2' && <Divider />}
       <div>
-        <div className="section-title">{t('Actual time range')}</div>
-        {validTimeRange && (
-          <div>
-            {evalResponse === 'No filter' ? t('No filter') : evalResponse}
-          </div>
-        )}
+        {validTimeRange &&
+          variant !== 'v2' && (
+            <>
+              <div className="section-title">{t('Actual time range')}</div>
+              <div>
+                {evalResponse === 'No filter' ? t('No filter') : evalResponse}
+              </div>
+            </>
+          )}
         {!validTimeRange && (
-          <IconWrapper className="warning">
-            <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
-            <span className="text error">{evalResponse}</span>
-          </IconWrapper>
+          <>
+            {variant !== 'v2' && (
+              <div className="section-title">{t('Actual time range')}</div>
+            )}
+            {variant !== 'v2' && (
+              <IconWrapper className="warning">
+                <Icons.ExclamationCircleOutlined iconColor={theme.colorError} />
+                <span className="text error">{evalResponse}</span>
+              </IconWrapper>
+            )}
+          </>
         )}
       </div>
       <Divider />
       <div className="footer">
+        {variant === 'v2' && (
+          <Button
+            buttonStyle="secondary"
+            cta
+            key="reset"
+            onClick={onReset}
+            data-test={DateFilterTestKey.ResetButton}
+        >
+          {t('\u0421\u0411\u0420\u041e\u0421\u0418\u0422\u042c')}
+        </Button>
+      )}
         <Button
           buttonStyle="secondary"
           cta
@@ -328,7 +434,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           onClick={onHide}
           data-test={DateFilterTestKey.CancelButton}
         >
-          {t('CANCEL')}
+          {t('\u041e\u0422\u041c\u0415\u041d\u0418\u0422\u042c')}
         </Button>
         <Button
           buttonStyle="primary"
@@ -338,7 +444,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           onClick={onSave}
           data-test={DateFilterTestKey.ApplyButton}
         >
-          {t('APPLY')}
+          {t('\u041f\u0420\u0418\u041c\u0415\u041d\u0418\u0422\u042c')}
         </Button>
       </div>
     </ContentStyleWrapper>
@@ -351,15 +457,24 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
       placement="right"
       content={overlayContent}
       title={
-        <IconWrapper>
-          <Icons.EditOutlined />
-          <span className="text">{t('Edit time range')}</span>
-        </IconWrapper>
+        variant === 'v2' ? undefined : (
+          <IconWrapper>
+            <Icons.EditOutlined />
+            <span className="text">{t('Edit time range')}</span>
+          </IconWrapper>
+        )
       }
       defaultOpen={show}
       open={show}
       onOpenChange={toggleOverlay}
-      overlayStyle={{ width: '600px' }}
+      overlayStyle={
+        variant === 'v2'
+          ? {
+              width: 'fit-content',
+              maxWidth: 'calc(100vw - 32px)',
+            }
+          : { width: '600px' }
+      }
       destroyTooltipOnHide
       getPopupContainer={nodeTrigger =>
         isOverflowingFilterBar

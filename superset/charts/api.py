@@ -21,7 +21,7 @@ from io import BytesIO
 from typing import Any, cast, Optional
 from zipfile import is_zipfile, ZipFile
 
-from flask import redirect, request, Response, send_file, url_for
+from flask import current_app, redirect, request, Response, send_file, url_for
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
@@ -627,6 +627,9 @@ class ChartRestApi(BaseSupersetModelRestApi):
         if not chart:
             return self.response_404()
 
+        if current_app.config.get("DISABLE_CHART_THUMBNAILS", False):
+            return self.response_404()
+
         chart_url = get_url_path("Superset.slice", slice_id=chart.id)
         screenshot_obj = ChartScreenshot(chart_url, chart.digest)
         cache_key = screenshot_obj.get_cache_key(window_size, thumb_size)
@@ -763,6 +766,9 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
+            return self.response_404()
+
+        if current_app.config.get("DISABLE_CHART_THUMBNAILS", False):
             return self.response_404()
 
         current_user = get_current_user()

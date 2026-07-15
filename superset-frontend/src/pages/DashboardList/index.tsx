@@ -28,12 +28,9 @@ import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
 import {
-  createFetchRelated,
-  createFetchOwners,
   createErrorHandler,
   handleDashboardDelete,
 } from 'src/views/CRUD/utils';
-import { OWNER_OPTION_FILTER_PROPS } from 'src/features/owners/OwnerSelectLabel';
 import { useListViewResource, useFavoriteStatus } from 'src/views/CRUD/hooks';
 import {
   CertifiedBadge,
@@ -46,37 +43,32 @@ import {
 } from '@superset-ui/core/components';
 import {
   FacePile,
-  TagType,
   TagsList,
+  type TagType,
   ModifiedInfo,
   ImportModal as ImportModelsModal,
   ListView,
-  ListViewFilterOperator as FilterOperator,
   type ListViewProps,
-  type ListViewFilter,
   type ListViewFilters,
 } from 'src/components';
 import handleResourceExport from 'src/utils/export';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import { dangerouslyGetItemDoNotUse } from 'src/utils/localStorageHelpers';
-import Owner from 'src/types/Owner';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { Icons } from '@superset-ui/core/components/Icons';
 import PropertiesModal from 'src/dashboard/components/PropertiesModal';
 
-import Dashboard from 'src/dashboard/containers/Dashboard';
 import {
   Dashboard as CRUDDashboard,
   QueryObjectColumns,
 } from 'src/views/CRUD/types';
 import { TagTypeEnum } from 'src/components/Tag/TagType';
-import { loadTags } from 'src/components/Tag/utils';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
+import { getDashboardListFilters } from 'src/features/dashboards/listFilters';
 import { DashboardStatus } from 'src/features/dashboards/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { navigateTo } from 'src/utils/navigationUtils';
-import { WIDER_DROPDOWN_WIDTH } from 'src/components/ListView/utils';
 
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
@@ -100,20 +92,6 @@ interface DashboardListProps {
     firstName: string;
     lastName: string;
   };
-}
-
-export interface Dashboard {
-  changed_by_name: string;
-  changed_on_delta_humanized: string;
-  changed_by: string;
-  dashboard_title: string;
-  id: number;
-  published: boolean;
-  url: string;
-  thumbnail_url: string;
-  owners: Owner[];
-  tags: TagType[];
-  created_by: object;
 }
 
 const Actions = styled.div`
@@ -163,7 +141,7 @@ function DashboardList(props: DashboardListProps) {
     fetchData,
     toggleBulkSelect,
     refreshData,
-  } = useListViewResource<Dashboard>(
+  } = useListViewResource<CRUDDashboard>(
     'dashboard',
     t('dashboard'),
     addDangerToast,
@@ -180,7 +158,7 @@ function DashboardList(props: DashboardListProps) {
     addDangerToast,
   );
 
-  const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(
+  const [dashboardToEdit, setDashboardToEdit] = useState<CRUDDashboard | null>(
     null,
   );
   const [dashboardToDelete, setDashboardToDelete] =
@@ -224,11 +202,11 @@ function DashboardList(props: DashboardListProps) {
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
 
-  const openDashboardEditModal = useCallback((dashboard: Dashboard) => {
+  const openDashboardEditModal = useCallback((dashboard: CRUDDashboard) => {
     setDashboardToEdit(dashboard);
   }, []);
 
-  function handleDashboardEdit(edits: Dashboard) {
+  function handleDashboardEdit(edits: CRUDDashboard) {
     return SupersetClient.get({
       endpoint: `/api/v1/dashboard/${edits.id}`,
     }).then(
@@ -277,7 +255,7 @@ function DashboardList(props: DashboardListProps) {
   }
 
   const handleBulkDashboardExport = useCallback(
-    async (dashboardsToExport: Dashboard[]) => {
+    async (dashboardsToExport: CRUDDashboard[]) => {
       const ids = dashboardsToExport.map(({ id }) => id);
       setPreparingExport(true);
       try {
@@ -294,7 +272,7 @@ function DashboardList(props: DashboardListProps) {
     [addDangerToast],
   );
 
-  function handleBulkDashboardDelete(dashboardsToDelete: Dashboard[]) {
+  function handleBulkDashboardDelete(dashboardsToDelete: CRUDDashboard[]) {
     return SupersetClient.delete({
       endpoint: `/api/v1/dashboard/?q=${rison.encode(
         dashboardsToDelete.map(({ id }) => id),
@@ -350,6 +328,8 @@ function DashboardList(props: DashboardListProps) {
                 <CertifiedBadge
                   certifiedBy={certifiedBy}
                   details={certificationDetails}
+                  headline={dashboardTitle}
+                  showCertifiedBy={false}
                 />{' '}
               </>
             )}
@@ -533,118 +513,13 @@ function DashboardList(props: DashboardListProps) {
     ],
   );
 
-  const favoritesFilter: ListViewFilter = useMemo(
-    () => ({
-      Header: t('Favorite'),
-      key: 'favorite',
-      id: 'id',
-      urlDisplay: 'favorite',
-      input: 'select',
-      operator: FilterOperator.DashboardIsFav,
-      unfilteredLabel: t('Any'),
-      selects: [
-        { label: t('Yes'), value: true },
-        { label: t('No'), value: false },
-      ],
-    }),
-    [],
-  );
-
   const filters: ListViewFilters = useMemo(() => {
-    const filtersList = [
-      {
-        Header: t('Name'),
-        key: 'search',
-        id: 'dashboard_title',
-        input: 'search',
-        operator: FilterOperator.TitleOrSlug,
-      },
-      {
-        Header: t('Status'),
-        key: 'published',
-        id: 'published',
-        input: 'select',
-        operator: FilterOperator.Equals,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Published'), value: true },
-          { label: t('Draft'), value: false },
-        ],
-      },
-      ...(isFeatureEnabled(FeatureFlag.TaggingSystem) && canReadTag
-        ? [
-            {
-              Header: t('Tag'),
-              key: 'tags',
-              id: 'tags',
-              input: 'select',
-              operator: FilterOperator.DashboardTagById,
-              unfilteredLabel: t('All'),
-              fetchSelects: loadTags,
-            },
-          ]
-        : []),
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.RelationManyMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchOwners(
-          'dashboard',
-          createErrorHandler(errMsg =>
-            addDangerToast(
-              t(
-                'An error occurred while fetching dashboard owner values: %s',
-                errMsg,
-              ),
-            ),
-          ),
-          user,
-        ),
-        optionFilterProps: OWNER_OPTION_FILTER_PROPS,
-        paginate: true,
-        dropdownStyle: { minWidth: WIDER_DROPDOWN_WIDTH },
-      },
-      ...(user?.userId ? [favoritesFilter] : []),
-      {
-        Header: t('Certified'),
-        key: 'certified',
-        id: 'id',
-        urlDisplay: 'certified',
-        input: 'select',
-        operator: FilterOperator.DashboardIsCertified,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Yes'), value: true },
-          { label: t('No'), value: false },
-        ],
-      },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.RelationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dashboard',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-        dropdownStyle: { minWidth: WIDER_DROPDOWN_WIDTH },
-      },
-    ] as ListViewFilters;
-    return filtersList;
-  }, [addDangerToast, canReadTag, favoritesFilter, user]);
+    return getDashboardListFilters({
+      addDangerToast,
+      canReadTag,
+      user: props.user,
+    });
+  }, [addDangerToast, canReadTag, props.user]);
 
   const sortTypes = [
     {
@@ -668,7 +543,7 @@ function DashboardList(props: DashboardListProps) {
   ];
 
   const renderCard = useCallback(
-    (dashboard: Dashboard) => (
+    (dashboard: CRUDDashboard) => (
       <DashboardCard
         dashboard={dashboard}
         hasPerm={hasPerm}
@@ -800,7 +675,7 @@ function DashboardList(props: DashboardListProps) {
                   title={t('Please confirm')}
                 />
               )}
-              <ListView<Dashboard>
+              <ListView<CRUDDashboard>
                 bulkActions={bulkActions}
                 bulkSelectEnabled={bulkSelectEnabled}
                 cardSortSelectOptions={sortTypes}

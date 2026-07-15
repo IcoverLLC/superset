@@ -88,6 +88,9 @@ export interface QueryResultInterface {
 export interface SingleQueryResultPaneProp extends QueryResultInterface {
   // {datasource.id}__{datasource.type}, eg: 1__table
   datasourceId?: string;
+  dataSize?: number;
+  columnValueKeyMap?: Record<string, string>;
+  // reload OriginalFormattedTimeColumns from localStorage when isVisible is true
   isVisible: boolean;
   canDownload: boolean;
   // Optional map of column/metric name -> verbose label

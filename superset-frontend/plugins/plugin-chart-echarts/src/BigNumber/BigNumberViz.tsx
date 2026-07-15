@@ -510,6 +510,8 @@ function BigNumberVis({
 
 const StyledBigNumberVis = styled(BigNumberVis)`
   ${({ theme }) => `
+    scrollbar-width: thin;
+    scrollbar-color: ${theme.colorFillSecondary} ${theme.colorFillQuaternary};
     font-family: ${theme.fontFamily};
     position: relative;
     display: flex;
@@ -526,6 +528,8 @@ const StyledBigNumberVis = styled(BigNumberVis)`
       flex-direction: column;
       justify-content: center;
       align-items: flex-start;
+      scrollbar-width: thin;
+      scrollbar-color: ${theme.colorFillSecondary} ${theme.colorFillQuaternary};
       .alert {
         font-size: ${theme.fontSizeSM};
         margin: -0.5em 0 0.4em;
@@ -533,6 +537,33 @@ const StyledBigNumberVis = styled(BigNumberVis)`
         padding: ${theme.sizeUnit}px;
         border-radius: ${theme.borderRadius}px;
       }
+    }
+
+    &::-webkit-scrollbar,
+    .text-container::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    &::-webkit-scrollbar-track,
+    .text-container::-webkit-scrollbar-track {
+      background: ${theme.colorFillQuaternary};
+    }
+
+    &::-webkit-scrollbar-thumb,
+    .text-container::-webkit-scrollbar-thumb {
+      background: ${theme.colorFillSecondary};
+      border-radius: ${theme.borderRadiusSM}px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover,
+    .text-container::-webkit-scrollbar-thumb:hover {
+      background: ${theme.colorFillTertiary};
+    }
+
+    &::-webkit-scrollbar-corner,
+    .text-container::-webkit-scrollbar-corner {
+      background: ${theme.colorFillQuaternary};
     }
 
     .kicker {

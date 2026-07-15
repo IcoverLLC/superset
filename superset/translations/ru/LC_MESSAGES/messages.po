@@ -7732,8 +7732,8 @@ msgstr "ПН"
 # текущий момент, если включить этот перевод, значения в этом столбце
 # пропадают из визуализации.
 #, fuzzy
-msgid "Main"
-msgstr "Значение"
+# msgid "Main"
+# msgstr "Значение"
 
 msgid ""
 "Make sure that the controls are configured properly and the datasource "

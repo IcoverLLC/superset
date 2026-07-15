@@ -272,6 +272,26 @@ describe('plugin-chart-table', () => {
       expect(percentMetricConfig?.config).toEqual({ d3NumberFormat: '.3f' });
     });
 
+
+    test('should read main comparison column config from localized key fallback', () => {
+      const transformedProps = transformProps({
+        ...testData.comparisonWithConfig,
+        rawFormData: {
+          ...testData.comparisonWithConfig.rawFormData,
+          column_config: {
+            'Значение metric_1': { customColumnName: '123' },
+          },
+        },
+      });
+
+      const mainMetricConfig = transformedProps.columns.find(
+        col => col.key === 'Main metric_1',
+      );
+
+      expect(mainMetricConfig).toBeDefined();
+      expect(mainMetricConfig?.config).toEqual({ customColumnName: '123' });
+    });
+
     test('should correctly format comparison columns using getComparisonColFormatter', () => {
       const transformedProps = transformProps(testData.comparisonWithConfig);
       const comparisonColumns = transformedProps.columns.filter(

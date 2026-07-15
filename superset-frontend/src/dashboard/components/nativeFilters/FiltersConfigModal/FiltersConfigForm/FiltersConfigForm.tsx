@@ -257,16 +257,32 @@ export interface FiltersConfigFormProps {
 }
 
 const FILTERS_WITH_ADHOC_FILTERS = ['filter_select', 'filter_range'];
+const TIME_FILTER_TYPES = ['filter_time', 'filter_time_v2'];
 
 // TODO: Rename the filter plugins and remove this mapping
 const FILTER_TYPE_NAME_MAPPING = {
   [t('Select filter')]: t('Value'),
   [t('Range filter')]: t('Numerical range'),
   [t('Time filter')]: t('Time range'),
+  [t('Time filter v2')]: t('Time range v2'),
   [t('Time column')]: t('Time column'),
   [t('Time grain')]: t('Time grain'),
+  [t('Time grain v2')]: t('Time grain v2'),
   [t('Group By')]: t('Group by'),
 };
+
+const TIME_FILTER_V2_CALENDAR_FORMAT_OPTIONS = [
+  { value: 'standard', label: t('Standard') },
+  { value: 'monthly', label: t('Monthly') },
+];
+
+const getTimeGrainOptions = (dataset?: Record<string, any>) =>
+  ((dataset?.time_grain_sqla as [string | null, string][] | undefined) || [])
+    .filter(([value]) => !!value)
+    .map(([value, label]) => ({
+      value: value as string,
+      label,
+    }));
 
 /**
  * The configuration form for a specific filter.
@@ -388,6 +404,16 @@ const FiltersConfigForm = (
   };
 
   const datasetId = getDatasetId();
+  const selectedDataset = useMemo(
+    () =>
+      datasetDetails ||
+      Object.values(loadedDatasets).find(dataset => dataset.id === datasetId),
+    [datasetDetails, datasetId, loadedDatasets],
+  );
+  const timeGrainOptions = useMemo(
+    () => getTimeGrainOptions(selectedDataset),
+    [selectedDataset],
+  );
 
   const formChanged = useCallback(() => {
     form.setFields([
@@ -596,6 +622,11 @@ const FiltersConfigForm = (
     sort = formFilter.controlValues.sortAscending;
   }
 
+  const timeFilterV2CalendarFormat =
+    formFilter?.controlValues?.calendarFormat ||
+    filterToEdit?.controlValues?.calendarFormat ||
+    'standard';
+
   const showDefaultValue = isChartCustomization
     ? !hasDataset || !isDataDirty
     : !hasDataset ||
@@ -664,7 +695,7 @@ const FiltersConfigForm = (
   );
   const hasAvailableFilters = availableFilters.length > 0;
   const hasTimeDependency = availableFilters
-    .filter(filter => filter.type === 'filter_time')
+    .filter(filter => TIME_FILTER_TYPES.includes(filter.type || ''))
     .some(filter => dependencies?.includes(filter.value));
 
   const extensionsRegistry = getExtensionsRegistry();
@@ -698,6 +729,7 @@ const FiltersConfigForm = (
             'schema',
             'sql',
             'table_name',
+            'time_grain_sqla',
           ],
         })}`,
       })
@@ -959,7 +991,7 @@ const FiltersConfigForm = (
                     </StyledFormItem>
                   )}
                 </StyledContainer>
-                {formFilter?.filterType === 'filter_time' && (
+                {TIME_FILTER_TYPES.includes(formFilter?.filterType || '') && (
                   <FilterTypeInfo expanded={expanded}>
                     {t(`Dashboard time range filters apply to temporal columns defined in
           the filter section of each chart. Add temporal columns to the chart
@@ -1039,7 +1071,7 @@ const FiltersConfigForm = (
                   expandIconPosition="end"
                   key={`native-filter-config-${filterId}`}
                   items={[
-                    ...(itemTypeField !== 'filter_time'
+                    ...(!TIME_FILTER_TYPES.includes(itemTypeField)
                       ? [
                           {
                             key: `${filterId}-${FilterPanels.configuration.key}`,
@@ -1469,6 +1501,91 @@ const FiltersConfigForm = (
                       forceRender: true,
                       children: (
                         <>
+                          {formFilter?.filterType === 'filter_time_v2' && (
+                            <StyledRowFormItem
+                              expanded={expanded}
+                              name={[
+                                'filters',
+                                filterId,
+                                'controlValues',
+                                'calendarFormat',
+                              ]}
+                              initialValue={timeFilterV2CalendarFormat}
+                              label={
+                                <StyledLabel>{t('Calendar format')}</StyledLabel>
+                              }
+                            >
+                              <Radio.GroupWrapper
+                                options={TIME_FILTER_V2_CALENDAR_FORMAT_OPTIONS}
+                                onChange={value => {
+                                  const previous =
+                                    form.getFieldValue('filters')?.[filterId]
+                                      .controlValues || {};
+                                  setNativeFilterFieldValues(form, filterId, {
+                                    controlValues: {
+                                      ...previous,
+                                      calendarFormat: value.target.value,
+                                    },
+                                    defaultDataMask: null,
+                                  });
+                                  forceUpdate();
+                                  formChanged();
+                                }}
+                              />
+                            </StyledRowFormItem>
+                          )}
+                          {formFilter?.filterType === 'filter_timegrain_v2' && (
+                            <StyledRowFormItem
+                              expanded={expanded}
+                              name={[
+                                'filters',
+                                filterId,
+                                'controlValues',
+                                'availableTimeGrains',
+                              ]}
+                              initialValue={
+                                formFilter?.controlValues?.availableTimeGrains ??
+                                filterToEdit?.controlValues
+                                  ?.availableTimeGrains
+                              }
+                              label={
+                                <>
+                                  <StyledLabel>
+                                    {t('Displayed time grains')}
+                                  </StyledLabel>
+                                  &nbsp;
+                                  <InfoTooltip
+                                    placement="top"
+                                    tooltip={t(
+                                      'Choose which time grain options are shown in this filter. Leave empty to show all available options.',
+                                    )}
+                                  />
+                                </>
+                              }
+                            >
+                              <Select
+                                mode="multiple"
+                                allowClear
+                                ariaLabel={t('Displayed time grains')}
+                                options={timeGrainOptions}
+                                onChange={value => {
+                                  const previous =
+                                    form.getFieldValue('filters')?.[filterId]
+                                      .controlValues || {};
+                                  setNativeFilterFieldValues(form, filterId, {
+                                    controlValues: {
+                                      ...previous,
+                                      availableTimeGrains:
+                                        value?.length ? value : undefined,
+                                    },
+                                    defaultDataMask: null,
+                                  });
+                                  forceUpdate();
+                                  formChanged();
+                                }}
+                              />
+                            </StyledRowFormItem>
+                          )}
                           <StyledFormItem
                             expanded={expanded}
                             name={['filters', filterId, 'description']}

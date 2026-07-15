@@ -21,7 +21,11 @@ export type SelectOptionType = {
   label: string;
 };
 
+export type DateFilterControlVariant = 'default' | 'v2';
+export type DateFilterControlCalendarFormat = 'standard' | 'monthly';
+
 export type FrameType =
+  | 'CalendarV2'
   | 'Common'
   | 'Calendar'
   | 'Current'
@@ -104,6 +108,7 @@ export type FrameComponentProps = {
   onChange: (timeRange: string) => void;
   value: string;
   isOverflowingFilterBar?: boolean;
+  calendarFormat?: DateFilterControlCalendarFormat;
 };
 
 export interface DateFilterControlProps {
@@ -113,4 +118,6 @@ export interface DateFilterControlProps {
   onOpenPopover?: () => void;
   onClosePopover?: () => void;
   isOverflowingFilterBar?: boolean;
+  variant?: DateFilterControlVariant;
+  calendarFormat?: DateFilterControlCalendarFormat;
 }

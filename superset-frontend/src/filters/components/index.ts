@@ -19,5 +19,7 @@
 export { default as SelectFilterPlugin } from './Select';
 export { default as RangeFilterPlugin } from './Range';
 export { default as TimeFilterPlugin } from './Time';
+export { default as TimeFilterV2Plugin } from './TimeV2';
 export { default as TimeColumnFilterPlugin } from './TimeColumn';
 export { default as TimeGrainFilterPlugin } from './TimeGrain';
+export { default as TimeGrainV2FilterPlugin } from './TimeGrainV2';

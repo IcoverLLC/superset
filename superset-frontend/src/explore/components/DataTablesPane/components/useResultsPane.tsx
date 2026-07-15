@@ -25,6 +25,7 @@ import {
   getClientErrorObject,
 } from '@superset-ui/core';
 import { styled } from '@apache-superset/core/theme';
+import AdhocMetric from 'src/explore/components/controls/MetricControl/AdhocMetric';
 import { EmptyState, Loading } from '@superset-ui/core/components';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
 import { ResultsPaneProps, QueryResultInterface } from '../types';
@@ -44,6 +45,62 @@ const StyledDiv = styled.div`
 `;
 
 const cache = new WeakMap();
+
+type AdhocMetricLike = {
+  expressionType?: string;
+  hasCustomLabel?: boolean;
+  label?: string;
+};
+
+type QueryFormDataWithMetrics = ResultsPaneProps['queryFormData'] & {
+  metric?: unknown;
+  metrics?: unknown[];
+  metric_b?: unknown;
+  metrics_b?: unknown[];
+  metric_2?: unknown;
+  metrics_2?: unknown[];
+  queries?: QueryFormDataWithMetrics[];
+};
+
+const getMetricsFromFormData = (
+  formData: QueryFormDataWithMetrics,
+): unknown[] => [
+  formData.metric,
+  ...(Array.isArray(formData.metrics) ? formData.metrics : []),
+  formData.metric_b,
+  ...(Array.isArray(formData.metrics_b) ? formData.metrics_b : []),
+  formData.metric_2,
+  ...(Array.isArray(formData.metrics_2) ? formData.metrics_2 : []),
+];
+
+const getColumnValueKeyMap = (
+  queryFormData: ResultsPaneProps['queryFormData'],
+): Record<string, string> => {
+  const formData = queryFormData as QueryFormDataWithMetrics;
+  const queryMetrics = Array.isArray(formData.queries)
+    ? formData.queries.flatMap(query => getMetricsFromFormData(query))
+    : [];
+  const metrics = [...getMetricsFromFormData(formData), ...queryMetrics].filter(
+    Boolean,
+  );
+
+  return metrics.reduce<Record<string, string>>((acc, metric) => {
+    const adhocMetric = metric as AdhocMetricLike;
+    if (
+      typeof metric === 'object' &&
+      metric &&
+      adhocMetric.expressionType === 'SIMPLE' &&
+      adhocMetric.hasCustomLabel &&
+      adhocMetric.label
+    ) {
+      const defaultLabel = new AdhocMetric(metric).translateToSql();
+      if (defaultLabel && defaultLabel !== adhocMetric.label) {
+        acc[adhocMetric.label] = defaultLabel;
+      }
+    }
+    return acc;
+  }, {});
+};
 
 export const useResultsPane = ({
   isRequest,
@@ -65,6 +122,7 @@ export const useResultsPane = ({
   const [resultResp, setResultResp] = useState<QueryResultInterface[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [responseError, setResponseError] = useState<string>('');
+  const columnValueKeyMap = getColumnValueKeyMap(queryFormData);
   const queryCount = metadata?.queryObjectCount ?? 1;
   const isQueryCountDynamic = metadata?.dynamicQueryObjectCount;
 
@@ -187,6 +245,7 @@ export const useResultsPane = ({
         rowLimit={rowLimit}
         rowLimitOptions={ROW_LIMIT_OPTIONS}
         onRowLimitChange={handleRowLimitChange}
+        columnValueKeyMap={columnValueKeyMap}
       />
     </StyledDiv>
   ));

@@ -17,14 +17,39 @@
  * under the License.
  */
 import { t } from '@apache-superset/core/translation';
-import { useTheme } from '@apache-superset/core/theme';
+import { styled, useTheme } from '@apache-superset/core/theme';
 import { Icons } from '@superset-ui/core/components/Icons';
+import { SafeMarkdown } from '../SafeMarkdown/SafeMarkdown';
 import { Tooltip } from '../Tooltip';
 import type { CertifiedBadgeProps } from './types';
+
+const BadgeTrigger = styled.span`
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+`;
+
+const TooltipContent = styled.div`
+  white-space: normal;
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const TooltipHeadline = styled.div`
+  font-weight: ${({ theme }) => theme.fontWeightStrong};
+  margin-bottom: ${({ theme }) => theme.sizeUnit}px;
+`;
+
+const normalizeDetails = (details: string) =>
+  details.replace(/<br\s*\/?>(\r)?/gi, '\n').replace(/\n/g, '  \n');
 
 export function CertifiedBadge({
   certifiedBy,
   details,
+  headline,
+  showCertifiedBy = true,
   size = 'l',
 }: CertifiedBadgeProps) {
   const theme = useTheme();
@@ -32,18 +57,25 @@ export function CertifiedBadge({
   return (
     <Tooltip
       id="certified-details-tooltip"
+      overlayStyle={{ minWidth: '320px', maxWidth: '420px' }}
       title={
-        <>
-          {certifiedBy && (
-            <div>
-              <strong>{t('Certified by %s', certifiedBy)}</strong>
-            </div>
+        <TooltipContent>
+          {headline && (
+            <TooltipHeadline>{headline}</TooltipHeadline>
           )}
-          <div>{details}</div>
-        </>
+          {!headline && showCertifiedBy && certifiedBy && (
+            <TooltipHeadline>{t('Certified by %s', certifiedBy)}</TooltipHeadline>
+          )}
+          {details && <SafeMarkdown source={normalizeDetails(details)} />}
+        </TooltipContent>
       }
     >
-      <Icons.Certified iconColor={theme.colorPrimary} iconSize={size} />
+      <BadgeTrigger>
+        <Icons.InfoCircleFilled
+          iconColor={theme.colorPrimary}
+          iconSize={size}
+        />
+      </BadgeTrigger>
     </Tooltip>
   );
 }

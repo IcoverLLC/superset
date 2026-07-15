@@ -785,6 +785,8 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     # @lifecycle: stable
     # @category: internal
     "ENABLE_FACTORY_RESET_COMMAND": False,
+    # Switches /superset/welcome/ to a dashboard-catalog oriented experience.
+    "WELCOME_DASHBOARD_CATALOG": False,
     # =================================================================
     # DEPRECATED
     # =================================================================
@@ -2370,6 +2372,15 @@ ADVANCED_DATA_TYPES: dict[str, AdvancedDataType] = {
 WELCOME_PAGE_LAST_TAB: Literal["examples", "all"] | tuple[str, list[dict[str, Any]]] = (
     "all"
 )
+
+# Welcome dashboard catalogue configuration.
+# TOP dashboards are primarily resolved from snapshot rows stored in metadata DB.
+# Welcome requests only read snapshot rows; writes should happen via the
+# corresponding Celery task.
+WELCOME_DASHBOARD_TOP_LIMIT = 8
+WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS = 30
+WELCOME_DASHBOARD_TOP_IDS: list[int] = []
+WELCOME_DASHBOARD_TOP_SNAPSHOT_LIMIT = 50
 
 # Max allowed size for a zipped file
 ZIPPED_FILE_MAX_SIZE = 100 * 1024 * 1024  # 100MB

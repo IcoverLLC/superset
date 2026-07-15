@@ -482,11 +482,20 @@ export const MultipleValueComparators = [
   Comparator.BetweenOrRightEqual,
 ];
 
+export const CustomConditionalFormattingColorScheme = {
+  TwoLevels: 'twoLevels',
+  ThreeLevels: 'threeLevels',
+  ReverseTwoLevels: 'reverseTwoLevels',
+  ReverseThreeLevels: 'reverseThreeLevels',
+  RedWhiteGreen: 'redWhiteGreen',
+} as const;
+
 export type ConditionalFormattingConfig = {
   operator?: Comparator;
   targetValue?: number | string;
   targetValueLeft?: number;
   targetValueRight?: number;
+  midpoint?: number;
   column?: string;
   colorScheme?: string;
   toAllRow?: boolean;

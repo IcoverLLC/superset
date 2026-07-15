@@ -58,6 +58,7 @@ import {
 
 const { PERCENT_3_POINT } = NumberFormats;
 const { DATABASE_DATETIME } = TimeFormats;
+const MAIN_COMPARISON_PREFIX = 'Main';
 
 function isNumeric(key: string, data: DataRecord[] = []) {
   return data.every(
@@ -129,8 +130,12 @@ const processComparisonTotals = (
   totals.map((totalRecord: DataRecord) =>
     Object.keys(totalRecord).forEach(key => {
       if (totalRecord[key] !== undefined && !key.includes(comparisonSuffix)) {
-        transformedTotals[`Main ${key}`] =
-          parseInt(transformedTotals[`Main ${key}`]?.toString() || '0', 10) +
+        transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`] =
+          parseInt(
+            transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`]?.toString() ||
+              '0',
+            10,
+          ) +
           parseInt(totalRecord[key]?.toString() || '0', 10);
         transformedTotals[`# ${key}`] =
           parseInt(transformedTotals[`# ${key}`]?.toString() || '0', 10) +
@@ -139,7 +144,7 @@ const processComparisonTotals = (
             10,
           );
         const { valueDifference, percentDifferenceNum } = calculateDifferences(
-          transformedTotals[`Main ${key}`] as number,
+          transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`] as number,
           transformedTotals[`# ${key}`] as number,
         );
         transformedTotals[`△ ${key}`] = valueDifference;
@@ -177,7 +182,8 @@ const processComparisonDataRecords = memoizeOne(
               comparisonValue as number,
             );
 
-          transformedItem[`Main ${origCol.key}`] = originalValue;
+          transformedItem[`${MAIN_COMPARISON_PREFIX} ${origCol.key}`] =
+            originalValue;
           transformedItem[`# ${origCol.key}`] = comparisonValue;
           transformedItem[`△ ${origCol.key}`] = valueDifference;
           transformedItem[`% ${origCol.key}`] = percentDifferenceNum;
@@ -342,10 +348,30 @@ const getComparisonColConfig = (
   label: string,
   parentColKey: string,
   columnConfig: Record<string, TableColumnConfig>,
+  fallbackLabels: string[] = [],
 ) => {
-  const comparisonKey = `${label} ${parentColKey}`;
-  const comparisonColConfig = columnConfig[comparisonKey] || {};
-  return comparisonColConfig;
+  const comparisonKeys = [label, ...fallbackLabels].map(
+    currentLabel => `${currentLabel} ${parentColKey}`,
+  );
+  const matchedConfigKey = comparisonKeys.find(key => columnConfig[key]);
+  if (matchedConfigKey) {
+    return columnConfig[matchedConfigKey];
+  }
+
+  if (label === MAIN_COMPARISON_PREFIX) {
+    const fallbackMainConfig = Object.entries(columnConfig).find(
+      ([key]) =>
+        key.endsWith(` ${parentColKey}`) &&
+        !key.startsWith('# ') &&
+        !key.startsWith('△ ') &&
+        !key.startsWith('% '),
+    );
+    if (fallbackMainConfig) {
+      return fallbackMainConfig[1];
+    }
+  }
+
+  return {};
 };
 
 const getComparisonColFormatter = (
@@ -354,11 +380,13 @@ const getComparisonColFormatter = (
   columnConfig: Record<string, TableColumnConfig>,
   savedFormat: string | undefined,
   savedCurrency: Currency | undefined,
+  fallbackLabels: string[] = [],
 ) => {
   const currentColConfig = getComparisonColConfig(
     label,
     parentCol.key,
     columnConfig,
+    fallbackLabels,
   );
   const hasCurrency = currentColConfig.currencyFormat?.symbol;
   const currentColNumberFormat =
@@ -403,14 +431,19 @@ const processComparisonColumns = (
           ...col,
           originalLabel,
           label: t('Main'),
-          key: `Main ${col.key}`,
-          config: getComparisonColConfig('Main', col.key, columnConfig),
+          key: `${MAIN_COMPARISON_PREFIX} ${col.key}`,
+          config: getComparisonColConfig(
+            MAIN_COMPARISON_PREFIX,
+            col.key,
+            columnConfig,
+          ),
           formatter: getComparisonColFormatter(
-            'Main',
+            MAIN_COMPARISON_PREFIX,
             col,
             columnConfig,
             savedFormat,
             savedCurrency,
+            [t('Main')],
           ),
         },
         {

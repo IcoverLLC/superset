@@ -54,6 +54,7 @@ export enum LocalStorageKeys {
   SqllabPinnedSchemas = 'sqllab__pinned_schemas',
   ExploreDataTableOriginalFormattedTimeColumns = 'explore__data_table_original_formatted_time_columns',
   DashboardCustomFilterBarWidths = 'dashboard__custom_filter_bar_widths',
+  DashboardCollapsedRows = 'dashboard__collapsed_rows',
   DashboardExploreContext = 'dashboard__explore_context',
   DashboardEditorShowOnlyMyCharts = 'dashboard__editor_show_only_my_charts',
   CommonResizableSidebarWidths = 'common__resizable_sidebar_widths',
@@ -75,6 +76,7 @@ export type LocalStorageValues = {
   sqllab__pinned_schemas: Record<string, string[]>;
   explore__data_table_original_formatted_time_columns: Record<string, string[]>;
   dashboard__custom_filter_bar_widths: Record<string, number>;
+  dashboard__collapsed_rows: Record<string, Record<string, boolean>>;
   dashboard__explore_context: Record<string, DashboardContextForExplore>;
   dashboard__editor_show_only_my_charts: boolean;
   common__resizable_sidebar_widths: Record<string, number>;

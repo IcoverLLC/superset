@@ -127,6 +127,31 @@ const MarkdownStyles = styled.div`
         overflow-y: auto;
         overflow-x: hidden;
         border-radius: ${theme.borderRadius}px;
+        scrollbar-width: thin;
+        scrollbar-color: ${theme.colorFillSecondary}
+          ${theme.colorFillQuaternary};
+
+        &::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: ${theme.colorFillQuaternary};
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: ${theme.colorFillSecondary};
+          border-radius: ${theme.borderRadiusSM}px;
+        }
+
+        &::-webkit-scrollbar-thumb:hover {
+          background: ${theme.colorFillTertiary};
+        }
+
+        &::-webkit-scrollbar-corner {
+          background: ${theme.colorFillQuaternary};
+        }
       }
 
       .dashboard--editing & {

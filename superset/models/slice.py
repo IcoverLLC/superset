@@ -34,6 +34,7 @@ from sqlalchemy import (
     Table,
     Text,
 )
+from flask import current_app
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.mapper import Mapper
@@ -377,6 +378,9 @@ def set_related_perm(_mapper: Mapper, _connection: Connection, target: Slice) ->
 def event_after_chart_changed(
     _mapper: Mapper, _connection: Connection, target: Slice
 ) -> None:
+    if current_app.config.get("DISABLE_CHART_THUMBNAILS", False):
+        return
+
     cache_chart_thumbnail.delay(
         current_user=get_current_user(), chart_id=target.id, force=True
     )

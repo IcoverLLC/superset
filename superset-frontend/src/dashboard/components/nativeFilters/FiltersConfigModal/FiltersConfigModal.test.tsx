@@ -35,7 +35,9 @@ import {
   SelectFilterPlugin,
   TimeColumnFilterPlugin,
   TimeFilterPlugin,
+  TimeFilterV2Plugin,
   TimeGrainFilterPlugin,
+  TimeGrainV2FilterPlugin,
 } from 'src/filters/components';
 import FiltersConfigModal, {
   FiltersConfigModalProps,
@@ -49,8 +51,10 @@ class MainPreset extends Preset {
         new SelectFilterPlugin().configure({ key: 'filter_select' }),
         new RangeFilterPlugin().configure({ key: 'filter_range' }),
         new TimeFilterPlugin().configure({ key: 'filter_time' }),
+        new TimeFilterV2Plugin().configure({ key: 'filter_time_v2' }),
         new TimeColumnFilterPlugin().configure({ key: 'filter_timecolumn' }),
         new TimeGrainFilterPlugin().configure({ key: 'filter_timegrain' }),
+        new TimeGrainV2FilterPlugin().configure({ key: 'filter_timegrain_v2' }),
       ],
     });
   }
@@ -164,8 +168,11 @@ const COLUMN_REGEX = /^column$/i;
 const VALUE_REGEX = /^value$/i;
 const NUMERICAL_RANGE_REGEX = /^numerical range$/i;
 const TIME_RANGE_REGEX = /^time range$/i;
+const TIME_RANGE_V2_REGEX = /^time range v2$/i;
 const TIME_COLUMN_REGEX = /^time column$/i;
 const TIME_GRAIN_REGEX = /^time grain$/i;
+const TIME_GRAIN_V2_REGEX = /^time grain v2$/i;
+const DISPLAYED_TIME_GRAINS_REGEX = /^displayed time grains$/i;
 const FILTER_SETTINGS_REGEX = /^filter settings$/i;
 const DEFAULT_VALUE_REGEX = /^filter has default value$/i;
 const MULTIPLE_REGEX = /^can select multiple values$/i;
@@ -288,6 +295,21 @@ test('renders a time range filter type', async () => {
   expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
 });
 
+test('renders a time range v2 filter type', async () => {
+  defaultRender();
+
+  userEvent.click(screen.getByText(VALUE_REGEX));
+
+  await waitFor(() => userEvent.click(screen.getByText(TIME_RANGE_V2_REGEX)));
+
+  expect(screen.getByText(FILTER_TYPE_REGEX)).toBeInTheDocument();
+  expect(screen.getByText(FILTER_NAME_REGEX)).toBeInTheDocument();
+  expect(screen.queryByText(DATASET_REGEX)).not.toBeInTheDocument();
+  expect(screen.queryByText(COLUMN_REGEX)).not.toBeInTheDocument();
+
+  expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
+});
+
 test('renders a time column filter type', async () => {
   defaultRender();
 
@@ -320,18 +342,80 @@ test('renders a time grain filter type', async () => {
   expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
 });
 
+test('renders a time grain v2 filter type', async () => {
+  defaultRender();
+
+  userEvent.click(screen.getByText(VALUE_REGEX));
+
+  await waitFor(() => userEvent.click(screen.getByText(TIME_GRAIN_V2_REGEX)));
+
+  expect(screen.getByText(FILTER_TYPE_REGEX)).toBeInTheDocument();
+  expect(screen.getByText(FILTER_NAME_REGEX)).toBeInTheDocument();
+  expect(screen.getByText(DATASET_REGEX)).toBeInTheDocument();
+  expect(screen.queryByText(COLUMN_REGEX)).not.toBeInTheDocument();
+
+  expect(getCheckbox(DEFAULT_VALUE_REGEX)).not.toBeChecked();
+});
+
+test('allows configuring displayed time grains for time grain v2 filters', async () => {
+  const onSave = jest.fn();
+  defaultRender(defaultState(), {
+    ...props,
+    onSave,
+  });
+
+  userEvent.click(screen.getByText(VALUE_REGEX));
+  await waitFor(() => userEvent.click(screen.getByText(TIME_GRAIN_V2_REGEX)));
+
+  await userEvent.click(screen.getByText(FILTER_SETTINGS_REGEX));
+  const timeGrainsSelect = screen.getByRole('combobox', {
+    name: DISPLAYED_TIME_GRAINS_REGEX,
+  });
+
+  await userEvent.click(timeGrainsSelect);
+  await userEvent.click(screen.getByRole('option', { name: 'hour' }));
+  await userEvent.click(timeGrainsSelect);
+  await userEvent.click(screen.getByRole('option', { name: 'month' }));
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: FILTER_NAME_REGEX }),
+    'Custom time grain filter',
+  );
+  await userEvent.click(screen.getByRole('button', { name: SAVE_REGEX }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modified: expect.arrayContaining([
+          expect.objectContaining({
+            controlValues: expect.objectContaining({
+              availableTimeGrains: ['PT1H', 'P1M'],
+            }),
+            filterType: 'filter_timegrain_v2',
+            name: 'Custom time grain filter',
+          }),
+        ]),
+      }),
+    ),
+  );
+});
+
 test('render time filter types as disabled if there are no temporal columns in the dataset', async () => {
   defaultRender(noTemporalColumnsState());
 
   await userEvent.click(screen.getByText(VALUE_REGEX));
 
   const timeRange = await screen.findByText(TIME_RANGE_REGEX);
+  const timeRangeV2 = await screen.findByText(TIME_RANGE_V2_REGEX);
   const timeGrain = await screen.findByText(TIME_GRAIN_REGEX);
+  const timeGrainV2 = await screen.findByText(TIME_GRAIN_V2_REGEX);
   const timeColumn = await screen.findByText(TIME_COLUMN_REGEX);
   const disabledClass = '.ant-select-item-option-disabled';
 
   expect(timeRange.closest(disabledClass)).toBeInTheDocument();
+  expect(timeRangeV2.closest(disabledClass)).toBeInTheDocument();
   expect(timeGrain.closest(disabledClass)).toBeInTheDocument();
+  expect(timeGrainV2.closest(disabledClass)).toBeInTheDocument();
   expect(timeColumn.closest(disabledClass)).toBeInTheDocument();
 });
 

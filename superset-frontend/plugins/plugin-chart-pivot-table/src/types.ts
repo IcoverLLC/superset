@@ -55,6 +55,7 @@ interface PivotTableCustomizeProps {
   groupbyColumns: QueryFormColumn[];
   metrics: QueryFormMetric[];
   tableRenderer: string;
+  pinRowsBlock?: boolean;
   colOrder: string;
   rowOrder: string;
   aggregateFunction: string;

@@ -86,7 +86,6 @@ export interface FiltersConfigModalProps {
   onSave: (changes: SaveChangesType) => Promise<void>;
   onCancel: () => void;
 }
-
 function getInitialRenderedItems(
   itemId: string | undefined,
   predicate: (id: string) => boolean,

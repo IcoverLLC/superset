@@ -249,36 +249,6 @@ function SavedQueryList({
     }
   };
 
-  const copyQueryLink = useCallback(
-    async (savedQuery: SavedQueryObject) => {
-      try {
-        const payload = {
-          dbId: savedQuery.db_id,
-          name: savedQuery.label,
-          schema: savedQuery.schema,
-          catalog: savedQuery.catalog,
-          sql: savedQuery.sql,
-          autorun: false,
-          templateParams: null,
-        };
-
-        const response = await SupersetClient.post({
-          endpoint: '/api/v1/sqllab/permalink',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const { url: permalink } = response.json;
-
-        await navigator.clipboard.writeText(permalink);
-        addSuccessToast(t('Link Copied!'));
-      } catch (error) {
-        addDangerToast(t('There was an error generating the permalink.'));
-      }
-    },
-    [addDangerToast, addSuccessToast],
-  );
-
   const handleQueryDelete = ({ id, label }: SavedQueryObject) => {
     SupersetClient.delete({
       endpoint: `/api/v1/saved_query/${id}`,
@@ -446,7 +416,6 @@ function SavedQueryList({
           };
           const handleEdit = ({ metaKey }: MouseEvent) =>
             openInSqlLab(original.id, Boolean(metaKey));
-          const handleCopy = () => copyQueryLink(original);
           const handleExport = () => handleBulkSavedQueryExport([original]);
           const handleDelete = () => setQueryCurrentlyDeleting(original);
 
@@ -464,13 +433,6 @@ function SavedQueryList({
               placement: 'bottom',
               icon: 'Binoculars',
               onClick: handlePreview,
-            },
-            {
-              label: 'copy-action',
-              tooltip: t('Copy query URL'),
-              placement: 'bottom',
-              icon: 'CopyOutlined',
-              onClick: handleCopy,
             },
             canExport && {
               label: 'export-action',
@@ -502,7 +464,7 @@ function SavedQueryList({
         id: QueryObjectColumns.ChangedBy,
       },
     ],
-    [canDelete, canEdit, canExport, copyQueryLink, handleSavedQueryPreview],
+    [canDelete, canEdit, canExport, handleSavedQueryPreview],
   );
 
   const filters: ListViewFilters = useMemo(

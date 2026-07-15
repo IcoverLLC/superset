@@ -52,6 +52,7 @@ export const SingleQueryResultPane = ({
   coltypes,
   rowcount,
   datasourceId,
+  columnValueKeyMap,
   canDownload,
   columnDisplayNames,
   rowLimit,
@@ -61,7 +62,13 @@ export const SingleQueryResultPane = ({
   const [filterText, setFilterText] = useState('');
   const { gridHeight, measuredRef } = useGridHeight();
 
-  const columns = useGridColumns(colnames, coltypes, data, columnDisplayNames);
+  const columns = useGridColumns(
+    colnames,
+    coltypes,
+    data,
+    columnDisplayNames,
+    columnValueKeyMap,
+  );
   const keywordFilter = useKeywordFilter(filterText);
 
   const handleInputChange = useCallback(

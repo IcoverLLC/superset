@@ -2889,10 +2889,13 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                 select_exprs.append(outer)
         elif columns:
             for selected in columns:
+                selected_name = selected if isinstance(selected, str) else None
+                selected_column = None
                 if is_adhoc_column(selected):
                     _sql = selected["sqlExpression"]
                     _column_label = selected["label"]
-                elif isinstance(selected, str):
+                elif selected_name is not None:
+                    selected_column = columns_by_name.get(selected_name)
                     _sql = quote(selected)
                     _column_label = selected
 
@@ -2904,13 +2907,20 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                     template_processor=template_processor,
                 )
 
+                if selected_name is not None and selected_column is None:
+                    selected_column = columns_by_name.get(selected) or (
+                        quoted_columns_by_name.get(selected)
+                        if selected is not None
+                        else None
+                    )
+
                 select_exprs.append(
                     self.convert_tbl_column_to_sqla_col(
-                        quoted_columns_by_name[selected],
+                        selected_column,
                         template_processor=template_processor,
                         label=_column_label,
                     )
-                    if selected in quoted_columns_by_name
+                    if selected_column is not None
                     else self.make_sqla_column_compatible(
                         literal_column(selected), _column_label
                     )
