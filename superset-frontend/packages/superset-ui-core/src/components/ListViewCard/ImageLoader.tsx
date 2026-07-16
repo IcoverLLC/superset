@@ -73,7 +73,7 @@ export function ImageLoader({
           const retryDelayMs = THUMBNAIL_RETRY_DELAYS_MS[attempt];
           if (retryDelayMs !== undefined && isActive) {
             retryHandle = globalThis.setTimeout(() => {
-              void loadImage(attempt + 1);
+              loadImage(attempt + 1).catch(errMsg => logging.error(errMsg));
             }, retryDelayMs);
           }
           return;
@@ -98,7 +98,7 @@ export function ImageLoader({
 
     setImgSrc(fallback);
     if (src) {
-      void loadImage();
+      loadImage().catch(errMsg => logging.error(errMsg));
     }
 
     return () => {

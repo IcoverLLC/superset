@@ -126,7 +126,7 @@ export function useFilterOperations({
   );
 
   const handleRearrangeFilters = useCallback(
-    (dragIndex: number, targetIndex: number, id: string) => {
+    (dragIndex: number, targetIndex: number, _id: string) => {
       const newOrderedIds = [...filterState.orderedIds];
       const [removed] = newOrderedIds.splice(dragIndex, 1);
       newOrderedIds.splice(targetIndex, 0, removed);
@@ -191,10 +191,18 @@ export function useFilterOperations({
         .map(id => ({
           label: getItemTitle(id),
           value: id,
-          type: filterConfigMap[id]?.filterType,
+          type:
+            form.getFieldValue('filters')?.[id]?.filterType ??
+            filterConfigMap[id]?.filterType,
         }));
     },
-    [buildDependencyMap, canBeUsedAsDependency, filterConfigMap, filterIds],
+    [
+      buildDependencyMap,
+      canBeUsedAsDependency,
+      filterConfigMap,
+      filterIds,
+      form,
+    ],
   );
 
   const validateDependencies = useCallback(() => {

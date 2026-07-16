@@ -15,10 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from superset.dashboards.api import (
+    _rollback_welcome_read_session,
+    DashboardRestApi,
+)
 from superset.dashboards.schemas import DashboardGetResponseSchema
 
 
@@ -97,3 +101,44 @@ def test_data_key_mapping_logic() -> None:
     # fields without data_key map to themselves
     assert key_to_name["id"] == "id"
     assert key_to_name["thumbnail_url"] == "thumbnail_url"
+
+
+def test_rollback_welcome_read_session_rolls_back_safely() -> None:
+    with patch("superset.dashboards.api.db") as mock_db:
+        _rollback_welcome_read_session()
+
+    mock_db.session.rollback.assert_called_once_with()
+
+
+def test_welcome_top_rolls_back_before_default_fallback() -> None:
+    api = DashboardRestApi.__new__(DashboardRestApi)
+    query = MagicMock()
+    fallback_dashboard = MagicMock(id=42)
+    call_order: list[str] = []
+
+    with (
+        patch("superset.dashboards.api.current_app") as mock_current_app,
+        patch("superset.dashboards.api.get_user_id", return_value=7),
+        patch(
+            "superset.dashboards.api.get_welcome_snapshot_dashboard_ids",
+            side_effect=RuntimeError("snapshot table is unavailable"),
+        ),
+        patch(
+            "superset.dashboards.api._rollback_welcome_read_session",
+            side_effect=lambda: call_order.append("rollback"),
+        ),
+        patch.object(api, "_get_manual_top_dashboards", return_value=[]),
+        patch.object(
+            api,
+            "_get_default_top_dashboards",
+            side_effect=lambda *_args, **_kwargs: (
+                call_order.append("fallback") or [fallback_dashboard]
+            ),
+        ),
+    ):
+        mock_current_app.config = {"WELCOME_DASHBOARD_TOP_LOOKBACK_DAYS": 30}
+        result = api._get_top_dashboards(query, top_limit=8)
+
+    assert call_order == ["rollback", "fallback"]
+    assert result[0] == "default_order"
+    assert result[1] == [fallback_dashboard]

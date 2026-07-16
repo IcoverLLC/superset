@@ -16,39 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import dateFilterComparator from './dateFilterComparator';
 
-const dateFilterComparator = (
-  filterDate: Date,
-  cellValue: Date | null | undefined,
-) => {
-  if (cellValue == null) {
-    return -1;
-  }
+test('compares the selected local date with the UTC cell date', () => {
+  const filterDate = new Date(2003, 9, 8);
 
-  const cellDate = new Date(cellValue);
-  if (Number.isNaN(cellDate.getTime())) {
-    return -1;
-  }
+  expect(
+    dateFilterComparator(filterDate, new Date('2003-10-08T23:59:59Z')),
+  ).toBe(0);
+  expect(
+    dateFilterComparator(filterDate, new Date('2003-10-07T23:59:59Z')),
+  ).toBe(-1);
+  expect(
+    dateFilterComparator(filterDate, new Date('2003-10-09T00:00:00Z')),
+  ).toBe(1);
+});
 
-  const filterUTC = Date.UTC(
-    filterDate.getFullYear(),
-    filterDate.getMonth(),
-    filterDate.getDate(),
-  );
-  const cellUTC = Date.UTC(
-    cellDate.getUTCFullYear(),
-    cellDate.getUTCMonth(),
-    cellDate.getUTCDate(),
-  );
+test('treats empty and invalid cell dates as earlier values', () => {
+  const filterDate = new Date(2003, 9, 8);
 
-  if (cellUTC < filterUTC) {
-    return -1;
-  }
-  if (cellUTC > filterUTC) {
-    return 1;
-  }
-
-  return 0;
-};
-
-export default dateFilterComparator;
+  expect(dateFilterComparator(filterDate, null)).toBe(-1);
+  expect(dateFilterComparator(filterDate, undefined)).toBe(-1);
+  expect(dateFilterComparator(filterDate, new Date('invalid-date'))).toBe(-1);
+});

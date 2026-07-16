@@ -57,6 +57,7 @@ import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
+import reconcileColumnState from '../utils/reconcileColumnState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { Header as GridHeader } from '../gridHeader/Header';
 
@@ -409,16 +410,23 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           if (!Array.isArray(parsedState)) {
             return false;
           }
+          const reconciledState = reconcileColumnState(
+            parsedState as ColumnState[],
+            colDefsFromProps as ColDef[],
+          );
+          if (!reconciledState) {
+            return false;
+          }
           api.applyColumnState({
-            state: parsedState as ColumnState[],
-            applyOrder: true,
+            state: reconciledState.columnState,
+            applyOrder: reconciledState.applyOrder,
           });
           return true;
         } catch (error) {
           return false;
         }
       },
-      [storageKey],
+      [colDefsFromProps, storageKey],
     );
 
     useEffect(() => {

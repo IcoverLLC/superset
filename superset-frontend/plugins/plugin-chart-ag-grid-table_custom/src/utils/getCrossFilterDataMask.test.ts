@@ -16,39 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { getCrossFilterDataMask } from './getCrossFilterDataMask';
 
-const dateFilterComparator = (
-  filterDate: Date,
-  cellValue: Date | null | undefined,
-) => {
-  if (cellValue == null) {
-    return -1;
-  }
+test('serializes bigint cross-filter values without losing digits', () => {
+  const result = getCrossFilterDataMask({
+    key: 'large_id',
+    value: BigInt('9223372036854775807'),
+    isActiveFilterValue: jest.fn(() => false),
+    timestampFormatter: jest.fn(value => String(value)),
+  });
 
-  const cellDate = new Date(cellValue);
-  if (Number.isNaN(cellDate.getTime())) {
-    return -1;
-  }
-
-  const filterUTC = Date.UTC(
-    filterDate.getFullYear(),
-    filterDate.getMonth(),
-    filterDate.getDate(),
-  );
-  const cellUTC = Date.UTC(
-    cellDate.getUTCFullYear(),
-    cellDate.getUTCMonth(),
-    cellDate.getUTCDate(),
-  );
-
-  if (cellUTC < filterUTC) {
-    return -1;
-  }
-  if (cellUTC > filterUTC) {
-    return 1;
-  }
-
-  return 0;
-};
-
-export default dateFilterComparator;
+  expect(result.dataMask.extraFormData.filters).toEqual([
+    {
+      col: 'large_id',
+      op: 'IN',
+      val: ['9223372036854775807'],
+    },
+  ]);
+  expect(() => JSON.stringify(result.dataMask)).not.toThrow();
+});

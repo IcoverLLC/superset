@@ -37,6 +37,7 @@ import {
 import getCellClass from './getCellClass';
 import filterValueGetter from './filterValueGetter';
 import dateFilterComparator from './dateFilterComparator';
+import DateWithFormatter from './DateWithFormatter';
 import { getAggFunc } from './getAggFunc';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
@@ -50,7 +51,7 @@ import parseNumericFilterValue, {
 } from './parseNumericFilterValue';
 
 interface InputData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 type UseColDefsProps = {
@@ -78,11 +79,23 @@ function getValueRange(
   alignPositiveNegative: boolean,
   data: InputData[],
 ) {
-  if (typeof data?.[0]?.[key] === 'number') {
-    const nums = data.map(row => row[key]) as number[];
-    return (
-      alignPositiveNegative ? [0, d3Max(nums.map(Math.abs))] : d3Extent(nums)
-    ) as ValueRange;
+  const nums = data
+    .map(row => {
+      const raw = row[key];
+      return raw instanceof Number ? raw.valueOf() : raw;
+    })
+    .filter(
+      (value): value is number =>
+        typeof value === 'number' && Number.isFinite(value),
+    );
+
+  if (nums.length > 0) {
+    const maxAbs = d3Max(nums.map(Math.abs));
+    if (alignPositiveNegative) {
+      return [0, maxAbs ?? 0] as ValueRange;
+    }
+    const range = d3Extent(nums) as ValueRange | undefined;
+    return range ?? [0, 0];
   }
   return null;
 }
@@ -111,6 +124,17 @@ const getFilterType = (col: InputColumn) => {
     default:
       return true;
   }
+};
+
+const dateFilterValueGetter = (params: {
+  data: Record<string, unknown>;
+  colDef: { field?: string };
+}) => {
+  const value = params.data?.[params.colDef.field as string];
+  if (value instanceof DateWithFormatter && value.input === null) {
+    return null;
+  }
+  return value;
 };
 
 function getHeaderLabel(col: InputColumn) {
@@ -196,6 +220,10 @@ export const useColDefs = ({
       const isTextColumn =
         dataType === GenericDataType.String ||
         dataType === GenericDataType.Temporal;
+      const isBooleanColumn = dataType === GenericDataType.Boolean;
+      const hasBigIntValues = data.some(
+        row => typeof row[originalKey] === 'bigint',
+      );
 
       const headerBgColor = config?.headerBgColor?.trim();
       const isValidHeaderBgColor =
@@ -220,7 +248,9 @@ export const useColDefs = ({
         (isMetric || isRawRecords || isPercentMetric) &&
         getValueRange(originalKey, alignPN || alignPositiveNegative, data);
 
-      const filter = getFilterType(col);
+      const filter = hasBigIntValues
+        ? 'agTextColumnFilter'
+        : getFilterType(col);
 
       const colDef: ColDef = {
         field: colId,
@@ -247,18 +277,28 @@ export const useColDefs = ({
         minWidth: config?.columnWidth ?? 100,
         filter,
         ...(dataType === GenericDataType.Temporal && {
+          filterValueGetter: dateFilterValueGetter,
           filterParams: {
             comparator: dateFilterComparator,
           },
         }),
-        ...(dataType === GenericDataType.Numeric && {
-          filterValueGetter,
-          filterParams: {
-            allowedCharPattern: NUMERIC_FILTER_ALLOWED_CHAR_PATTERN,
-            numberParser: parseNumericFilterValue,
+        ...(dataType === GenericDataType.Numeric &&
+          !hasBigIntValues && {
+            filterValueGetter,
+            filterParams: {
+              allowedCharPattern: NUMERIC_FILTER_ALLOWED_CHAR_PATTERN,
+              numberParser: parseNumericFilterValue,
+            },
+          }),
+        ...(hasBigIntValues && {
+          filterValueGetter: (p: ValueGetterParams) => {
+            const filterValue = valueGetter(p, col);
+            return typeof filterValue === 'bigint'
+              ? filterValue.toString()
+              : filterValue;
           },
         }),
-        cellDataType: getCellDataType(col),
+        cellDataType: hasBigIntValues ? 'text' : getCellDataType(col),
         defaultAggFunc: getAggFunc(col),
         initialAggFunc: getAggFunc(col),
         ...(config?.hideByDefault && {
@@ -279,22 +319,31 @@ export const useColDefs = ({
             'last',
           ],
         }),
-        cellRenderer: (p: CellRendererProps) => {
-          if (p.node?.rowPinned === 'bottom' && config?.hideSummary) {
-            return '';
-          }
-          return isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p);
-        },
-        cellRendererParams: {
-          allowRenderHtml: true,
-          columns,
-          hasBasicColorFormatters,
-          col,
-          basicColorFormatters,
-          valueRange,
-          alignPositiveNegative: alignPN || alignPositiveNegative,
-          colorPositiveNegative,
-        },
+        ...(isBooleanColumn
+          ? {
+              cellRenderer: 'agCheckboxCellRenderer',
+              cellRendererParams: { disabled: true },
+            }
+          : {
+              cellRenderer: (p: CellRendererProps) => {
+                if (p.node?.rowPinned === 'bottom' && config?.hideSummary) {
+                  return '';
+                }
+                return isTextColumn
+                  ? TextCellRenderer(p)
+                  : NumericCellRenderer(p);
+              },
+              cellRendererParams: {
+                allowRenderHtml: true,
+                columns,
+                hasBasicColorFormatters,
+                col,
+                basicColorFormatters,
+                valueRange,
+                alignPositiveNegative: alignPN || alignPositiveNegative,
+                colorPositiveNegative,
+              },
+            }),
         context: {
           isMetric,
           isPercentMetric,
@@ -326,7 +375,7 @@ export const useColDefs = ({
 
       if (headerStyle) {
         colDef.headerStyle = {
-          ...(colDef.headerStyle || {}),
+          ...colDef.headerStyle,
           ...headerStyle,
         };
       }

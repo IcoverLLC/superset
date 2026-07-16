@@ -152,7 +152,7 @@ function getHomeThumbnailsLabel(locale: string) {
   const translatedLabel = t('Thumbnails');
   return locale.toLowerCase().startsWith('ru') &&
     translatedLabel === 'Thumbnails'
-    ? '\u041c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b'
+    ? '\u041C\u0438\u043D\u0438\u0430\u0442\u044E\u0440\u044B'
     : translatedLabel;
 }
 
@@ -193,6 +193,8 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   const WelcomeMainExtension = extensionsRegistry.get(
     'welcome.main.replacement',
   );
+  const shouldRenderWelcomeFallback =
+    !WelcomeTopExtension || !WelcomeMainExtension;
   const useDashboardCatalogWelcome = isFeatureEnabled(
     FeatureFlag.WelcomeDashboardCatalog,
   );
@@ -225,7 +227,11 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   }, []);
 
   useEffect(() => {
-    if (!otherTabFilters || WelcomeMainExtension || useDashboardCatalogWelcome) {
+    if (
+      !otherTabFilters ||
+      WelcomeMainExtension ||
+      useDashboardCatalogWelcome
+    ) {
       return;
     }
     const activeTab = getItem(LocalStorageKeys.HomepageActivityFilter, null);
@@ -344,7 +350,7 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
   const menuData: SubMenuProps = {
     activeChild: 'Home',
     name: useDashboardCatalogWelcome
-      ? t('\u0413\u043b\u0430\u0432\u043d\u0430\u044f')
+      ? t('\u0413\u043B\u0430\u0432\u043D\u0430\u044F')
       : t('Home'),
   };
 
@@ -375,16 +381,16 @@ function Welcome({ user, addDangerToast, addSuccessToast }: WelcomeProps) {
       <WelcomeContainer>
         {WelcomeMessageExtension && <WelcomeMessageExtension />}
         {WelcomeTopExtension && <WelcomeTopExtension />}
-        {WelcomeMainExtension ? (
-          <WelcomeMainExtension />
-        ) : useDashboardCatalogWelcome ? (
+        {WelcomeMainExtension && <WelcomeMainExtension />}
+        {shouldRenderWelcomeFallback && useDashboardCatalogWelcome && (
           <DashboardWelcome
             user={user}
             showThumbnails={checked}
             addDangerToast={addDangerToast}
             addSuccessToast={addSuccessToast}
           />
-        ) : (
+        )}
+        {shouldRenderWelcomeFallback && !useDashboardCatalogWelcome && (
           <Collapse
             activeKey={activeState}
             onChange={handleCollapse}

@@ -22,6 +22,7 @@ import { safeHtmlSpan } from '@superset-ui/core';
 import { t } from '@apache-superset/core/translation';
 import { supersetTheme } from '@apache-superset/core/theme';
 import PropTypes from 'prop-types';
+import tinycolor from 'tinycolor2';
 import { FaSort } from 'react-icons/fa';
 import { FaSortDown as FaSortDesc } from 'react-icons/fa';
 import { FaSortUp as FaSortAsc } from 'react-icons/fa';
@@ -33,6 +34,30 @@ import {
 } from '@superset-ui/chart-controls';
 import { PivotData, flatKey } from './utilities';
 import { Styles } from './Styles';
+
+const DARK_THEME_CONDITIONAL_FORMATTING_MIX = 72;
+
+function getAdaptiveConditionalFormattingBackground(
+  backgroundColor: string | undefined,
+  isDarkTheme: boolean,
+  themeBackgroundColor: string | undefined,
+): string | undefined {
+  if (
+    !backgroundColor?.startsWith('#') ||
+    !isDarkTheme ||
+    !themeBackgroundColor
+  ) {
+    return backgroundColor;
+  }
+
+  return tinycolor
+    .mix(
+      themeBackgroundColor,
+      backgroundColor,
+      DARK_THEME_CONDITIONAL_FORMATTING_MIX,
+    )
+    .toHex8String();
+}
 
 type ClickCallback = (
   e: MouseEvent,
@@ -66,6 +91,8 @@ interface TableOptions {
   cellBackgroundColor?: string;
   cellTextColor?: string;
   activeHeaderBackgroundColor?: string;
+  isDarkTheme?: boolean;
+  themeBackgroundColor?: string;
   pinRowsBlock?: boolean;
 }
 
@@ -187,6 +214,8 @@ export function getCellColor(
   aggValue: string | number | null,
   cellColorFormatters: Record<string, ColorFormatters> | undefined,
   cellBackgroundColor = supersetTheme.colorBgBase,
+  isDarkTheme = false,
+  themeBackgroundColor?: string,
 ): ResolvedColorFormatterResult {
   if (!cellColorFormatters) return { backgroundColor: undefined };
 
@@ -217,10 +246,16 @@ export function getCellColor(
     }
   }
 
-  return {
+  const adaptiveBackgroundColor = getAdaptiveConditionalFormattingBackground(
     backgroundColor,
+    isDarkTheme,
+    themeBackgroundColor,
+  );
+
+  return {
+    backgroundColor: adaptiveBackgroundColor,
     color: getTextColorForBackground(
-      { backgroundColor, color },
+      { backgroundColor: adaptiveBackgroundColor, color },
       cellBackgroundColor,
     ),
   };
@@ -902,6 +937,8 @@ export class TableRenderer extends Component<
       dateFormatters,
       cellBackgroundColor = supersetTheme.colorBgBase,
       activeHeaderBackgroundColor = supersetTheme.colorPrimaryBg,
+      isDarkTheme = false,
+      themeBackgroundColor,
     } = this.props.tableOptions;
 
     if (!visibleColKeys || !colAttrSpans) {
@@ -1021,6 +1058,8 @@ export class TableRenderer extends Component<
           headerCellFormattedValue,
           cellColorFormatters,
           isActiveHeader ? activeHeaderBackgroundColor : cellBackgroundColor,
+          isDarkTheme,
+          themeBackgroundColor,
         );
         const style = {
           backgroundColor,
@@ -1253,6 +1292,8 @@ export class TableRenderer extends Component<
       cellBackgroundColor = supersetTheme.colorBgBase,
       cellTextColor = supersetTheme.colorPrimaryText,
       activeHeaderBackgroundColor = supersetTheme.colorPrimaryBg,
+      isDarkTheme = false,
+      themeBackgroundColor,
     } = this.props.tableOptions;
     const flatRowKey = flatKey(rowKey);
     const isSelectedRow = this.state.selectedRowKey === flatRowKey;
@@ -1296,6 +1337,8 @@ export class TableRenderer extends Component<
           headerCellFormattedValue,
           cellColorFormatters,
           isActiveHeader ? activeHeaderBackgroundColor : cellBackgroundColor,
+          isDarkTheme,
+          themeBackgroundColor,
         );
         const style = {
           backgroundColor,
@@ -1382,6 +1425,8 @@ export class TableRenderer extends Component<
         aggValue,
         cellColorFormatters,
         cellBackgroundColor,
+        isDarkTheme,
+        themeBackgroundColor,
       );
 
       const style = agg.isSubtotal

@@ -321,15 +321,16 @@ export const useTableColumns = (
     () =>
       colnames && data?.length
         ? colnames
+            .map((key, index) => ({ key, index }))
             .filter(
-              (column: string) =>
-                (Object.keys(data[0]).includes(column) ||
+              ({ key }) =>
+                (Object.keys(data[0]).includes(key) ||
                   Object.keys(data[0]).includes(
-                    columnValueKeyMap?.[column] || '',
+                    columnValueKeyMap?.[key] || '',
                   )) &&
-                !column.endsWith('__inherit'),
+                !key.endsWith('__inherit'),
             )
-            .map((key, index) => {
+            .map(({ key, index }) => {
               const colType = coltypes?.[index];
               const firstValue = getTableCellValue(
                 data[0],

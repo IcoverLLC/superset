@@ -97,6 +97,29 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     }
   }, [columns]);
 
+  useEffect(() => {
+    if (!serverPagination || !serverPaginationData || !rowCount) {
+      return;
+    }
+
+    const currentPage = serverPaginationData.currentPage ?? 0;
+    const currentPageSize = serverPaginationData.pageSize ?? serverPageLength;
+    const totalPages = Math.ceil(rowCount / currentPageSize);
+
+    if (currentPage >= totalPages && totalPages > 0) {
+      updateTableOwnState(setDataMask, {
+        ...serverPaginationData,
+        currentPage: Math.max(0, totalPages - 1),
+      });
+    }
+  }, [
+    rowCount,
+    serverPagination,
+    serverPaginationData,
+    serverPageLength,
+    setDataMask,
+  ]);
+
   const comparisonColumns = [
     { key: 'all', label: t('Display all') },
     { key: '#', label: '#' },
@@ -153,14 +176,30 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   const isActiveFilterValue = useCallback(
     function isActiveFilterValue(key: string, val: DataRecordValue) {
-      return !!filters && filters[key]?.includes(val);
+      if (!filters || !filters[key]) {
+        return false;
+      }
+      return filters[key].some(filterValue => {
+        if (filterValue === val) {
+          return true;
+        }
+        if (filterValue instanceof Date && val instanceof Date) {
+          return filterValue.getTime() === val.getTime();
+        }
+        return false;
+      });
     },
     [filters],
   );
 
   const timestampFormatter = useCallback(
-    value => getTimeFormatterForGranularity(timeGrain)(value),
-    [timeGrain],
+    (value: DataRecordValue) =>
+      isRawRecords
+        ? String(value ?? '')
+        : getTimeFormatterForGranularity(timeGrain)(
+            value as number | Date | null | undefined,
+          ),
+    [isRawRecords, timeGrain],
   );
 
   const toggleFilter = useCallback(

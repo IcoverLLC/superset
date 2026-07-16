@@ -17,11 +17,7 @@
  * under the License.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  styled,
-  SupersetClient,
-  t,
-} from '@superset-ui/core';
+import { styled, SupersetClient, t } from '@superset-ui/core';
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 import rison from 'rison';
 import { useSelector } from 'react-redux';
@@ -35,13 +31,8 @@ import {
 import handleResourceExport from 'src/utils/export';
 import PropertiesModal from 'src/dashboard/components/PropertiesModal';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
-import {
-  getDashboardListFilters,
-} from 'src/features/dashboards/listFilters';
-import {
-  type Dashboard,
-  type FavoriteStatus,
-} from 'src/views/CRUD/types';
+import { getDashboardListFilters } from 'src/features/dashboards/listFilters';
+import { type Dashboard, type FavoriteStatus } from 'src/views/CRUD/types';
 import { useFavoriteStatus, useListViewResource } from 'src/views/CRUD/hooks';
 import {
   CardContainer,
@@ -55,16 +46,21 @@ import {
 } from 'src/components/ListView';
 import type { InternalFilter } from 'src/components/ListView/types';
 import { findPermission } from 'src/utils/findPermission';
-import type { User, UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
+import type {
+  User,
+  UserWithPermissionsAndRoles,
+} from 'src/types/bootstrapTypes';
 
 const SECTION_PAGE_SIZE = 24;
 const WELCOME_FILTER_KEYS = ['search', 'tags', 'favorite'] as const;
-const WELCOME_FILTER_HEADERS: Record<(typeof WELCOME_FILTER_KEYS)[number], string> =
-  {
-    search: '\u0418\u043c\u044f',
-    tags: '\u0422\u0435\u0433',
-    favorite: '\u0418\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435',
-  };
+const WELCOME_FILTER_HEADERS: Record<
+  (typeof WELCOME_FILTER_KEYS)[number],
+  string
+> = {
+  search: 'Имя',
+  tags: 'Тег',
+  favorite: 'Избранное',
+};
 
 type WelcomeTopMode =
   | 'personal_recent_views'
@@ -204,12 +200,9 @@ function normalizeFilterValue(value: ListViewFilterValue['value']) {
 
 function getRecentlyViewedDescription(viewedAt?: string) {
   if (!viewedAt) {
-    return '\u00a0';
+    return '\u00A0';
   }
-  return t(
-    '\u041f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u043d\u043e %s',
-    extendedDayjs(viewedAt).fromNow(),
-  );
+  return t('Просмотрено %s', extendedDayjs(viewedAt).fromNow());
 }
 
 function DashboardWelcome({
@@ -245,18 +238,16 @@ function DashboardWelcome({
               filter.key as (typeof WELCOME_FILTER_KEYS)[number]
             ] ?? filter.Header,
           unfilteredLabel:
-            filter.key === 'favorite'
-              ? '\u041b\u044e\u0431\u043e\u0435'
-              : filter.unfilteredLabel,
+            filter.key === 'favorite' ? 'Любое' : filter.unfilteredLabel,
           selects:
             filter.key === 'favorite'
               ? [
                   {
-                    label: '\u0414\u0430',
+                    label: 'Да',
                     value: true,
                   },
                   {
-                    label: '\u041d\u0435\u0442',
+                    label: 'Нет',
                     value: false,
                   },
                 ]
@@ -283,7 +274,9 @@ function DashboardWelcome({
   const [dashboardToDelete, setDashboardToDelete] = useState<Dashboard | null>(
     null,
   );
-  const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(null);
+  const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(
+    null,
+  );
   const [sectionExpanded, setSectionExpanded] = useState(false);
   const welcomeLoadVersionRef = useRef(0);
 
@@ -314,7 +307,10 @@ function DashboardWelcome({
   );
 
   const section = welcomeData?.sections[0];
-  const sectionDashboards = section?.dashboards ?? [];
+  const sectionDashboards = useMemo(
+    () => section?.dashboards ?? [],
+    [section?.dashboards],
+  );
   const allDashboards = useMemo(() => {
     const dashboardsById = new Map<number, Dashboard>();
     (welcomeData?.top_dashboards ?? []).forEach(dashboard => {
@@ -372,8 +368,8 @@ function DashboardWelcome({
           }
 
           const mergedRecentlyViewedAt = {
-            ...(current?.recently_viewed_at || {}),
-            ...(result.recently_viewed_at || {}),
+            ...current?.recently_viewed_at,
+            ...result.recently_viewed_at,
           };
 
           if (!append || !current?.sections[0] || !result.sections[0]) {
@@ -382,8 +378,8 @@ function DashboardWelcome({
               recently_viewed_at: mergedRecentlyViewedAt,
             };
           }
-          const nextSection = result.sections[0];
-          const previousSection = current.sections[0];
+          const [nextSection] = result.sections;
+          const [previousSection] = current.sections;
           return {
             ...result,
             recently_viewed_at: mergedRecentlyViewedAt,
@@ -406,14 +402,7 @@ function DashboardWelcome({
         }
         await createErrorHandler(errMsg =>
           addDangerToast(
-            t(
-              '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c ' +
-                '\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c ' +
-                '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
-                '\u043d\u0430 \u0433\u043b\u0430\u0432\u043d\u043e\u0439 ' +
-                '\u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435: %s',
-              errMsg,
-            ),
+            t('Не удалось загрузить дашборды на главной странице: %s', errMsg),
           ),
         )(response as string);
         if (!preserveCurrentOnError) {
@@ -455,11 +444,11 @@ function DashboardWelcome({
     if (!sectionsData || loadVersion !== welcomeLoadVersionRef.current) {
       return;
     }
-    void fetchWelcomeData(0, false, true, true, true, loadVersion);
+    fetchWelcomeData(0, false, true, true, true, loadVersion);
   }, [fetchWelcomeData]);
 
   useEffect(() => {
-    void fetchInitialWelcomeData();
+    fetchInitialWelcomeData();
   }, [fetchInitialWelcomeData]);
 
   const handleBulkDashboardExport = useCallback((dashboards: Dashboard[]) => {
@@ -486,46 +475,26 @@ function DashboardWelcome({
 
   const topSectionDescription = useMemo(() => {
     if (!welcomeData) {
-      return t(
-        '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 ' +
-          '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
-      );
+      return t('Загрузка дашбордов');
     }
     if (
       welcomeData.top_mode === 'recent_views' ||
       welcomeData.top_mode === 'personal_recent_views'
     ) {
       return t(
-        '\u041d\u0430 \u043e\u0441\u043d\u043e\u0432\u0435 \u0432\u0430\u0448\u0438\u0445 ' +
-          '\u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u0439 \u0437\u0430 ' +
-          '\u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 ' +
-          '%s \u0434\u043d\u0435\u0439',
+        'На основе ваших посещений за последние %s дней',
         welcomeData.top_lookback_days,
       );
     }
     if (welcomeData.top_mode === 'manual_config') {
       return t(
-        '\u0421\u0435\u043a\u0446\u0438\u044f \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0430 ' +
-          '\u0438\u0437 \u0440\u0435\u0437\u0435\u0440\u0432\u043d\u043e\u0433\u043e ' +
-          '\u0441\u043f\u0438\u0441\u043a\u0430 dashboard ID ' +
-          '\u0432 \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 Superset',
+        'Секция заполнена из резервного списка dashboard ID в конфигурации Superset',
       );
     }
     if (welcomeData.top_mode === 'default_order') {
-      return t(
-        '\u041f\u043e\u0434\u0431\u043e\u0440\u043a\u0430 ' +
-          '\u0441\u0444\u043e\u0440\u043c\u0438\u0440\u043e\u0432\u0430\u043d\u0430 ' +
-          '\u0438\u0437 \u0430\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u044b\u0445 ' +
-          '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0445 ' +
-          '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
-      );
+      return t('Подборка сформирована из актуальных опубликованных дашбордов');
     }
-    return t(
-      '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
-        '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
-        '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
-        '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
-    );
+    return t('По текущим фильтрам опубликованные дашборды не найдены');
   }, [welcomeData]);
 
   const renderCards = useCallback(
@@ -578,13 +547,10 @@ function DashboardWelcome({
     [welcomeData?.top_dashboards],
   );
 
-  const handleCollapseChange = useCallback(
-    (activeKeys: string | string[]) => {
-      const nextKeys = Array.isArray(activeKeys) ? activeKeys : [activeKeys];
-      setSectionExpanded(nextKeys.includes('all_dashboards'));
-    },
-    [],
-  );
+  const handleCollapseChange = useCallback((activeKeys: string | string[]) => {
+    const nextKeys = Array.isArray(activeKeys) ? activeKeys : [activeKeys];
+    setSectionExpanded(nextKeys.includes('all_dashboards'));
+  }, []);
 
   return (
     <WelcomeDashboardStyles>
@@ -611,18 +577,13 @@ function DashboardWelcome({
       </FiltersBar>
 
       <SectionIntro>
-        <h2>
-          {t(
-            '\u041f\u0435\u0440\u0441\u043e\u043d\u0430\u043b\u044c\u043d\u044b\u0439 ' +
-              '\u0442\u043e\u043f \u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432',
-          )}
-        </h2>
+        <h2>{t('Персональный топ дашбордов')}</h2>
         <p>{topSectionDescription}</p>
       </SectionIntro>
 
       {loading && !welcomeData ? (
         <TopCardContainer showThumbnails={showThumbnails}>
-          {[...new Array(loadingCardCount)].map((_, index) => (
+          {Array.from({ length: loadingCardCount }).map((_, index) => (
             <ListViewCard
               key={index}
               cover={showThumbnails ? undefined : <></>}
@@ -635,12 +596,7 @@ function DashboardWelcome({
         renderCards(topDashboards, favoriteStatus, 'top')
       ) : (
         <EmptySection>
-          {t(
-            '\u0412 \u0441\u0435\u043a\u0446\u0438\u0438 \u0422\u041e\u041f ' +
-              '\u043f\u043e\u043a\u0430 \u043d\u0435\u0442 ' +
-              '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u043e\u0432 ' +
-              '\u0434\u043b\u044f \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f',
-          )}
+          {t('В секции ТОП пока нет дашбордов для отображения')}
         </EmptySection>
       )}
 
@@ -654,18 +610,12 @@ function DashboardWelcome({
             forceRender: true,
             label:
               section?.count == null
-                ? t(
-                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                  )
-                : `${t(
-                    '\u041f\u0440\u043e\u0447\u0438\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b',
-                  )} (${section.count})`,
+                ? t('Прочие дашборды')
+                : `${t('Прочие дашборды')} (${section.count})`,
             children:
               loading && sectionExpanded && !sectionDashboards.length ? (
                 <WelcomeCardContainer showThumbnails={showThumbnails}>
-                  {[...new Array(loadingCardCount)].map((_, index) => (
+                  {Array.from({ length: loadingCardCount }).map((_, index) => (
                     <ListViewCard
                       key={index}
                       cover={showThumbnails ? undefined : <></>}
@@ -684,7 +634,7 @@ function DashboardWelcome({
                         loading={loadingMore}
                         onClick={() => {
                           if (section) {
-                            void fetchWelcomeData(
+                            fetchWelcomeData(
                               section.page + 1,
                               true,
                               true,
@@ -693,20 +643,14 @@ function DashboardWelcome({
                           }
                         }}
                       >
-                        {t('\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0435\u0449\u0451')}
+                        {t('Показать ещё')}
                       </Button>
                     </LoadMoreRow>
                   )}
                 </>
               ) : sectionExpanded ? (
                 <EmptySection>
-                  {t(
-                    '\u041f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c ' +
-                      '\u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c ' +
-                      '\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 ' +
-                      '\u0434\u0430\u0448\u0431\u043e\u0440\u0434\u044b ' +
-                      '\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
-                  )}
+                  {t('По текущим фильтрам опубликованные дашборды не найдены')}
                 </EmptySection>
               ) : null,
           },
@@ -734,7 +678,7 @@ function DashboardWelcome({
             handleDashboardDelete(
               dashboardToDelete,
               () => {
-                void fetchInitialWelcomeData();
+                fetchInitialWelcomeData();
               },
               addSuccessToast,
               addDangerToast,

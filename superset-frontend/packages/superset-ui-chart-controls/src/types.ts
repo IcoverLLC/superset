@@ -512,7 +512,7 @@ export type ColorFormatters = {
   columnFormatting?: string;
   objectFormatting?: ObjectFormattingEnum;
   getColorFromValue: (
-    value: number | string | boolean | null,
+    value: number | string | boolean | bigint | null,
   ) => string | undefined;
 }[];
 

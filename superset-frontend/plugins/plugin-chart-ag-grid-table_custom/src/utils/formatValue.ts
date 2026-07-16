@@ -52,6 +52,12 @@ function formatValue(
   ) {
     return [false, 'N/A'];
   }
+  // d3 number and currency formatters coerce values through Math operations,
+  // which throw for native bigint values returned by json-bigint. Preserve the
+  // exact integer representation instead of converting it to an unsafe number.
+  if (typeof value === 'bigint') {
+    return [false, value.toString()];
+  }
   if (formatter) {
     return [false, formatter(value as number)];
   }
@@ -94,6 +100,9 @@ export const valueFormatter = (
     value !== '' &&
     !(value instanceof DateWithFormatter && value.input === null)
   ) {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
     return col.formatter?.(value) || value;
   }
   if (node?.level === -1) {

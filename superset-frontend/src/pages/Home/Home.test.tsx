@@ -23,7 +23,11 @@ import {
   userEvent,
   waitFor,
 } from 'spec/helpers/testing-library';
-import { isFeatureEnabled, getExtensionsRegistry } from '@superset-ui/core';
+import {
+  FeatureFlag,
+  isFeatureEnabled,
+  getExtensionsRegistry,
+} from '@superset-ui/core';
 import Welcome from 'src/pages/Home';
 import setupCodeOverrides from 'src/setup/setupCodeOverrides';
 
@@ -146,7 +150,50 @@ jest.mock('@superset-ui/core', () => ({
   isFeatureEnabled: jest.fn(),
 }));
 
+jest.mock('src/features/home/DashboardWelcome', () => () => (
+  <span>dashboard welcome catalog</span>
+));
+
 const mockedIsFeatureEnabled = isFeatureEnabled as jest.Mock;
+const extensionsRegistry = getExtensionsRegistry();
+
+const resetExtensionsRegistry = () => {
+  extensionsRegistry.set('home.submenu', undefined as never);
+  extensionsRegistry.set('welcome.banner', undefined as never);
+  extensionsRegistry.set('welcome.main.replacement', undefined as never);
+};
+
+const setWelcomeDashboardCatalogFlag = (enabled: boolean) => {
+  mockedIsFeatureEnabled.mockImplementation(
+    featureFlag =>
+      featureFlag === FeatureFlag.WelcomeDashboardCatalog && enabled,
+  );
+};
+
+const setThumbnailsFlag = (enabled: boolean) => {
+  mockedIsFeatureEnabled.mockImplementation(
+    featureFlag => featureFlag === FeatureFlag.Thumbnails && enabled,
+  );
+};
+
+const setWelcomeExtensions = ({
+  top = false,
+  main = false,
+}: {
+  top?: boolean;
+  main?: boolean;
+}) => {
+  if (top) {
+    extensionsRegistry.set('welcome.banner', () => (
+      <span>welcome.banner extension component</span>
+    ));
+  }
+  if (main) {
+    extensionsRegistry.set('welcome.main.replacement', () => (
+      <span>welcome.main.replacement extension component</span>
+    ));
+  }
+};
 
 const renderWelcome = (props = mockedProps) =>
   waitFor(() => {
@@ -158,6 +205,8 @@ const renderWelcome = (props = mockedProps) =>
 
 afterEach(() => {
   fetchMock.clearHistory();
+  mockedIsFeatureEnabled.mockReset();
+  resetExtensionsRegistry();
 });
 
 test('With sql role - renders', async () => {
@@ -231,14 +280,14 @@ fetchMock.get('glob:*/api/v1/dashboard/*', {
 });
 
 test('With toggle switch - shows a toggle button when feature flag is turned on', async () => {
-  mockedIsFeatureEnabled.mockReturnValue(true);
+  setThumbnailsFlag(true);
 
   await renderWelcome();
   expect(screen.getByRole('switch')).toBeInTheDocument();
 });
 
 test('With toggle switch - does not show thumbnails when switch is off', async () => {
-  mockedIsFeatureEnabled.mockReturnValue(true);
+  setThumbnailsFlag(true);
 
   await renderWelcome();
   const toggle = await screen.findByRole('switch', {}, { timeout: 10000 });
@@ -253,8 +302,6 @@ test('With toggle switch - does not show thumbnails when switch is off', async (
 });
 
 test('Should render an extension component if one is supplied', async () => {
-  const extensionsRegistry = getExtensionsRegistry();
-
   extensionsRegistry.set('welcome.banner', () => (
     <>welcome.banner extension component</>
   ));
@@ -269,8 +316,6 @@ test('Should render an extension component if one is supplied', async () => {
 });
 
 test('Should render a submenu extension component if one is supplied', async () => {
-  const extensionsRegistry = getExtensionsRegistry();
-
   extensionsRegistry.set('home.submenu', () => <>submenu extension</>);
 
   setupCodeOverrides();
@@ -281,12 +326,7 @@ test('Should render a submenu extension component if one is supplied', async () 
 });
 
 test('Should not make data fetch calls if `welcome.main.replacement` is defined', async () => {
-  const extensionsRegistry = getExtensionsRegistry();
-
-  // Clean up
   extensionsRegistry.set('welcome.banner', () => null);
-
-  // Set up
   extensionsRegistry.set('welcome.main.replacement', () => (
     <>welcome.main.replacement extension component</>
   ));
@@ -303,4 +343,61 @@ test('Should not make data fetch calls if `welcome.main.replacement` is defined'
   expect(fetchMock.callHistory.calls(dashboardsEndpoint)).toHaveLength(0);
   expect(fetchMock.callHistory.calls(recentActivityEndpoint)).toHaveLength(0);
   expect(fetchMock.callHistory.calls(savedQueryEndpoint)).toHaveLength(0);
+});
+
+test.each([
+  {
+    name: 'keeps both extensions as a full replacement',
+    top: true,
+    main: true,
+    expectsFallback: false,
+  },
+  {
+    name: 'keeps the catalog fallback when only the top extension exists',
+    top: true,
+    main: false,
+    expectsFallback: true,
+  },
+  {
+    name: 'keeps the catalog fallback when only the main extension exists',
+    top: false,
+    main: true,
+    expectsFallback: true,
+  },
+  {
+    name: 'uses the catalog fallback when no extensions exist',
+    top: false,
+    main: false,
+    expectsFallback: true,
+  },
+])('$name', async ({ top, main, expectsFallback }) => {
+  setWelcomeDashboardCatalogFlag(true);
+  setWelcomeExtensions({ top, main });
+
+  await renderWelcome();
+
+  expect(
+    screen.queryByText('welcome.banner extension component') !== null,
+  ).toBe(top);
+  expect(
+    screen.queryByText('welcome.main.replacement extension component') !== null,
+  ).toBe(main);
+  expect(screen.queryByText('dashboard welcome catalog') !== null).toBe(
+    expectsFallback,
+  );
+});
+
+test('keeps the standard fallback when only the main extension exists and the catalog is disabled', async () => {
+  setWelcomeDashboardCatalogFlag(false);
+  setWelcomeExtensions({ main: true });
+
+  await renderWelcome();
+
+  expect(
+    screen.getByText('welcome.main.replacement extension component'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Recents')).toBeInTheDocument();
+  expect(
+    screen.queryByText('dashboard welcome catalog'),
+  ).not.toBeInTheDocument();
 });

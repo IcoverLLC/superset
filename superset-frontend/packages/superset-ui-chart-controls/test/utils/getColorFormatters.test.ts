@@ -881,6 +881,25 @@ test('undefined column config', () => {
   expect(colorFormatters.length).toEqual(0);
 });
 
+test('ignores bigint values in number-based conditional formatting', () => {
+  const colorFormatters = getColorFormatters(
+    [
+      {
+        operator: Comparator.GreaterThan,
+        targetValue: 5,
+        colorScheme: '#FF0000',
+        column: 'count',
+      },
+    ],
+    [{ count: 10 }, { count: BigInt('9223372036854775807') }],
+  );
+
+  expect(colorFormatters[0].getColorFromValue(10)).toEqual('#FF0000FF');
+  expect(
+    colorFormatters[0].getColorFromValue(BigInt('9223372036854775807')),
+  ).toBeUndefined();
+});
+
 test('correct column string config', () => {
   const columnConfigString = [
     {

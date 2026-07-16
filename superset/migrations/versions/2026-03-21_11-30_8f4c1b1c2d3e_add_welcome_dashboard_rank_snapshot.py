@@ -17,7 +17,7 @@
 """Add welcome dashboard rank snapshot table
 
 Revision ID: 8f4c1b1c2d3e
-Revises: 4b2a8c9d3e1f
+Revises: c233f5365c9e
 Create Date: 2026-03-21 11:30:00.000000
 
 """
@@ -27,10 +27,10 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "8f4c1b1c2d3e"
-down_revision = "4b2a8c9d3e1f"
+down_revision = "c233f5365c9e"
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "welcome_dashboard_rank",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -82,7 +82,7 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_index(
         "ix_welcome_dashboard_rank_user_lookup",
         table_name="welcome_dashboard_rank",

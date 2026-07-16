@@ -718,6 +718,98 @@ test('getCellColor derives readable text from the winning background', () => {
   });
 });
 
+test('getCellColor adapts conditional backgrounds for dark themes', () => {
+  const result = getCellColor(
+    ['revenue'],
+    200,
+    {
+      metric: [
+        {
+          column: 'revenue',
+          objectFormatting: ObjectFormattingEnum.BACKGROUND_COLOR,
+          getColorFromValue: () => '#ff0000',
+        },
+      ],
+    },
+    '#101010',
+    true,
+    '#101010',
+  );
+
+  expect(result.backgroundColor).toBe('#bc0404ff');
+});
+
+test('getCellColor leaves conditional backgrounds unchanged for light themes', () => {
+  const result = getCellColor(
+    ['revenue'],
+    200,
+    {
+      metric: [
+        {
+          column: 'revenue',
+          objectFormatting: ObjectFormattingEnum.BACKGROUND_COLOR,
+          getColorFromValue: () => '#ff0000',
+        },
+      ],
+    },
+    '#ffffff',
+    false,
+    '#ffffff',
+  );
+
+  expect(result.backgroundColor).toBe('#ff0000');
+});
+
+test('getCellColor preserves alpha while adapting dark-theme backgrounds', () => {
+  const result = getCellColor(
+    ['revenue'],
+    200,
+    {
+      metric: [
+        {
+          column: 'revenue',
+          objectFormatting: ObjectFormattingEnum.BACKGROUND_COLOR,
+          getColorFromValue: () => '#ff000080',
+        },
+      ],
+    },
+    '#101010',
+    true,
+    '#101010',
+  );
+
+  expect(result.backgroundColor).toBe('#bc0404a4');
+});
+
+test('getCellColor keeps explicit text color after dark-theme adaptation', () => {
+  expect(
+    getCellColor(
+      ['revenue'],
+      200,
+      {
+        metric: [
+          {
+            column: 'revenue',
+            objectFormatting: ObjectFormattingEnum.BACKGROUND_COLOR,
+            getColorFromValue: () => '#ff0000',
+          },
+          {
+            column: 'revenue',
+            objectFormatting: ObjectFormattingEnum.TEXT_COLOR,
+            getColorFromValue: () => '#00ff0080',
+          },
+        ],
+      },
+      '#101010',
+      true,
+      '#101010',
+    ),
+  ).toEqual({
+    backgroundColor: '#bc0404ff',
+    color: 'rgb(0, 255, 0)',
+  });
+});
+
 test('getCellColor keeps explicit text color over adaptive contrast', () => {
   expect(
     getCellColor(

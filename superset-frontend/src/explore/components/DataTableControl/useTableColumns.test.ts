@@ -222,3 +222,17 @@ test('useTableColumns applies columnDisplayNames to headers', () => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   expect(numtime?.Header.props.displayLabel).toBe('Verbose Numtime');
 });
+
+test('useTableColumns preserves coltype indexes when inherit columns are hidden', () => {
+  const hook = renderHook(() =>
+    useTableColumns(
+      ['value__inherit', NUMTIME_KEY],
+      [GenericDataType.String, GenericDataType.Temporal],
+      [{ value__inherit: 'ignored', [NUMTIME_KEY]: NUMTIME_VALUE }],
+    ),
+  );
+
+  const [column] = hook.result.current as JsonObject[];
+  expect(column.id).toBe(NUMTIME_KEY);
+  expect(column.Cell({ value: NUMTIME_VALUE })).toBe(NUMTIME_FORMATTED_VALUE);
+});

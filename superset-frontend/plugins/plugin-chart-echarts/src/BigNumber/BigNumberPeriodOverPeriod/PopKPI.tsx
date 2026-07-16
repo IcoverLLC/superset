@@ -29,7 +29,6 @@ import {
   type SupersetTheme,
   useTheme,
 } from '@apache-superset/core/theme';
-import { t } from '@apache-superset/core/translation';
 import { Tooltip } from '@superset-ui/core/components';
 import {
   DEFAULT_DATE_PATTERN,
@@ -164,7 +163,7 @@ export default function PopKPI(props: PopKPIProps) {
           ensureIsArray(newShift),
         ).then(res => {
           const response: string[] = ensureIsArray(res.value);
-          const firstRange: string = response.flat()[0];
+          const [firstRange]: string[] = response.flat();
           const rangeText = firstRange.split('vs\n');
           setComparisonRange(
             rangeText.length > 1 ? rangeText[1].trim() : rangeText[0],

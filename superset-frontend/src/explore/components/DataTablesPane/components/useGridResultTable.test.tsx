@@ -16,39 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { GenericDataType } from '@apache-superset/core/common';
+import { renderHook } from '@testing-library/react-hooks';
+import { useGridColumns } from './useGridResultTable';
 
-const dateFilterComparator = (
-  filterDate: Date,
-  cellValue: Date | null | undefined,
-) => {
-  if (cellValue == null) {
-    return -1;
-  }
-
-  const cellDate = new Date(cellValue);
-  if (Number.isNaN(cellDate.getTime())) {
-    return -1;
-  }
-
-  const filterUTC = Date.UTC(
-    filterDate.getFullYear(),
-    filterDate.getMonth(),
-    filterDate.getDate(),
-  );
-  const cellUTC = Date.UTC(
-    cellDate.getUTCFullYear(),
-    cellDate.getUTCMonth(),
-    cellDate.getUTCDate(),
+test('useGridColumns preserves coltype indexes when inherit columns are hidden', () => {
+  const timestamp = 1640995200000;
+  const hook = renderHook(() =>
+    useGridColumns(
+      ['value__inherit', 'timestamp'],
+      [GenericDataType.String, GenericDataType.Temporal],
+      [{ value__inherit: 'ignored', timestamp }],
+    ),
   );
 
-  if (cellUTC < filterUTC) {
-    return -1;
-  }
-  if (cellUTC > filterUTC) {
-    return 1;
-  }
-
-  return 0;
-};
-
-export default dateFilterComparator;
+  const [column] = hook.result.current;
+  expect(column.label).toBe('timestamp');
+  expect(column.render({ value: timestamp })).toBe('2022-01-01 00:00:00');
+});

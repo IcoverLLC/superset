@@ -16,11 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import {
-  FeatureFlag,
-  isFeatureEnabled,
-  t,
-} from '@superset-ui/core';
+import { FeatureFlag, isFeatureEnabled, t } from '@superset-ui/core';
 import {
   type ListViewFilter,
   type ListViewFilters,
@@ -28,7 +24,12 @@ import {
 } from 'src/components';
 import { WIDER_DROPDOWN_WIDTH } from 'src/components/ListView/utils';
 import { loadTags } from 'src/components/Tag/utils';
-import { createFetchRelated, createErrorHandler } from 'src/views/CRUD/utils';
+import {
+  createFetchRelated,
+  createFetchOwners,
+  createErrorHandler,
+} from 'src/views/CRUD/utils';
+import { OWNER_OPTION_FILTER_PROPS } from 'src/features/owners/OwnerSelectLabel';
 
 interface DashboardFilterArgs {
   addDangerToast: (msg: string) => void;
@@ -99,9 +100,8 @@ export function getDashboardListFilters({
       input: 'select',
       operator: FilterOperator.RelationManyMany,
       unfilteredLabel: t('All'),
-      fetchSelects: createFetchRelated(
+      fetchSelects: createFetchOwners(
         'dashboard',
-        'owners',
         createErrorHandler(errMsg =>
           addDangerToast(
             t(
@@ -112,6 +112,7 @@ export function getDashboardListFilters({
         ),
         user,
       ),
+      optionFilterProps: OWNER_OPTION_FILTER_PROPS,
       paginate: true,
       dropdownStyle: { minWidth: WIDER_DROPDOWN_WIDTH },
     },

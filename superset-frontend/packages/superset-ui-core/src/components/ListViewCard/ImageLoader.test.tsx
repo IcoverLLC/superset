@@ -90,7 +90,7 @@ describe('ImageLoader', () => {
     );
   });
 
-  it('retries pending thumbnail responses before falling back', async () => {
+  test('retries pending thumbnail responses before falling back', async () => {
     jest.useFakeTimers();
     fetchMock.once(
       '/thumbnail-pending',

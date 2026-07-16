@@ -43,8 +43,16 @@ const READABLE_TEXT_COLORS = [
 const DEFAULT_TWO_LEVELS_COLORS = ['#D14343', '#2E8B57'] as const;
 const DEFAULT_THREE_LEVELS_COLORS = ['#D14343', '#F0B429', '#2E8B57'] as const;
 const DEFAULT_REVERSE_TWO_LEVELS_COLORS = ['#2E8B57', '#D14343'] as const;
-const DEFAULT_REVERSE_THREE_LEVELS_COLORS = ['#2E8B57', '#F0B429', '#D14343'] as const;
-const DEFAULT_RED_WHITE_GREEN_COLORS = ['#D14343', '#FFFFFF', '#2E8B57'] as const;
+const DEFAULT_REVERSE_THREE_LEVELS_COLORS = [
+  '#2E8B57',
+  '#F0B429',
+  '#D14343',
+] as const;
+const DEFAULT_RED_WHITE_GREEN_COLORS = [
+  '#D14343',
+  '#FFFFFF',
+  '#2E8B57',
+] as const;
 
 const clamp = (value: number, min = 0, max = 1) =>
   Math.min(max, Math.max(min, value));
@@ -434,7 +442,13 @@ export const getColorFunction = (
       break;
   }
 
-  return (value: number | string | boolean | null) => {
+  return (value: number | string | boolean | bigint | null) => {
+    // json-bigint intentionally preserves integers outside JavaScript's safe
+    // range. Conditional-formatting arithmetic is number-based, so skipping
+    // bigint values is safer than crashing or silently rounding them.
+    if (typeof value === 'bigint') {
+      return undefined;
+    }
     if (isBlank(value) && operator !== Comparator.IsNull) {
       return undefined;
     }
@@ -510,7 +524,12 @@ export const getColorFormatters = memoizeOne(
             objectFormatting: config?.objectFormatting,
             getColorFromValue: getColorFunction(
               { ...config, colorScheme: resolvedColorScheme },
-              data.map(row => row[config.column!] as number),
+              data
+                .map(row => row[config.column!])
+                .filter(value => typeof value !== 'bigint') as
+                | number[]
+                | string[]
+                | (boolean | null)[],
               alpha,
               theme,
             ),

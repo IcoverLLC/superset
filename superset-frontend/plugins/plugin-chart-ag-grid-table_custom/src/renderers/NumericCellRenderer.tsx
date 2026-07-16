@@ -170,7 +170,10 @@ export const NumericCellRenderer = (
   const alignment =
     col?.config?.horizontalAlign || (col?.isNumeric ? 'right' : 'left');
 
-  if (!valueRange) {
+  // Cell-bar calculations mix the cell value with number extents. Native
+  // bigint values cannot participate in those operations without either
+  // throwing or losing precision, so render their already formatted text only.
+  if (!valueRange || typeof value !== 'number' || !Number.isFinite(value)) {
     return (
       <CellContainer align={alignment}>
         {arrow && (

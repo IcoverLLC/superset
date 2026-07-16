@@ -35,14 +35,15 @@ export function useGridColumns(
     () =>
       colnames && data?.length
         ? colnames
-            .filter((column: string) => {
-              const valueKey = columnValueKeyMap?.[column] ?? column;
+            .map((key, index) => ({ key, index }))
+            .filter(({ key }) => {
+              const valueKey = columnValueKeyMap?.[key] ?? key;
               return (
                 Object.keys(data[0]).includes(valueKey) &&
-                !column.endsWith('__inherit')
+                !key.endsWith('__inherit')
               );
             })
-            .map((key, index) => {
+            .map(({ key, index }) => {
               const colType = coltypes?.[index];
               const headerLabel = columnDisplayNames?.[key] ?? key;
               const valueKey = columnValueKeyMap?.[key] ?? key;

@@ -39,7 +39,7 @@ import {
 import { GenericDataType } from '@apache-superset/core/common';
 import { t } from '@apache-superset/core/translation';
 
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, merge } from 'lodash';
 import {
   ConditionalFormattingConfig,
   getColorFormatters,
@@ -346,6 +346,7 @@ const processColumns = memoizeOne(function processColumns(
       metrics: metrics_,
       percent_metrics: percentMetrics_,
       column_config: columnConfig = {},
+      query_mode: queryMode,
     },
     queriesData,
   } = props;
@@ -396,7 +397,7 @@ const processColumns = memoizeOne(function processColumns(
         const timeFormat = customFormat || tableTimestampFormat;
         // When format is "Adaptive Formatting" (smart_date)
         if (timeFormat === SMART_DATE_ID) {
-          if (granularity) {
+          if (granularity && queryMode !== QueryMode.Raw) {
             // time column use formats based on granularity
             formatter = getTimeFormatterForGranularity(granularity);
           } else if (customFormat) {
@@ -466,7 +467,7 @@ const transformProps = (
   const {
     height,
     width,
-    rawFormData: formData,
+    rawFormData: originalFormData,
     queriesData = [],
     ownState: serverPaginationData,
     filterState,
@@ -474,6 +475,12 @@ const transformProps = (
     emitCrossFilters,
     theme,
   } = chartProps;
+
+  const formData = merge(
+    {},
+    originalFormData,
+    originalFormData.extra_form_data,
+  );
 
   const {
     include_search: includeSearch = false,

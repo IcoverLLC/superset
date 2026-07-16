@@ -46,23 +46,26 @@ export const getCrossFilterDataMask = ({
   isActiveFilterValue,
   timestampFormatter,
 }: GetCrossFilterDataMaskProps) => {
-  const currentColumn = Object.keys(filters || {})[0];
-  let updatedFilters = { ...(filters || {}) };
+  // Redux state and API payloads must remain JSON-serializable. Keep the exact
+  // integer digits while avoiding JSON.stringify failures for native bigint.
+  const normalizedValue = typeof value === 'bigint' ? value.toString() : value;
+  const [currentColumn] = Object.keys(filters || {});
+  let updatedFilters = { ...filters };
   const currentValues = ensureIsArray(updatedFilters[key]);
   const isCurrentValueSelected =
-    currentColumn === key && isActiveFilterValue(key, value);
+    currentColumn === key && isActiveFilterValue(key, normalizedValue);
 
   if (altPressed && currentColumn === key) {
     updatedFilters = {
       [key]: isCurrentValueSelected
-        ? currentValues.filter(currentValue => currentValue !== value)
-        : [...currentValues, value].slice(0, MAX_CROSS_FILTER_VALUES),
+        ? currentValues.filter(currentValue => currentValue !== normalizedValue)
+        : [...currentValues, normalizedValue].slice(0, MAX_CROSS_FILTER_VALUES),
     };
   } else if (isCurrentValueSelected && currentValues.length === 1) {
     updatedFilters = {};
   } else {
     updatedFilters = {
-      [key]: [value],
+      [key]: [normalizedValue],
     };
   }
   if (Array.isArray(updatedFilters[key]) && updatedFilters[key].length === 0) {

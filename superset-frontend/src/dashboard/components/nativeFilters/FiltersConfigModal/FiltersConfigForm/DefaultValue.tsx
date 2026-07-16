@@ -55,7 +55,9 @@ const DefaultValue: FC<DefaultValueProps> = ({
   const formFilter = form.getFieldValue('filters')?.[filterId];
   const queriesData = formFilter?.defaultValueQueriesData;
   const chartType = formFilter?.filterType;
-  const isTimeFilter = formFilter?.filterType === 'filter_time';
+  const isTimeFilter = ['filter_time', 'filter_time_v2'].includes(
+    formFilter?.filterType,
+  );
   const hasQueriesData = queriesData && queriesData.length > 0;
   const emptyQueriesData = useMemo(() => [{ data: [{}] }], []);
   const loading = hasDataset && queriesData === null;

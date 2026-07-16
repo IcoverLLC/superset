@@ -201,6 +201,14 @@ def _to_moscow_iso(dt: datetime) -> str:
     return (dt + MOSCOW_OFFSET).isoformat()
 
 
+def _rollback_welcome_read_session() -> None:
+    """Restore the request session after an optional welcome-page read fails."""
+    try:
+        db.session.rollback()
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Failed to roll back the welcome dashboard read session")
+
+
 def with_dashboard(
     f: Callable[[BaseSupersetModelRestApi, Dashboard], Response],
 ) -> Callable[[BaseSupersetModelRestApi, str], Response]:
@@ -693,6 +701,7 @@ class DashboardRestApi(CustomTagsOptimizationMixin, BaseSupersetModelRestApi):
                 "Failed to resolve welcome top dashboards from snapshot storage",
                 exc_info=True,
             )
+            _rollback_welcome_read_session()
 
         manual_dashboards = self._get_manual_top_dashboards(query, top_limit)
         if manual_dashboards:
@@ -834,6 +843,7 @@ class DashboardRestApi(CustomTagsOptimizationMixin, BaseSupersetModelRestApi):
                     "for welcome dashboards",
                     exc_info=True,
                 )
+                _rollback_welcome_read_session()
             if top_dashboard_ids:
                 try:
                     recently_viewed_at.update(
@@ -845,6 +855,7 @@ class DashboardRestApi(CustomTagsOptimizationMixin, BaseSupersetModelRestApi):
                         "for top welcome dashboards",
                         exc_info=True,
                     )
+                    _rollback_welcome_read_session()
             if load_sections and dashboards:
                 section_dashboard_ids = [dashboard.id for dashboard in dashboards]
                 try:
@@ -860,6 +871,7 @@ class DashboardRestApi(CustomTagsOptimizationMixin, BaseSupersetModelRestApi):
                         "for welcome dashboard section",
                         exc_info=True,
                     )
+                    _rollback_welcome_read_session()
                 if section_dashboard_ids:
                     try:
                         recently_viewed_at.update(
@@ -873,6 +885,7 @@ class DashboardRestApi(CustomTagsOptimizationMixin, BaseSupersetModelRestApi):
                             "for welcome dashboard section",
                             exc_info=True,
                         )
+                        _rollback_welcome_read_session()
 
         result = {
             "top_mode": top_mode,
