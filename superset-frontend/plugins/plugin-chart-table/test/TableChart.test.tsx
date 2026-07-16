@@ -272,7 +272,6 @@ describe('plugin-chart-table', () => {
       expect(percentMetricConfig?.config).toEqual({ d3NumberFormat: '.3f' });
     });
 
-
     test('should read main comparison column config from localized key fallback', () => {
       const transformedProps = transformProps({
         ...testData.comparisonWithConfig,
@@ -2216,6 +2215,62 @@ describe('plugin-chart-table', () => {
         await waitFor(() => {
           expect(screen.getByRole('textbox')).toHaveValue('Michael');
           expect(screen.getByText('Michael')).toBeInTheDocument();
+        });
+      });
+
+      test('clamps an out-of-range controlled server page without repeated updates', async () => {
+        type DataRow = { name: string };
+        const onServerPaginationChange = jest.fn();
+        const columns: Column<DataRow>[] = [
+          {
+            Header: 'Name',
+            accessor: 'name',
+          },
+        ];
+        const data = [{ name: 'Michael' }];
+
+        const renderDataTable = (
+          handler: (pageNumber: number, pageSize: number) => void,
+        ) => (
+          <ProviderWrapper>
+            <DataTable<DataRow>
+              columns={columns}
+              data={data}
+              rowCount={120}
+              pageSize={50}
+              serverPagination
+              serverPaginationData={{ currentPage: 5, pageSize: 50 }}
+              onServerPaginationChange={handler}
+              handleSortByChange={jest.fn()}
+              sortByFromParent={[]}
+              onSearchColChange={jest.fn()}
+              searchOptions={[]}
+              sticky={false}
+            />
+          </ProviderWrapper>
+        );
+
+        const { container, rerender } = render(
+          renderDataTable(onServerPaginationChange),
+        );
+
+        await waitFor(() => {
+          expect(onServerPaginationChange).toHaveBeenCalledTimes(1);
+          expect(onServerPaginationChange).toHaveBeenCalledWith(2, 50);
+        });
+        expect(
+          container.querySelector('.pagination li.active'),
+        ).toHaveTextContent('3');
+
+        onServerPaginationChange.mockClear();
+        rerender(
+          renderDataTable((pageNumber, nextPageSize) =>
+            onServerPaginationChange(pageNumber, nextPageSize),
+          ),
+        );
+
+        await waitFor(() => {
+          expect(onServerPaginationChange).not.toHaveBeenCalled();
         });
       });
     });

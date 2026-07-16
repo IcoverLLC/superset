@@ -114,15 +114,15 @@ export const parseCalendarRange = (timeRange: string): CalendarRangeValue => {
     };
   }
 
-  const start = extendedDayjs(customRange.sinceDatetime).startOf('day');
-  const until = extendedDayjs(customRange.untilDatetime).startOf('day');
-  const end = until.subtract(1, 'day').startOf('day');
+  const start = extendedDayjs(customRange.sinceDatetime);
+  const until = extendedDayjs(customRange.untilDatetime);
 
   if (
     !start.isValid() ||
     !until.isValid() ||
-    !until.isAfter(start) ||
-    end.isBefore(start)
+    !start.isSame(start.startOf('day')) ||
+    !until.isSame(until.startOf('day')) ||
+    !until.isAfter(start)
   ) {
     return {
       start: extendedDayjs().startOf('day'),
@@ -130,6 +130,8 @@ export const parseCalendarRange = (timeRange: string): CalendarRangeValue => {
       matchedFlag: false,
     };
   }
+
+  const end = until.subtract(1, 'day');
 
   return { start, end, matchedFlag: true };
 };
@@ -166,10 +168,7 @@ const formatRussianDateTime = (value: Dayjs) =>
     ? value.format('DD.MM.YYYY')
     : value.format('DD.MM.YYYY HH:mm:ss');
 
-export const formatCalendarRangeLabel = (
-  start: Dayjs,
-  end: Dayjs,
-): string => {
+export const formatCalendarRangeLabel = (start: Dayjs, end: Dayjs): string => {
   const startLabel = capitalize(formatRussianShortDate(start));
   const endLabel = capitalize(formatRussianShortDate(end));
 
@@ -206,7 +205,8 @@ export const isMonthlyCompatibleTimeRange = (timeRange: string): boolean => {
   }
 
   return (
-    MONTHLY_TIME_RANGE_VALUES.has(timeRange) || isFullMonthCalendarRange(timeRange)
+    MONTHLY_TIME_RANGE_VALUES.has(timeRange) ||
+    isFullMonthCalendarRange(timeRange)
   );
 };
 

@@ -31,6 +31,8 @@ import {
 import { FilterPluginStyle, StatusMessage } from '../common';
 import { PluginFilterTimeGrainProps } from './types';
 
+const EMPTY_TIME_GRAINS: string[] = [];
+
 export default function PluginFilterTimegrainV2(
   props: PluginFilterTimeGrainProps,
 ) {
@@ -60,12 +62,21 @@ export default function PluginFilterTimegrainV2(
     [availableTimeGrains],
   );
   const initialValue =
-    filterState.value === undefined ? (defaultValue ?? []) : filterState.value;
+    filterState.value === undefined
+      ? (defaultValue ?? EMPTY_TIME_GRAINS)
+      : filterState.value;
   const [value, setValue] = useState<string[]>(() =>
     filterAvailableTimeGrains(initialValue),
   );
   const lastAutoSyncRef = useRef<string | null>(null);
-  const pendingUserValueRef = useRef<string | null>(null);
+  const pendingUserValueRef = useRef<{
+    previousSourceKey: string;
+    valueKey: string;
+  } | null>(null);
+  const pendingNormalizedValueRef = useRef<{
+    previousSourceKey: string;
+    valueKey: string;
+  } | null>(null);
   const filteredData = useMemo(() => {
     if (!availableTimeGrains?.length) {
       return data;
@@ -108,66 +119,95 @@ export default function PluginFilterTimegrainV2(
     [durationMap, setDataMask],
   );
 
-  const handleChange = (values: string[] | string | undefined | null) => {
-    const resultValue = filterAvailableTimeGrains(values);
-    pendingUserValueRef.current = JSON.stringify(resultValue);
-    lastAutoSyncRef.current = null;
-    applyValue(resultValue);
-  };
-
   const sourceValue =
-    filterState.value === undefined ? (defaultValue ?? []) : filterState.value;
-  const rawFilterStateValue = useMemo(
-    () => ensureIsArray<string>(filterState.value ?? []),
-    [filterState.value],
+    filterState.value === undefined
+      ? (defaultValue ?? EMPTY_TIME_GRAINS)
+      : filterState.value;
+  const rawSourceValue = useMemo(
+    () => ensureIsArray<string>(sourceValue),
+    [sourceValue],
   );
   const nextSyncedValue = useMemo(
     () => filterAvailableTimeGrains(sourceValue),
     [filterAvailableTimeGrains, sourceValue],
   );
-  const rawFilterStateValueKey = useMemo(
-    () => JSON.stringify(rawFilterStateValue),
-    [rawFilterStateValue],
+  const rawSourceValueKey = useMemo(
+    () => JSON.stringify(rawSourceValue),
+    [rawSourceValue],
   );
   const nextSyncedValueKey = useMemo(
     () => JSON.stringify(nextSyncedValue),
     [nextSyncedValue],
   );
   const selectedValueKey = JSON.stringify(value);
+  const autoSyncKey = `${rawSourceValueKey}::${nextSyncedValueKey}`;
+
+  const handleChange = (values: string[] | string | undefined | null) => {
+    const resultValue = filterAvailableTimeGrains(values);
+    pendingUserValueRef.current = {
+      previousSourceKey: rawSourceValueKey,
+      valueKey: JSON.stringify(resultValue),
+    };
+    applyValue(resultValue);
+  };
 
   useEffect(() => {
-    if (pendingUserValueRef.current === nextSyncedValueKey) {
-      pendingUserValueRef.current = null;
-    }
+    const pendingUserValue = pendingUserValueRef.current;
+    const pendingNormalizedValue = pendingNormalizedValueRef.current;
 
-    if (rawFilterStateValueKey !== nextSyncedValueKey) {
-      const autoSyncKey = `${rawFilterStateValueKey}::${nextSyncedValueKey}`;
-      if (lastAutoSyncRef.current === autoSyncKey) {
+    if (pendingUserValue) {
+      if (pendingUserValue.valueKey === nextSyncedValueKey) {
+        pendingUserValueRef.current = null;
+        lastAutoSyncRef.current = autoSyncKey;
         return;
       }
 
-      lastAutoSyncRef.current = autoSyncKey;
-      applyValue(nextSyncedValue);
+      if (pendingUserValue.previousSourceKey === rawSourceValueKey) {
+        return;
+      }
+
+      pendingUserValueRef.current = null;
+    }
+
+    if (pendingNormalizedValue) {
+      if (
+        rawSourceValueKey === pendingNormalizedValue.valueKey &&
+        nextSyncedValueKey === pendingNormalizedValue.valueKey
+      ) {
+        pendingNormalizedValueRef.current = null;
+        lastAutoSyncRef.current = autoSyncKey;
+        return;
+      }
+
+      if (
+        rawSourceValueKey !== pendingNormalizedValue.previousSourceKey ||
+        nextSyncedValueKey !== pendingNormalizedValue.valueKey
+      ) {
+        pendingNormalizedValueRef.current = null;
+      }
+    }
+
+    if (lastAutoSyncRef.current === autoSyncKey) {
+      if (selectedValueKey !== nextSyncedValueKey) {
+        setValue(nextSyncedValue);
+      }
       return;
     }
 
-    lastAutoSyncRef.current = null;
-
-    if (
-      pendingUserValueRef.current &&
-      pendingUserValueRef.current !== nextSyncedValueKey
-    ) {
-      return;
+    lastAutoSyncRef.current = autoSyncKey;
+    if (rawSourceValueKey !== nextSyncedValueKey) {
+      pendingNormalizedValueRef.current = {
+        previousSourceKey: rawSourceValueKey,
+        valueKey: nextSyncedValueKey,
+      };
     }
-
-    if (selectedValueKey !== nextSyncedValueKey) {
-      setValue(nextSyncedValue);
-    }
+    applyValue(nextSyncedValue);
   }, [
     applyValue,
+    autoSyncKey,
     nextSyncedValue,
     nextSyncedValueKey,
-    rawFilterStateValueKey,
+    rawSourceValueKey,
     selectedValueKey,
   ]);
 

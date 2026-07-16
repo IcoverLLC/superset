@@ -94,12 +94,26 @@ export default function BaseTimeFilterPlugin(props: BaseTimeFilterPluginProps) {
   } = props;
   const extensionsRegistry = getExtensionsRegistry();
   const calendarFormat = props.formData?.calendarFormat ?? 'standard';
-  const currentValue = filterState.value || NO_TIME_RANGE;
+  const storedValue = filterState.value as string | null | undefined;
+  const currentValue =
+    storedValue === undefined
+      ? (props.formData?.defaultValue ?? NO_TIME_RANGE)
+      : (storedValue ?? NO_TIME_RANGE);
   const normalizedValue = normalizeTimeRangeForCalendarFormat(
     currentValue,
     calendarFormat,
   );
   const lastNormalizedSyncRef = useRef<string | null>(null);
+  const pendingUserValueRef = useRef<{
+    calendarFormat: typeof calendarFormat;
+    previousValue: string;
+    value: string;
+  } | null>(null);
+  const pendingNormalizedValueRef = useRef<{
+    calendarFormat: typeof calendarFormat;
+    previousValue: string;
+    value: string;
+  } | null>(null);
 
   const FallbackComponent =
     variant === 'v2' ? DateFilterControlV2 : DateFilterControl;
@@ -110,7 +124,7 @@ export default function BaseTimeFilterPlugin(props: BaseTimeFilterPluginProps) {
   ).get(extensionKey) as typeof FallbackComponent | undefined;
   const DateFilterComponent = DateFilterControlExtension ?? FallbackComponent;
 
-  const handleTimeRangeChange = useCallback(
+  const emitTimeRange = useCallback(
     (timeRange?: string): void => {
       const isSet = timeRange && timeRange !== NO_TIME_RANGE;
       setDataMask({
@@ -120,25 +134,87 @@ export default function BaseTimeFilterPlugin(props: BaseTimeFilterPluginProps) {
             }
           : {},
         filterState: {
-          value: isSet ? timeRange : undefined,
+          // `undefined` means the store has not been initialized and allows a
+          // configured default to be restored. Use `null` for an explicit
+          // clear so the default is not immediately applied again.
+          value: isSet ? timeRange : null,
         },
       });
     },
     [setDataMask],
   );
 
+  const handleTimeRangeChange = useCallback(
+    (timeRange?: string): void => {
+      const normalizedTimeRange = normalizeTimeRangeForCalendarFormat(
+        timeRange || NO_TIME_RANGE,
+        calendarFormat,
+      );
+      pendingUserValueRef.current = {
+        calendarFormat,
+        previousValue: currentValue,
+        value: normalizedTimeRange,
+      };
+      emitTimeRange(normalizedTimeRange);
+    },
+    [calendarFormat, currentValue, emitTimeRange],
+  );
+
   useEffect(() => {
-    if (normalizedValue !== currentValue) {
-      const syncKey = `${calendarFormat}::${currentValue}::${normalizedValue}`;
-      if (lastNormalizedSyncRef.current === syncKey) {
+    const syncKey = `${calendarFormat}::${currentValue}::${normalizedValue}`;
+    const pendingUserValue = pendingUserValueRef.current;
+    const pendingNormalizedValue = pendingNormalizedValueRef.current;
+
+    if (pendingUserValue?.calendarFormat !== calendarFormat) {
+      pendingUserValueRef.current = null;
+    } else if (pendingUserValue) {
+      if (normalizedValue === pendingUserValue.value) {
+        pendingUserValueRef.current = null;
+        lastNormalizedSyncRef.current = syncKey;
         return;
       }
-      lastNormalizedSyncRef.current = syncKey;
-      handleTimeRangeChange(normalizedValue);
-    } else {
-      lastNormalizedSyncRef.current = null;
+
+      if (currentValue === pendingUserValue.previousValue) {
+        return;
+      }
+
+      pendingUserValueRef.current = null;
     }
-  }, [calendarFormat, currentValue, normalizedValue, handleTimeRangeChange]);
+
+    if (pendingNormalizedValue?.calendarFormat !== calendarFormat) {
+      pendingNormalizedValueRef.current = null;
+    } else if (pendingNormalizedValue) {
+      if (
+        currentValue === pendingNormalizedValue.value &&
+        normalizedValue === pendingNormalizedValue.value
+      ) {
+        pendingNormalizedValueRef.current = null;
+        lastNormalizedSyncRef.current = syncKey;
+        return;
+      }
+
+      if (
+        currentValue !== pendingNormalizedValue.previousValue ||
+        normalizedValue !== pendingNormalizedValue.value
+      ) {
+        pendingNormalizedValueRef.current = null;
+      }
+    }
+
+    if (lastNormalizedSyncRef.current === syncKey) {
+      return;
+    }
+
+    lastNormalizedSyncRef.current = syncKey;
+    if (currentValue !== normalizedValue) {
+      pendingNormalizedValueRef.current = {
+        calendarFormat,
+        previousValue: currentValue,
+        value: normalizedValue,
+      };
+    }
+    emitTimeRange(normalizedValue);
+  }, [calendarFormat, currentValue, emitTimeRange, normalizedValue]);
 
   return props.formData?.inView ? (
     <TimeFilterStyles width={width} height={height}>

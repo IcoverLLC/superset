@@ -25,6 +25,7 @@ import {
   getDefaultMonthlyRangeValue,
   isFullMonthCalendarRange,
   normalizeTimeRangeForCalendarFormat,
+  parseCalendarRange,
 } from 'src/explore/components/controls/DateFilterControl/utils';
 
 // eslint-disable-next-line no-restricted-globals -- TODO: Migrate from describe blocks
@@ -194,6 +195,38 @@ describe('Custom TimeRange', () => {
   });
 
   describe('v2 formatters', () => {
+    test('parses only ranges bounded by whole days', () => {
+      const parsedRange = parseCalendarRange(
+        '2026-03-15T00:00:00 : 2026-03-17T00:00:00',
+      );
+
+      expect(parsedRange.matchedFlag).toBe(true);
+      expect(parsedRange.start.format('YYYY-MM-DD HH:mm:ss')).toBe(
+        '2026-03-15 00:00:00',
+      );
+      expect(parsedRange.end.format('YYYY-MM-DD HH:mm:ss')).toBe(
+        '2026-03-16 00:00:00',
+      );
+    });
+
+    test('does not truncate exact datetime ranges into calendar days', () => {
+      expect(
+        parseCalendarRange('2026-03-15T12:30:00 : 2026-03-17T13:45:00')
+          .matchedFlag,
+      ).toBe(false);
+    });
+
+    test('rejects empty and reversed whole-day ranges', () => {
+      expect(
+        parseCalendarRange('2026-03-15T00:00:00 : 2026-03-15T00:00:00')
+          .matchedFlag,
+      ).toBe(false);
+      expect(
+        parseCalendarRange('2026-03-16T00:00:00 : 2026-03-15T00:00:00')
+          .matchedFlag,
+      ).toBe(false);
+    });
+
     it('formats calendar range label with russian short month names', () => {
       expect(
         formatCalendarRangeLabel(

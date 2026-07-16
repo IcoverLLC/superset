@@ -113,7 +113,11 @@ describe('TimeGrainV2FilterPlugin', () => {
       />,
     );
 
-    expect(initialSetDataMask).not.toHaveBeenCalled();
+    expect(initialSetDataMask).toHaveBeenCalledTimes(1);
+    expect(initialSetDataMask).toHaveBeenCalledWith({
+      extraFormData: { time_grain_sqla: 'P1D' },
+      filterState: { label: 'day', value: ['P1D'] },
+    });
 
     const nextSetDataMask = jest.fn();
     rerender(
@@ -130,6 +134,51 @@ describe('TimeGrainV2FilterPlugin', () => {
     );
 
     expect(nextSetDataMask).not.toHaveBeenCalled();
+  });
+
+  test('emits a normalized configured default when the store has no value', () => {
+    getWrapper(
+      { availableTimeGrains: ['PT5M', 'P1Y'], defaultValue: ['P1D'] },
+      { value: undefined } as typeof chartProps.filterState,
+    );
+
+    expect(setDataMask).toHaveBeenCalledTimes(1);
+    expect(setDataMask).toHaveBeenCalledWith({
+      extraFormData: {},
+      filterState: {
+        label: undefined,
+        value: null,
+      },
+    });
+  });
+
+  test('emits a restored store value after mount', () => {
+    const props = {
+      ...transformProps({
+        ...chartProps,
+        formData: { ...chartProps.formData },
+        filterState: { value: ['P1D'] },
+      }),
+    };
+    const { rerender } = render(
+      // @ts-ignore
+      <TimeGrainFilterPlugin {...props} setDataMask={setDataMask} />,
+    );
+
+    rerender(
+      // @ts-ignore
+      <TimeGrainFilterPlugin
+        {...props}
+        filterState={{ value: ['P1Y'] }}
+        setDataMask={setDataMask}
+      />,
+    );
+
+    expect(setDataMask).toHaveBeenCalledTimes(2);
+    expect(setDataMask).toHaveBeenLastCalledWith({
+      extraFormData: { time_grain_sqla: 'P1Y' },
+      filterState: { label: 'year', value: ['P1Y'] },
+    });
   });
 
   test('clears hidden selected values only once across rerenders', () => {
@@ -160,10 +209,27 @@ describe('TimeGrainV2FilterPlugin', () => {
       },
     });
 
+    const normalizedProps = {
+      ...props,
+      filterState: { value: [] },
+    };
+    rerender(
+      // @ts-ignore
+      <TimeGrainFilterPlugin
+        {...normalizedProps}
+        setDataMask={initialSetDataMask}
+      />,
+    );
+
+    expect(initialSetDataMask).toHaveBeenCalledTimes(1);
+
     const nextSetDataMask = jest.fn();
     rerender(
       // @ts-ignore
-      <TimeGrainFilterPlugin {...props} setDataMask={nextSetDataMask} />,
+      <TimeGrainFilterPlugin
+        {...normalizedProps}
+        setDataMask={nextSetDataMask}
+      />,
     );
 
     expect(nextSetDataMask).not.toHaveBeenCalled();

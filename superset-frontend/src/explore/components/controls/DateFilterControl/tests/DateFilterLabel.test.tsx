@@ -22,18 +22,30 @@ import configureStore from 'redux-mock-store';
 
 import { render, screen, userEvent } from 'spec/helpers/testing-library';
 
-import { NO_TIME_RANGE } from '@superset-ui/core';
+import { fetchTimeRange, NO_TIME_RANGE } from '@superset-ui/core';
 import DateFilterLabel from '..';
 import { DateFilterControlProps } from '../types';
 import { DateFilterTestKey } from '../utils';
 
 const mockStore = configureStore([thunk]);
+const mockedFetchTimeRange = fetchTimeRange as jest.MockedFunction<
+  typeof fetchTimeRange
+>;
+
+jest.mock('@superset-ui/core', () => ({
+  ...jest.requireActual('@superset-ui/core'),
+  fetchTimeRange: jest.fn(),
+}));
 
 const defaultProps = {
   onChange: jest.fn(),
   onClosePopover: jest.fn(),
   onOpenPopover: jest.fn(),
 };
+
+beforeEach(() => {
+  mockedFetchTimeRange.mockResolvedValue({ value: 'Last week' });
+});
 
 function setup(
   props: Omit<DateFilterControlProps, 'name'> = defaultProps,
@@ -153,6 +165,22 @@ test('DateFilter v2 hides title and selected range section', () => {
     screen.queryByText('\u0412\u044b\u0431\u0440\u0430\u043d\u043e:'),
   ).not.toBeInTheDocument();
   expect(screen.queryByText('Actual time range')).not.toBeInTheDocument();
+});
+
+test('DateFilter v2 preserves exact datetime ranges in the label', async () => {
+  const exactRange = '2026-03-15 12:30:00 <= col < 2026-03-17 13:45:00';
+  mockedFetchTimeRange.mockResolvedValue({ value: exactRange });
+
+  render(
+    setup({
+      ...defaultProps,
+      value: '2026-03-15T12:30:00 : 2026-03-17T13:45:00',
+      variant: 'v2',
+    }),
+  );
+
+  expect(await screen.findByText(exactRange)).toBeInTheDocument();
+  expect(screen.queryByText(/15 .* 2026 - 16 .* 2026/)).not.toBeInTheDocument();
 });
 
 test('DateFilter v2 opens calendar frame and shows reset button', () => {

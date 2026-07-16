@@ -45,6 +45,7 @@ import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVis
 import { useColDefs } from './utils/useColDefs';
 import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
 import { formatColumnValue } from './utils/formatValue';
+import { normalizeBigInts } from './utils/normalizeBigInts';
 import { StyledChartContainer } from './styles';
 
 export default function TableChart<D extends DataRecord = DataRecord>(
@@ -150,7 +151,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           selectedComparisonColumns.includes(col.label),
       )
       .filter(col => col?.config?.visible !== false);
-  }, [columns, selectedComparisonColumns]);
+  }, [columns, isUsingTimeComparison, selectedComparisonColumns]);
 
   const colDefs = useColDefs({
     columns: isUsingTimeComparison
@@ -334,11 +335,11 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
       const clientX = mouseEvent?.clientX ?? 0;
       const clientY = mouseEvent?.clientY ?? 0;
-      const payload = {
+      const payload = normalizeBigInts({
         drillToDetail: drillToDetailFilters,
         crossFilter,
         drillBy,
-      } as unknown as ContextMenuFilters;
+      }) as ContextMenuFilters;
       requestAnimationFrame(() => onContextMenu?.(clientX, clientY, payload));
     },
     [
@@ -360,7 +361,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [setDataMask],
+    [serverPaginationData, setDataMask],
   );
 
   const handlePageSizeChange = useCallback(
@@ -372,7 +373,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [setDataMask],
+    [serverPaginationData, setDataMask],
   );
 
   const handleChangeSearchCol = (searchCol: string) => {
@@ -397,7 +398,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [setDataMask, searchOptions],
+    [serverPaginationData, setDataMask, searchOptions],
   );
 
   const handleSortByChange = useCallback(
@@ -409,7 +410,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       };
       updateTableOwnState(setDataMask, modifiedOwnState);
     },
-    [setDataMask, serverPagination],
+    [serverPaginationData, setDataMask, serverPagination],
   );
 
   const renderTimeComparisonVisibility = (): JSX.Element => (

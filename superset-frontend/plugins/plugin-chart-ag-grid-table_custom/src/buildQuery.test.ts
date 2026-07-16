@@ -20,6 +20,57 @@ import { QueryMode, VizType } from '@superset-ui/core';
 import buildQuery from './buildQuery';
 import { TableChartFormData } from './types';
 
+const basicFormData: TableChartFormData = {
+  viz_type: VizType.Table,
+  datasource: '11__table',
+  query_mode: QueryMode.Aggregate,
+  groupby: ['state'],
+  metrics: ['count'],
+  server_pagination: true,
+};
+
+describe('server pagination row limit', () => {
+  test('caps the first page by the configured row limit', () => {
+    const query = buildQuery(
+      {
+        ...basicFormData,
+        row_limit: 10,
+        server_page_length: 20,
+      },
+      { ownState: { currentPage: 0, pageSize: 20 } },
+    ).queries[0];
+
+    expect(query).toMatchObject({ row_limit: 10, row_offset: 0 });
+  });
+
+  test('caps the last page by the remaining configured rows', () => {
+    const query = buildQuery(
+      {
+        ...basicFormData,
+        row_limit: 120,
+        server_page_length: 50,
+      },
+      { ownState: { currentPage: 2, pageSize: 50 } },
+    ).queries[0];
+
+    expect(query).toMatchObject({ row_limit: 20, row_offset: 100 });
+  });
+
+  test('clamps pages beyond the configured row limit', () => {
+    const query = buildQuery(
+      {
+        ...basicFormData,
+        row_limit: 120,
+        server_page_length: 50,
+      },
+      { ownState: { currentPage: 5, pageSize: 50 } },
+    ).queries[0];
+
+    expect(query).toMatchObject({ row_limit: 20, row_offset: 100 });
+    expect(query.row_limit).not.toBe(0);
+  });
+});
+
 test('uses zero instead of NaN for an omitted server row limit', () => {
   const formData: TableChartFormData = {
     viz_type: VizType.Table,

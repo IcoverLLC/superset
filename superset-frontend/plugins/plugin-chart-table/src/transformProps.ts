@@ -62,9 +62,44 @@ const MAIN_COMPARISON_PREFIX = 'Main';
 
 function isNumeric(key: string, data: DataRecord[] = []) {
   return data.every(
-    x => x[key] === null || x[key] === undefined || typeof x[key] === 'number',
+    x =>
+      x[key] === null ||
+      x[key] === undefined ||
+      typeof x[key] === 'number' ||
+      typeof x[key] === 'bigint',
   );
 }
+
+const toFiniteNumber = (value: unknown): number => {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  const parsedValue =
+    typeof value === 'number' ? value : Number.parseFloat(String(value));
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+};
+
+const toExactInteger = (value: unknown): bigint | undefined => {
+  if (typeof value === 'bigint') {
+    return value;
+  }
+  if (typeof value === 'number' && Number.isSafeInteger(value)) {
+    return BigInt(value);
+  }
+  return undefined;
+};
+
+const addTotalValues = (currentValue: unknown, nextValue: unknown) => {
+  if (typeof currentValue === 'bigint' || typeof nextValue === 'bigint') {
+    const exactCurrent =
+      currentValue === undefined ? BigInt(0) : toExactInteger(currentValue);
+    const exactNext = toExactInteger(nextValue);
+    if (exactCurrent !== undefined && exactNext !== undefined) {
+      return exactCurrent + exactNext;
+    }
+  }
+  return toFiniteNumber(currentValue) + toFiniteNumber(nextValue);
+};
 
 const processDataRecords = memoizeOne(function processDataRecords(
   data: DataRecord[] | undefined,
@@ -103,18 +138,36 @@ const sliceCache = new Map<
 >();
 
 const calculateDifferences = (
-  originalValue: number,
-  comparisonValue: number,
+  originalValue: unknown,
+  comparisonValue: unknown,
 ) => {
-  const valueDifference = originalValue - comparisonValue;
+  const containsBigInt =
+    typeof originalValue === 'bigint' || typeof comparisonValue === 'bigint';
+  const exactOriginal = toExactInteger(originalValue);
+  const exactComparison = toExactInteger(comparisonValue);
+  const canUseExactIntegers =
+    containsBigInt &&
+    exactOriginal !== undefined &&
+    exactComparison !== undefined;
+  const originalNumber = toFiniteNumber(originalValue);
+  const comparisonNumber = toFiniteNumber(comparisonValue);
+  const valueDifference = canUseExactIntegers
+    ? exactOriginal - exactComparison
+    : originalNumber - comparisonNumber;
   let percentDifferenceNum;
-  if (!originalValue && !comparisonValue) {
+  if (!originalNumber && !comparisonNumber) {
     percentDifferenceNum = 0;
-  } else if (!originalValue || !comparisonValue) {
-    percentDifferenceNum = originalValue ? 1 : -1;
+  } else if (!originalNumber || !comparisonNumber) {
+    percentDifferenceNum = originalNumber ? 1 : -1;
+  } else if (canUseExactIntegers) {
+    const difference = exactOriginal - exactComparison;
+    const absoluteComparison =
+      exactComparison < BigInt(0) ? -exactComparison : exactComparison;
+    percentDifferenceNum =
+      toFiniteNumber(difference) / toFiniteNumber(absoluteComparison);
   } else {
     percentDifferenceNum =
-      (originalValue - comparisonValue) / Math.abs(comparisonValue);
+      (originalNumber - comparisonNumber) / Math.abs(comparisonNumber);
   }
   return { valueDifference, percentDifferenceNum };
 };
@@ -130,22 +183,17 @@ const processComparisonTotals = (
   totals.map((totalRecord: DataRecord) =>
     Object.keys(totalRecord).forEach(key => {
       if (totalRecord[key] !== undefined && !key.includes(comparisonSuffix)) {
-        transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`] =
-          parseInt(
-            transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`]?.toString() ||
-              '0',
-            10,
-          ) +
-          parseInt(totalRecord[key]?.toString() || '0', 10);
-        transformedTotals[`# ${key}`] =
-          parseInt(transformedTotals[`# ${key}`]?.toString() || '0', 10) +
-          parseInt(
-            totalRecord[`${key}__${comparisonSuffix}`]?.toString() || '0',
-            10,
-          );
+        transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`] = addTotalValues(
+          transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`],
+          totalRecord[key],
+        );
+        transformedTotals[`# ${key}`] = addTotalValues(
+          transformedTotals[`# ${key}`],
+          totalRecord[`${key}__${comparisonSuffix}`],
+        );
         const { valueDifference, percentDifferenceNum } = calculateDifferences(
-          transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`] as number,
-          transformedTotals[`# ${key}`] as number,
+          transformedTotals[`${MAIN_COMPARISON_PREFIX} ${key}`],
+          transformedTotals[`# ${key}`],
         );
         transformedTotals[`△ ${key}`] = valueDifference;
         transformedTotals[`% ${key}`] = percentDifferenceNum;

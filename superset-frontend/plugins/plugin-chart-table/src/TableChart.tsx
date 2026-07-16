@@ -48,6 +48,7 @@ import {
   getSelectedText,
   getTimeFormatterForGranularity,
   BinaryQueryObjectFilterClause,
+  ContextMenuFilters,
   extractTextFromHTML,
 } from '@superset-ui/core';
 import {
@@ -92,6 +93,7 @@ import DataTable, {
   SelectPageSizeRendererProps,
   SizeOption,
 } from './DataTable';
+import { normalizeBigInts } from './utils/normalizeBigInts';
 import Styles from './Styles';
 import { formatColumnValue } from './utils/formatValue';
 import { PAGE_SIZE_OPTIONS, SERVER_PAGE_SIZE_OPTIONS } from './consts';
@@ -473,11 +475,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   const getCrossFilterDataMask = useCallback(
-    (
-      key: string,
-      value: DataRecordValue,
-      altPressed: boolean = false,
-    ) => {
+    (key: string, value: DataRecordValue, altPressed: boolean = false) => {
       const currentColumn = Object.keys(filters || {})[0];
       let updatedFilters = { ...(filters || {}) };
       const currentValues = ensureIsArray(updatedFilters[key]);
@@ -651,7 +649,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             });
           }
         });
-        onContextMenu(clientX, clientY, {
+        const payload = normalizeBigInts({
           drillToDetail: drillToDetailFilters,
           crossFilter: cellPoint.isMetric
             ? undefined
@@ -668,7 +666,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 ],
                 groupbyFieldName: 'groupby',
               },
-        });
+        }) as ContextMenuFilters;
+        onContextMenu(clientX, clientY, payload);
       };
     }
     return undefined;

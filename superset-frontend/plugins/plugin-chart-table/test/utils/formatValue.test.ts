@@ -153,3 +153,20 @@ test('formatColumnValue with small number format and currency', () => {
   expect(result).toContain('€');
   expect(result).toContain('0.5000');
 });
+
+test('formatColumnValue preserves bigint digits without calling number formatters', () => {
+  const formatter = jest.fn(() => 'rounded');
+  const column: DataColumnMeta = {
+    key: 'revenue',
+    label: 'Revenue',
+    dataType: GenericDataType.Numeric,
+    formatter,
+    isNumeric: true,
+  };
+
+  expect(formatColumnValue(column, BigInt('9223372036854775807'))).toEqual([
+    false,
+    '9223372036854775807',
+  ]);
+  expect(formatter).not.toHaveBeenCalled();
+});

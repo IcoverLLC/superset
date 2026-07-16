@@ -38,7 +38,7 @@ import {
 import { Store } from '@reduxjs/toolkit';
 import reducerIndex from 'spec/helpers/reducerIndex';
 import * as exploreActions from 'src/explore/actions/exploreActions';
-import ExploreViewContainer from '.';
+import ExploreViewContainer, { getOwnStateForQuery } from '.';
 
 jest.doMock('@superset-ui/core', () => ({
   __esModule: true,
@@ -152,6 +152,16 @@ const renderWithRouter = ({
   );
   return { ...result, history };
 };
+
+test('excludes runtime-only own state from query form data', () => {
+  expect(
+    getOwnStateForQuery({
+      clientView: { currentPage: 1 },
+      metricSqlExpressions: { revenue: 'SUM(revenue)' },
+      interactive_groupby: ['country'],
+    }),
+  ).toEqual({ interactive_groupby: ['country'] });
+});
 
 test('generates a new form_data param when none is available', async () => {
   getChartMetadataRegistry().registerValue(

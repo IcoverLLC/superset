@@ -332,6 +332,44 @@ export default typedMemo(function DataTable<D extends object>({
     }
   };
 
+  const serverPageSize =
+    Number(serverPaginationData?.pageSize ?? initialPageSize) || 0;
+  const serverPageCount =
+    serverPageSize > 0 && Number.isFinite(rowCount)
+      ? Math.max(Math.ceil(rowCount / serverPageSize), 0)
+      : 0;
+  const requestedServerPage = Math.max(
+    Math.trunc(Number(serverPaginationData?.currentPage) || 0),
+    0,
+  );
+  const effectiveServerPage =
+    serverPageCount > 0
+      ? Math.min(requestedServerPage, serverPageCount - 1)
+      : 0;
+  const lastPaginationCorrectionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!serverPagination || requestedServerPage === effectiveServerPage) {
+      lastPaginationCorrectionRef.current = null;
+      return;
+    }
+
+    const correctionKey = `${requestedServerPage}:${effectiveServerPage}:${serverPageSize}:${serverPageCount}`;
+    if (lastPaginationCorrectionRef.current === correctionKey) {
+      return;
+    }
+
+    lastPaginationCorrectionRef.current = correctionKey;
+    onServerPaginationChange(effectiveServerPage, serverPageSize);
+  }, [
+    effectiveServerPage,
+    onServerPaginationChange,
+    requestedServerPage,
+    serverPageCount,
+    serverPageSize,
+    serverPagination,
+  ]);
+
   const noResults =
     typeof noResultsText === 'function'
       ? noResultsText(filterValue as string)
@@ -457,11 +495,7 @@ export default typedMemo(function DataTable<D extends object>({
   let resultCurrentPage = pageIndex;
   let resultOnPageChange: (page: number) => void = gotoPage;
   if (serverPagination) {
-    const serverPageSize = serverPaginationData?.pageSize ?? initialPageSize;
-    resultPageCount = Math.ceil(rowCount / serverPageSize);
-    if (!Number.isFinite(resultPageCount)) {
-      resultPageCount = 0;
-    }
+    resultPageCount = serverPageCount;
     resultCurrentPageSize = serverPageSize;
     const foundPageSizeIndex = pageSizeOptions.findIndex(
       ([option]) => option >= resultCurrentPageSize,
@@ -469,7 +503,7 @@ export default typedMemo(function DataTable<D extends object>({
     if (foundPageSizeIndex === -1) {
       resultCurrentPageSize = 0;
     }
-    resultCurrentPage = serverPaginationData?.currentPage ?? 0;
+    resultCurrentPage = effectiveServerPage;
     resultOnPageChange = (pageNumber: number) =>
       onServerPaginationChange(pageNumber, serverPageSize);
   }

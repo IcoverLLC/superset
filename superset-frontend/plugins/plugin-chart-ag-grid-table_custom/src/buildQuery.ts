@@ -192,6 +192,13 @@ const buildQuery: BuildQuery<TableChartFormData> = (
 
     const moreProps: Partial<QueryObject> = {};
     const ownState = options?.ownState ?? {};
+    const pageSize =
+      Number(ownState.pageSize ?? formDataCopy.server_page_length) || 0;
+    const configuredRowLimit = Number(formDataCopy.row_limit) || 0;
+    const firstPageRowLimit =
+      configuredRowLimit > 0
+        ? Math.min(pageSize, configuredRowLimit)
+        : pageSize;
     // Build Query flag to check if its for either download as csv, excel or json
     const isDownloadQuery =
       ['csv', 'xlsx'].includes(formData?.result_format || '') ||
@@ -204,11 +211,20 @@ const buildQuery: BuildQuery<TableChartFormData> = (
     }
 
     if (!isDownloadQuery && formDataCopy.server_pagination) {
-      const pageSize = ownState.pageSize ?? formDataCopy.server_page_length;
-      const currentPage = ownState.currentPage ?? 0;
+      const lastPage =
+        configuredRowLimit > 0 && pageSize > 0
+          ? Math.max(Math.ceil(configuredRowLimit / pageSize) - 1, 0)
+          : Number(ownState.currentPage) || 0;
+      const currentPage = Math.min(Number(ownState.currentPage) || 0, lastPage);
+      const rowOffset = currentPage * pageSize;
+      const remainingRows =
+        configuredRowLimit > 0
+          ? Math.max(configuredRowLimit - rowOffset, 0)
+          : pageSize;
 
-      moreProps.row_limit = pageSize;
-      moreProps.row_offset = currentPage * pageSize;
+      moreProps.row_limit =
+        configuredRowLimit > 0 ? Math.min(pageSize, remainingRows) : pageSize;
+      moreProps.row_offset = rowOffset;
     }
 
     // getting sort by in case of server pagination from own state
@@ -238,11 +254,15 @@ const buildQuery: BuildQuery<TableChartFormData> = (
       JSON.stringify(options?.extras?.cachedChanges?.[formData.slice_id]) !==
         JSON.stringify(queryObject.filters)
     ) {
-      queryObject = { ...queryObject, row_offset: 0 };
+      queryObject = {
+        ...queryObject,
+        row_offset: 0,
+        row_limit: firstPageRowLimit,
+      };
       const modifiedOwnState = {
         ...(options?.ownState || {}),
         currentPage: 0,
-        pageSize: queryObject.row_limit ?? 0,
+        pageSize,
       };
       updateTableOwnState(options?.hooks?.setDataMask, modifiedOwnState);
     }

@@ -157,6 +157,25 @@ test('should compose extra control', () => {
   expect(result.stack).toEqual('Stacked');
 });
 
+test('ignores an active filter whose dashboard scope is missing', () => {
+  const activeFilters = {
+    'incomplete-grain-filter': {
+      targets: [],
+      values: {},
+    },
+  } as unknown as NonNullable<
+    GetFormDataWithExtraFiltersArguments['activeFilters']
+  >;
+
+  expect(() =>
+    getFormDataWithExtraFilters({
+      ...mockArgs,
+      filters: {},
+      activeFilters,
+    }),
+  ).not.toThrow();
+});
+
 test('should merge extraFormData from chart customizations', () => {
   const customizationId = 'CHART_CUSTOMIZATION-1';
   const argsWithCustomization: GetFormDataWithExtraFiltersArguments = {

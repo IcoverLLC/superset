@@ -38,6 +38,51 @@ const createAdhocColumn = (
 });
 
 describe('plugin-chart-ag-grid-table', () => {
+  describe('buildQuery - server pagination row limit', () => {
+    test('caps the first page by the configured row limit', () => {
+      const query = buildQuery(
+        {
+          ...basicFormData,
+          server_pagination: true,
+          row_limit: 10,
+          server_page_length: 20,
+        },
+        { ownState: { currentPage: 0, pageSize: 20 } },
+      ).queries[0];
+
+      expect(query).toMatchObject({ row_limit: 10, row_offset: 0 });
+    });
+
+    test('caps the last page by the remaining configured rows', () => {
+      const query = buildQuery(
+        {
+          ...basicFormData,
+          server_pagination: true,
+          row_limit: 120,
+          server_page_length: 50,
+        },
+        { ownState: { currentPage: 2, pageSize: 50 } },
+      ).queries[0];
+
+      expect(query).toMatchObject({ row_limit: 20, row_offset: 100 });
+    });
+
+    test('clamps pages beyond the configured row limit', () => {
+      const query = buildQuery(
+        {
+          ...basicFormData,
+          server_pagination: true,
+          row_limit: 120,
+          server_page_length: 50,
+        },
+        { ownState: { currentPage: 5, pageSize: 50 } },
+      ).queries[0];
+
+      expect(query).toMatchObject({ row_limit: 20, row_offset: 100 });
+      expect(query.row_limit).not.toBe(0);
+    });
+  });
+
   describe('buildQuery - sort mapping for server pagination', () => {
     test('should map string column colId to backend identifier', () => {
       const query = buildQuery(

@@ -49,6 +49,12 @@ function formatValue(
   ) {
     return [false, 'N/A'];
   }
+  // json-bigint preserves integers outside JavaScript's safe range as native
+  // bigint values. Number/currency formatters coerce their input and can both
+  // throw and lose digits, so display these values exactly.
+  if (typeof value === 'bigint') {
+    return [false, value.toString()];
+  }
   if (formatter) {
     // If formatter is a CurrencyFormatter, pass row context for AUTO mode
     if (formatter instanceof CurrencyFormatter) {

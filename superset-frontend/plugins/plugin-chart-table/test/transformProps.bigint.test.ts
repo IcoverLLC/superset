@@ -16,58 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { QueryMode, SMART_DATE_ID, TimeGranularity } from '@superset-ui/core';
 import { GenericDataType } from '@apache-superset/core/common';
-import testData from '../../plugin-chart-table/test/testData';
-import transformProps from './transformProps';
+import transformProps from '../src/transformProps';
+import testData from './testData';
 
-jest.mock('@superset-ui/core', () => ({
-  ...jest.requireActual('@superset-ui/core'),
-  isFeatureEnabled: () => true,
-}));
-
-test('merges dashboard extra form data into transformed form data', () => {
-  const transformedProps = transformProps({
-    ...testData.basic,
-    rawFormData: {
-      ...testData.basic.rawFormData,
-      include_search: false,
-      extra_form_data: {
-        include_search: true,
-      } as never,
-    },
-  });
-
-  expect(transformedProps.includeSearch).toBe(true);
-  expect(transformedProps.formData.include_search).toBe(true);
-});
-
-test('does not apply time grain formatting to raw temporal values', () => {
-  const transformedProps = transformProps({
-    ...testData.basic,
-    rawFormData: {
-      ...testData.basic.rawFormData,
-      query_mode: QueryMode.Raw,
-      time_grain_sqla: TimeGranularity.MONTH,
-      table_timestamp_format: SMART_DATE_ID,
-    },
-    queriesData: [
-      {
-        ...testData.basic.queriesData[0],
-        colnames: ['__timestamp'],
-        coltypes: [GenericDataType.Temporal],
-        data: [{ __timestamp: '2020-01-15T12:34:56' }],
-      },
-    ],
-  });
-
-  expect(transformedProps.isRawRecords).toBe(true);
-  expect(transformedProps.columns[0].formatter).toBe(String);
-});
+const mainValue = BigInt('9223372036854775807');
+const comparisonValue = BigInt('9223372036854775800');
 
 test('preserves bigint comparison values and calculates exact bigint totals', () => {
-  const mainValue = BigInt('9223372036854775807');
-  const comparisonValue = BigInt('9223372036854775800');
   const transformedProps = transformProps({
     ...testData.comparison,
     rawFormData: {
@@ -120,8 +76,6 @@ test('preserves bigint comparison values and calculates exact bigint totals', ()
 });
 
 test('preserves exact totals and differences for mixed safe integers and bigint', () => {
-  const mainValue = BigInt('9223372036854775807');
-  const comparisonValue = BigInt('9223372036854775800');
   const transformedProps = transformProps({
     ...testData.comparison,
     rawFormData: {

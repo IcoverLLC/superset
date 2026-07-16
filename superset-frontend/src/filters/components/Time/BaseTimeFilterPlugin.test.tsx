@@ -17,7 +17,8 @@
  * under the License.
  */
 import { createRef, type ComponentProps } from 'react';
-import { render, screen } from 'spec/helpers/testing-library';
+import { NO_TIME_RANGE } from '@superset-ui/core';
+import { render, screen, userEvent } from 'spec/helpers/testing-library';
 import BaseTimeFilterPlugin from './BaseTimeFilterPlugin';
 
 jest.mock('@superset-ui/core', () => {
@@ -33,8 +34,27 @@ jest.mock('@superset-ui/core', () => {
 jest.mock('src/explore/components/controls/DateFilterControl', () => {
   const React = jest.requireActual('react');
 
-  const MockDateFilterControl = ({ value }: { value?: string }) =>
-    React.createElement('div', { 'data-test': 'mock-date-filter' }, value);
+  const MockDateFilterControl = ({
+    value,
+    onChange,
+  }: {
+    value?: string;
+    onChange: (value?: string) => void;
+  }) =>
+    React.createElement(
+      'div',
+      null,
+      React.createElement('span', { 'data-test': 'mock-date-filter' }, value),
+      React.createElement(
+        'button',
+        {
+          'data-test': 'clear-time-filter',
+          type: 'button',
+          onClick: () => onChange(undefined),
+        },
+        'clear',
+      ),
+    );
 
   return {
     __esModule: true,
@@ -72,12 +92,16 @@ const getProps = (
   }) as BaseTimeFilterPluginProps;
 
 describe('BaseTimeFilterPlugin', () => {
-  test('does not re-emit the same value when rerendered with a new setDataMask callback', () => {
+  test('emits a restored value once without repeating for a new callback', () => {
     const initialSetDataMask = jest.fn();
     const props = getProps({ setDataMask: initialSetDataMask });
     const { rerender } = render(<BaseTimeFilterPlugin {...props} />);
 
-    expect(initialSetDataMask).not.toHaveBeenCalled();
+    expect(initialSetDataMask).toHaveBeenCalledTimes(1);
+    expect(initialSetDataMask).toHaveBeenCalledWith({
+      extraFormData: { time_range: 'Last week' },
+      filterState: { value: 'Last week' },
+    });
     expect(screen.getByTestId('mock-date-filter')).toHaveTextContent(
       'Last week',
     );
@@ -88,6 +112,127 @@ describe('BaseTimeFilterPlugin', () => {
     );
 
     expect(nextSetDataMask).not.toHaveBeenCalled();
+  });
+
+  test('emits a configured default once when the store has no value', () => {
+    const setDataMask = jest.fn();
+
+    render(
+      <BaseTimeFilterPlugin
+        {...getProps({
+          filterState: {},
+          formData: {
+            calendarFormat: 'standard',
+            defaultValue: 'Last month',
+            inView: true,
+            nativeFilterId: 'time-filter',
+          },
+          setDataMask,
+        })}
+      />,
+    );
+
+    expect(setDataMask).toHaveBeenCalledTimes(1);
+    expect(setDataMask).toHaveBeenCalledWith({
+      extraFormData: { time_range: 'Last month' },
+      filterState: { value: 'Last month' },
+    });
+  });
+
+  test('preserves an explicit clear instead of restoring the configured default', async () => {
+    const setDataMask = jest.fn();
+    const formData = {
+      calendarFormat: 'standard' as const,
+      defaultValue: 'Last month',
+      inView: true,
+      nativeFilterId: 'time-filter',
+    };
+    const { rerender, unmount } = render(
+      <BaseTimeFilterPlugin
+        {...getProps({ filterState: {}, formData, setDataMask })}
+      />,
+    );
+
+    expect(setDataMask).toHaveBeenLastCalledWith({
+      extraFormData: { time_range: 'Last month' },
+      filterState: { value: 'Last month' },
+    });
+
+    // Acknowledge the initialized default in the store before clearing it.
+    rerender(
+      <BaseTimeFilterPlugin
+        {...getProps({
+          filterState: { value: 'Last month' },
+          formData,
+          setDataMask,
+        })}
+      />,
+    );
+    await userEvent.click(screen.getByTestId('clear-time-filter'));
+
+    expect(setDataMask).toHaveBeenLastCalledWith({
+      extraFormData: {},
+      filterState: { value: null },
+    });
+
+    // Store acknowledgement must keep both the rendered control and emitted
+    // query state cleared, rather than falling back to the configured default.
+    rerender(
+      <BaseTimeFilterPlugin
+        {...getProps({
+          filterState: { value: null },
+          formData,
+          setDataMask,
+        })}
+      />,
+    );
+    expect(screen.getByTestId('mock-date-filter')).toHaveTextContent(
+      NO_TIME_RANGE,
+    );
+    expect(setDataMask).toHaveBeenCalledTimes(2);
+
+    unmount();
+    const remountSetDataMask = jest.fn();
+    render(
+      <BaseTimeFilterPlugin
+        {...getProps({
+          filterState: { value: null },
+          formData,
+          setDataMask: remountSetDataMask,
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('mock-date-filter')).toHaveTextContent(
+      NO_TIME_RANGE,
+    );
+    expect(remountSetDataMask).toHaveBeenCalledTimes(1);
+    expect(remountSetDataMask).toHaveBeenCalledWith({
+      extraFormData: {},
+      filterState: { value: null },
+    });
+  });
+
+  test('emits a restored store value after mount', () => {
+    const setDataMask = jest.fn();
+    const { rerender } = render(
+      <BaseTimeFilterPlugin {...getProps({ setDataMask })} />,
+    );
+
+    rerender(
+      <BaseTimeFilterPlugin
+        {...getProps({
+          filterState: { value: 'Last month' },
+          setDataMask,
+        })}
+      />,
+    );
+
+    expect(setDataMask).toHaveBeenCalledTimes(2);
+    expect(setDataMask).toHaveBeenLastCalledWith({
+      extraFormData: { time_range: 'Last month' },
+      filterState: { value: 'Last month' },
+    });
   });
 
   test('normalizes an incompatible monthly value only once across rerenders', () => {
@@ -119,13 +264,19 @@ describe('BaseTimeFilterPlugin', () => {
       'previous calendar month',
     );
 
+    const normalizedProps = getProps({
+      ...monthlyProps,
+      filterState: { value: 'previous calendar month' },
+    });
+    rerender(<BaseTimeFilterPlugin {...normalizedProps} />);
+
+    expect(initialSetDataMask).toHaveBeenCalledTimes(1);
+
     const nextSetDataMask = jest.fn();
     rerender(
       <BaseTimeFilterPlugin
-        {...getProps({
-          ...monthlyProps,
-          setDataMask: nextSetDataMask,
-        })}
+        {...normalizedProps}
+        setDataMask={nextSetDataMask}
       />,
     );
 
