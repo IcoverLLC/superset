@@ -99,6 +99,32 @@ def test_values_for_column(database: Database) -> None:
         assert table.values_for_column("a") == [1, None]
 
 
+def test_convert_tbl_column_to_sqla_col_uses_column_type(
+    mocker: MockerFixture,
+) -> None:
+    """The SQLAlchemy type must be derived from the selected table column."""
+    from sqlalchemy import BigInteger
+
+    from superset.connectors.sqla.models import TableColumn
+    from superset.models.helpers import ExploreMixin
+
+    datasource = mocker.Mock()
+    datasource.type = "table"
+    datasource.db_extra = {"metadata_cache_timeout": 60}
+    datasource.db_engine_spec.get_column_spec.return_value = mocker.Mock(
+        sqla_type=BigInteger()
+    )
+    datasource.make_sqla_column_compatible.side_effect = lambda column, label: column
+    table_column = TableColumn(column_name="id", type="BIGINT")
+
+    result = ExploreMixin.convert_tbl_column_to_sqla_col(datasource, table_column)
+
+    datasource.db_engine_spec.get_column_spec.assert_called_once_with(
+        "BIGINT", db_extra=datasource.db_extra
+    )
+    assert isinstance(result.type, BigInteger)
+
+
 def test_values_for_column_with_rls(database: Database) -> None:
     """
     Test the `values_for_column` method with RLS enabled.

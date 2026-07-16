@@ -16,18 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { formatSelectOptions } from '@superset-ui/chart-controls';
+import { DataMaskStateWithId } from '@superset-ui/core';
 
-export const SERVER_PAGE_SIZE_OPTIONS = formatSelectOptions<number>([
-  10, 20, 50, 100, 200,
-]);
-
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200];
-
-export const CUSTOM_AGG_FUNCS = {
-  queryTotal: 'Metric total',
-};
-
-// Carries row-specific comparison formatting through AG Grid sorting without
-// colliding with or leaking into dataset columns, exports, or cross-filters.
-export const BASIC_COLOR_FORMATTERS_ROW_KEY = Symbol('basicColorFormatters');
+export default function hasPendingDefaultToFirstItemParent(
+  parentIds: string[],
+  dataMaskSelected: DataMaskStateWithId | undefined,
+  parentDefaultToFirstItem: Record<string, boolean>,
+) {
+  return parentIds.some(parentId => {
+    const parentMask = dataMaskSelected?.[parentId];
+    return (
+      parentDefaultToFirstItem[parentId] &&
+      parentMask?.filterState?.value === undefined
+    );
+  });
+}

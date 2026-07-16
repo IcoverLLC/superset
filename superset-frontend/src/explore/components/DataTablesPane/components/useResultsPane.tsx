@@ -62,27 +62,48 @@ type QueryFormDataWithMetrics = ResultsPaneProps['queryFormData'] & {
   queries?: QueryFormDataWithMetrics[];
 };
 
-const getMetricsFromFormData = (
+const getPrimaryMetricsFromFormData = (
   formData: QueryFormDataWithMetrics,
 ): unknown[] => [
   formData.metric,
   ...(Array.isArray(formData.metrics) ? formData.metrics : []),
-  formData.metric_b,
-  ...(Array.isArray(formData.metrics_b) ? formData.metrics_b : []),
-  formData.metric_2,
-  ...(Array.isArray(formData.metrics_2) ? formData.metrics_2 : []),
 ];
 
-const getColumnValueKeyMap = (
+const getMetricsForQuery = (
+  formData: QueryFormDataWithMetrics,
+  queryIndex: number,
+): unknown[] => {
+  const nestedQuery = Array.isArray(formData.queries)
+    ? formData.queries[queryIndex]
+    : undefined;
+  if (nestedQuery) {
+    return getPrimaryMetricsFromFormData(nestedQuery);
+  }
+
+  if (queryIndex === 0) {
+    return getPrimaryMetricsFromFormData(formData);
+  }
+  if (queryIndex === 1) {
+    return [
+      formData.metric_b,
+      ...(Array.isArray(formData.metrics_b) ? formData.metrics_b : []),
+    ];
+  }
+  if (queryIndex === 2) {
+    return [
+      formData.metric_2,
+      ...(Array.isArray(formData.metrics_2) ? formData.metrics_2 : []),
+    ];
+  }
+  return [];
+};
+
+export const getColumnValueKeyMap = (
   queryFormData: ResultsPaneProps['queryFormData'],
+  queryIndex: number,
 ): Record<string, string> => {
   const formData = queryFormData as QueryFormDataWithMetrics;
-  const queryMetrics = Array.isArray(formData.queries)
-    ? formData.queries.flatMap(query => getMetricsFromFormData(query))
-    : [];
-  const metrics = [...getMetricsFromFormData(formData), ...queryMetrics].filter(
-    Boolean,
-  );
+  const metrics = getMetricsForQuery(formData, queryIndex).filter(Boolean);
 
   return metrics.reduce<Record<string, string>>((acc, metric) => {
     const adhocMetric = metric as AdhocMetricLike;
@@ -122,7 +143,6 @@ export const useResultsPane = ({
   const [resultResp, setResultResp] = useState<QueryResultInterface[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [responseError, setResponseError] = useState<string>('');
-  const columnValueKeyMap = getColumnValueKeyMap(queryFormData);
   const queryCount = metadata?.queryObjectCount ?? 1;
   const isQueryCountDynamic = metadata?.dynamicQueryObjectCount;
 
@@ -245,7 +265,7 @@ export const useResultsPane = ({
         rowLimit={rowLimit}
         rowLimitOptions={ROW_LIMIT_OPTIONS}
         onRowLimitChange={handleRowLimitChange}
-        columnValueKeyMap={columnValueKeyMap}
+        columnValueKeyMap={getColumnValueKeyMap(queryFormData, idx)}
       />
     </StyledDiv>
   ));

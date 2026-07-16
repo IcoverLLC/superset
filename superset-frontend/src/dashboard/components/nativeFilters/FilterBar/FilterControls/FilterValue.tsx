@@ -42,7 +42,7 @@ import {
   isChartCustomization,
 } from '@superset-ui/core';
 import { styled } from '@apache-superset/core/theme';
-import { useDispatch, useSelector } from 'react-redux';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { isEqual, isEqualWith } from 'lodash';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
 import { ErrorAlert, ErrorMessageWithStackTrace } from 'src/components';
@@ -63,6 +63,7 @@ import { FilterControlProps } from './types';
 import { getFormData } from '../../utils';
 import { useFilterDependencies, useTransitiveParentIds } from './state';
 import { useFilterOutlined } from '../useFilterOutlined';
+import hasPendingDefaultToFirstItemParent from './hasPendingDefaultToFirstItemParent';
 
 const HEIGHT = 32;
 
@@ -121,6 +122,19 @@ const FilterValue: FC<FilterValueProps> = ({
   const dependencies = useFilterDependencies(id, dataMaskSelected);
   const transitiveParentIds = useTransitiveParentIds(id);
   const shouldRefresh = useShouldFilterRefresh();
+
+  // Select only the setting that affects this guard. shallowEqual prevents
+  // unrelated native-filter configuration changes from retriggering the query.
+  const parentDefaultToFirstItem = useSelector(
+    (state: RootState) =>
+      Object.fromEntries(
+        Object.entries(state.nativeFilters?.filters ?? {}).map(([fId, f]) => [
+          fId,
+          Boolean(f.controlValues?.defaultToFirstItem),
+        ]),
+      ),
+    shallowEqual,
+  );
 
   const behaviors = useMemo(
     () => [
@@ -193,6 +207,18 @@ const FilterValue: FC<FilterValueProps> = ({
       // selections first. We walk the full transitive ancestor chain (not just
       // direct parents) so the counts line up with `dependencies`, which is
       // itself built from the transitive chain by `useFilterDependencies`.
+
+      // A parent configured to auto-select its first item has not finished
+      // initialization until its value is present. Letting a dependent filter
+      // fetch earlier can persist a stale first item from unfiltered results.
+      const hasDefaultFirstParentPending = hasPendingDefaultToFirstItemParent(
+        transitiveParentIds,
+        dataMaskSelected,
+        parentDefaultToFirstItem,
+      );
+      if (hasDefaultFirstParentPending) {
+        return;
+      }
 
       let selectedParentFilterValueCounts = 0;
       let isTimeRangeSelected = false;
@@ -296,6 +322,7 @@ const FilterValue: FC<FilterValueProps> = ({
     dataMaskSelected,
     setHasDepsFilterValue,
     transitiveParentIds,
+    parentDefaultToFirstItem,
   ]);
 
   useEffect(() => {

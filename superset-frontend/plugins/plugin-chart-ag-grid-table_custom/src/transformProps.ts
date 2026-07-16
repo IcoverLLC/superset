@@ -46,6 +46,7 @@ import {
 } from '@superset-ui/chart-controls';
 import isEqualColumns from './utils/isEqualColumns';
 import DateWithFormatter from './utils/DateWithFormatter';
+import { BASIC_COLOR_FORMATTERS_ROW_KEY } from './consts';
 import {
   DataColumnMeta,
   TableChartProps,
@@ -745,6 +746,19 @@ const transformProps = (
 
   const basicColorFormatters =
     comparisonColorEnabled && getBasicColorFormatter(baseQuery?.data, columns);
+
+  // Formatter arrays use query order while AG Grid rowIndex uses display
+  // order. Bind each formatter to its row so sorting cannot misalign colors.
+  if (basicColorFormatters) {
+    passedData.forEach((row, index) => {
+      Object.defineProperty(row, BASIC_COLOR_FORMATTERS_ROW_KEY, {
+        value: basicColorFormatters[index],
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+    });
+  }
   const columnColorFormatters =
     getColorFormatters(conditionalFormatting, passedData, theme) ?? [];
 

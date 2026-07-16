@@ -42,3 +42,7 @@ export const FILTER_CONDITION_BODY_INDEX = {
   FIRST: 0,
   SECOND: 1,
 } as const;
+
+// Carries row-specific comparison formatting through AG Grid sorting without
+// colliding with or leaking into dataset columns, exports, or cross-filters.
+export const BASIC_COLOR_FORMATTERS_ROW_KEY = Symbol('basicColorFormatters');
