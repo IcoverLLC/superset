@@ -1,6 +1,6 @@
 # `prod` vs `origin/6.0.0`: карта кастомизаций
 
-Последнее обновление: 2026-03-23
+Последнее обновление: 2026-07-15
 
 ## Назначение
 
@@ -9,14 +9,37 @@
 1. Быстро понять, какие доработки реально живут в форке сейчас.
 2. Упростить будущий апгрейд Superset: что надо сохранить, что можно заменить штатной реализацией новой версии, а что уже было экспериментом и давно откатилось.
 
+Общий план перехода на Superset 6.1.0 и интеграции MCP зафиксирован в [superset-6.1-mcp-upgrade.md](superset-6.1-mcp-upgrade.md).
+
+## Текущий снимок веток
+
+Состояние после `git fetch origin --prune` от 2026-07-15:
+
+| Ref | Commit | Дата commit | Наблюдаемая роль |
+|---|---|---|---|
+| `origin/prod` / локальная `prod` | `e6b3d5f561b0a97dae86199deb71dd231f1d095d` | 2026-04-07 | Кандидат на production source; соответствие реальному deploy пока не подтверждено. |
+| `origin/dev` / локальная `dev` | `f37d9dcb84ebbad68c19ccca17ad1d247087e473` | 2026-06-24 | Ветка разработки и default branch (`origin/HEAD -> origin/dev`). |
+| `origin/6.0.0` | `6a1c30e5e7c3e28d0549c9c2ac0ff61607f26a2f` | 2025-12-04 | База сравнения; commit входит в историю `prod` и `dev`. Subject упоминает `6.0.0rc4`. |
+| `origin/master` | `70b95ca1b98d6b8b2d6f591cd9a79795abd38ba6` | 2026-01-31 | Старая синхронизация upstream-линии форка; не является базой текущих `prod`/`dev`. |
+
+Дополнительные факты:
+
+- `prod` целиком входит в историю `dev`; `dev` опережает `prod` на 12 коммитов и не имеет собственного отставания относительно `prod`.
+- `superset-frontend/package.json` в `origin/6.0.0`, `prod` и `dev` содержит версию `6.0.0`.
+- Это не доказывает соответствие официальному финальному release 6.0.0: subject базового commit содержит `6.0.0rc4`, а release tag в clone отсутствует.
+- локальный clone не содержит Git tags, поэтому tag нельзя использовать как доказательство версии или deploy.
+- `origin/master` и `prod` разошлись после commit `1f482b42eb20cf77b42e9acaed7e9b77a9cf9d18`: относительно друг друга в `origin/master` 1228 собственных коммитов, в `prod` 729.
+- Имя production image, registry tag, digest и runtime SHA в репозитории не зафиксированы. `Dockerfile.prod` начинается с `FROM superset:prod-base`, но не определяет финальное имя image.
+
 ## База сравнения и методика
 
 - База: `origin/6.0.0`
 - Целевая ветка: `prod`
 - На момент фиксации:
-  - `git diff --stat origin/6.0.0...prod` показывает `117 files changed, 12526 insertions(+), 417 deletions(-)`
-  - `git log origin/6.0.0..prod` содержит `404` коммита
-  - из них `154` merge PR, `14` merge branch, `46` revert-коммитов
+  - `git diff --stat origin/6.0.0...prod` показывает `144 files changed, 14748 insertions(+), 613 deletions(-)`
+  - `git log origin/6.0.0..prod` содержит `482` коммита
+  - из них `154` merge PR, `15` merge branch, `54` revert-коммита
+  - `313` коммитов не являются merge-коммитами
 
 Для этой карты использовались:
 
@@ -41,6 +64,7 @@
 2. Снять свежий diff относительно новой базы.
 3. Для каждого блока ниже принять решение: `оставить`, `выбросить`, `заменить штатной реализацией новой версии`.
 4. После merge обновить этот файл, а не начинать анализ заново с нуля.
+5. До любых миграций подтвердить реальный production image/tag/digest и runtime SHA по запущенному окружению.
 
 Полезные команды:
 
@@ -297,6 +321,35 @@ git log --no-merges --oneline origin/6.0.0..prod
 - это не бизнес-функциональность, а техническая поддержка форка
 - при апгрейде сравнивать вручную с новой docker/frontend сборкой
 
+### 7. `Time V2`, календарные диапазоны и Explore data table
+
+После предыдущего снимка в `prod` закрепился ещё один крупный frontend-блок:
+
+- отдельный native filter `TimeV2` с ключом `filter_time_v2`
+- `DateFilterControlV2` и календарный режим выбора диапазона
+- отдельный `monthly`-формат, который ограничивает выбор полными календарными периодами
+- быстрые диапазоны для предыдущей календарной недели, месяца, квартала и года
+- настройка `calendarFormat` и default value в редакторе native filters
+- исправления отображения временных колонок в Explore / View as table
+- backend-исправление выбора физических и adhoc-колонок в `ExploreMixin`
+
+Ключевые файлы:
+
+- `superset-frontend/src/filters/components/TimeV2/`
+- `superset-frontend/src/filters/components/Time/BaseTimeFilterPlugin.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/DateFilterControlV2.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/components/CalendarRangeFrame.tsx`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/`
+- `superset-frontend/src/explore/components/DataTablesPane/`
+- `superset/models/helpers.py`
+
+Что проверять при апгрейде:
+
+- не появился ли эквивалентный календарный UI и monthly-only режим в Superset 6.1.0
+- сохранились ли ключи `filter_time` / `filter_time_v2` и контракт `setDataMask`
+- корректно ли мигрируют сохранённые native filter configs и default values
+- не закрыты ли upstream исправления View as table и `ExploreMixin`
+
 ## Полный реестр файлов из итогового diff
 
 Ниже перечислены все файлы из `git diff --name-only origin/6.0.0...prod`.
@@ -471,6 +524,39 @@ git log --no-merges --oneline origin/6.0.0..prod
 - `superset-frontend/src/dashboard/components/PropertiesModal/index.tsx`
   - `certification_details` переключены с single-line input на textarea с markdown/line-break hint
 
+### J. Time V2, native filter config и Explore data table
+
+Эти файлы вошли в итоговый diff после снимка от 2026-03-23 и дополняют реестр до текущих 144 файлов:
+
+- `docs/internal/prod-customizations.md`
+- `superset-frontend/plugins/plugin-chart-echarts/src/Timeseries/EchartsTimeseries.tsx`
+- `superset-frontend/src/constants.ts`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/FiltersConfigForm/DefaultValue.tsx`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/FiltersConfigForm/FiltersConfigForm.tsx`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/FiltersConfigForm/constants.ts`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/FiltersConfigModal.test.tsx`
+- `superset-frontend/src/dashboard/components/nativeFilters/FiltersConfigModal/FiltersConfigModal.tsx`
+- `superset-frontend/src/explore/components/DataTableControl/index.tsx`
+- `superset-frontend/src/explore/components/DataTablesPane/components/SingleQueryResultPane.tsx`
+- `superset-frontend/src/explore/components/DataTablesPane/components/useResultsPane.tsx`
+- `superset-frontend/src/explore/components/DataTablesPane/types.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/DateFilterControlV2.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/DateFilterLabel.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/components/CalendarRangeFrame.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/components/index.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/index.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/tests/DateFilterLabel.test.tsx`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/tests/utils.test.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/types.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/utils/constants.ts`
+- `superset-frontend/src/explore/components/controls/DateFilterControl/utils/dateFilterUtils.ts`
+- `superset-frontend/src/filters/components/Time/BaseTimeFilterPlugin.tsx`
+- `superset-frontend/src/filters/components/Time/TimeFilterPlugin.tsx`
+- `superset-frontend/src/filters/components/TimeV2/TimeFilterPlugin.tsx`
+- `superset-frontend/src/filters/components/TimeV2/index.ts`
+- `superset-frontend/src/filters/components/index.ts`
+- `superset/models/helpers.py`
+
 Таким образом, в документе теперь покрыты:
 
 - все крупные смысловые блоки
@@ -519,6 +605,7 @@ git log --no-merges --oneline origin/6.0.0..prod
 - `WELCOME_DASHBOARD_CATALOG`
 - `welcome_dashboard_rank` + celery snapshot/warmup задачи
 - `DISABLE_CHART_THUMBNAILS` и deferred thumbnail loading
+- `TimeV2`, calendar/monthly range behavior и совместимость сохранённых native filters
 - `Dockerfile.prod` и frontend build wiring
 
 ### С высокой вероятностью можно уменьшить или выбросить, если upstream уже покрывает
