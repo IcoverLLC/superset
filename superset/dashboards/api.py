@@ -16,6 +16,7 @@
 # under the License.
 # pylint: disable=too-many-lines
 import functools
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -80,11 +81,6 @@ from superset.dashboards.filters import (
     DashboardTitleOrSlugFilter,
     FilterRelatedRoles,
 )
-from superset.dashboards.welcome_top import (
-    get_welcome_snapshot_dashboard_ids,
-    get_welcome_snapshot_recently_viewed_at,
-    get_welcome_top_storage_name,
-)
 from superset.dashboards.permalink.types import DashboardPermalinkState
 from superset.dashboards.schemas import (
     CacheScreenshotSchema,
@@ -107,6 +103,12 @@ from superset.dashboards.schemas import (
     screenshot_query_schema,
     TabsPayloadSchema,
     thumbnail_query_schema,
+)
+from superset.dashboards.welcome_thumbnails import get_welcome_thumbnail
+from superset.dashboards.welcome_top import (
+    get_welcome_snapshot_dashboard_ids,
+    get_welcome_snapshot_recently_viewed_at,
+    get_welcome_top_storage_name,
 )
 from superset.exceptions import ScreenshotImageNotAvailableException
 from superset.extensions import event_logger
@@ -233,6 +235,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         "put_filters",
         "put_colors",
         "welcome",
+        "welcome_thumbnail",
     }
     resource_name = "dashboard"
     allow_browser_login = True
@@ -781,6 +784,33 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             ],
         }
         return self.response(200, result=result)
+
+    @expose("/<id_or_slug>/welcome-thumbnail/", methods=("GET",))
+    @protect()
+    @safe
+    @permission_name("read")
+    @statsd_metrics
+    @with_dashboard
+    def welcome_thumbnail(self, dash: Dashboard) -> Response:
+        """Return a precomputed dashboard thumbnail for the welcome page.
+
+        This endpoint is intentionally cache-only. A cache miss returns 404 and
+        never starts screenshot generation or a Celery task.
+        """
+        if not dash.published:
+            return self.response_404()
+
+        image = get_welcome_thumbnail(dash.id)
+        if image is None:
+            return self.response_404()
+
+        image_bytes = image.getvalue()
+        response = Response(image_bytes, mimetype="image/png")
+        response.set_etag(hashlib.sha256(image_bytes).hexdigest())
+        response.cache_control.private = True
+        response.cache_control.no_cache = True
+        response.cache_control.must_revalidate = True
+        return response.make_conditional(request)
 
     @expose("/<id_or_slug>", methods=("GET",))
     @protect()

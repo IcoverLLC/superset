@@ -33,6 +33,9 @@ from superset.commands.report.execute import AsyncExecuteReportScheduleCommand
 from superset.commands.report.log_prune import AsyncPruneReportScheduleLogCommand
 from superset.commands.sql_lab.query import QueryPruneCommand
 from superset.daos.report import ReportScheduleDAO
+from superset.dashboards.welcome_thumbnails import (
+    refresh_welcome_dashboard_thumbnails,
+)
 from superset.dashboards.welcome_top import refresh_welcome_dashboard_rankings
 from superset.extensions import celery_app
 from superset.stats_logger import BaseStatsLogger
@@ -209,3 +212,8 @@ def refresh_welcome_dashboard_snapshots(
     result = refresh_welcome_dashboard_rankings(include_users=include_users)
     logger.info("Refreshed welcome dashboard snapshots: %s", result)
     return result
+
+
+@celery_app.task(name="welcome_dashboard_top.refresh_thumbnails")
+def refresh_welcome_dashboard_thumbnails_task() -> dict[str, Any]:
+    return refresh_welcome_dashboard_thumbnails()

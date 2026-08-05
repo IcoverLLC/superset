@@ -27,8 +27,11 @@ from flask import current_app
 from freezegun import freeze_time
 
 import superset.cli.importexport
+import superset.cli.main
 import superset.cli.thumbnails
+import superset.cli.welcome_thumbnails
 from superset import db
+from superset.dashboards.welcome_thumbnails import WelcomeThumbnailRefreshError
 from superset.models.dashboard import Dashboard
 from tests.integration_tests.fixtures.birth_names_dashboard import (
     load_birth_names_dashboard_with_slices,  # noqa: F401
@@ -322,3 +325,79 @@ def test_compute_thumbnails(thumbnail_mock, app_context, fs):
 
     thumbnail_mock.assert_called_with(None, dashboard.id, force=False)
     assert response.exit_code == 0
+
+
+@mock.patch(
+    "superset.cli.welcome_thumbnails.refresh_welcome_dashboard_thumbnails",
+    return_value={
+        "status": "completed",
+        "total": 2,
+        "updated": 2,
+        "failed": 0,
+        "duration": 1.25,
+    },
+)
+def test_refresh_welcome_thumbnails(refresh_mock, app_context):
+    runner = current_app.test_cli_runner()
+
+    response = runner.invoke(
+        superset.cli.welcome_thumbnails.refresh_welcome_thumbnails,
+        ["--dashboard-id", "189", "--dashboard-id", "190"],
+    )
+
+    assert response.exit_code == 0
+    assert "total=2 updated=2 failed=0" in response.output
+    refresh_mock.assert_called_once_with([189, 190])
+
+
+@mock.patch(
+    "superset.cli.welcome_thumbnails.refresh_welcome_dashboard_thumbnails",
+    return_value={
+        "status": "completed",
+        "total": 0,
+        "updated": 0,
+        "failed": 0,
+        "duration": 0.1,
+    },
+)
+def test_refresh_welcome_thumbnails_is_registered_on_root_cli(
+    refresh_mock,
+    app_context,
+):
+    runner = current_app.test_cli_runner()
+
+    response = runner.invoke(
+        superset.cli.main.superset,
+        ["refresh-welcome-thumbnails"],
+    )
+
+    assert response.exit_code == 0
+    refresh_mock.assert_called_once_with(None)
+
+
+@mock.patch(
+    "superset.cli.welcome_thumbnails.refresh_welcome_dashboard_thumbnails",
+    side_effect=WelcomeThumbnailRefreshError(
+        {
+            "status": "completed",
+            "total": 2,
+            "updated": 1,
+            "failed": 1,
+            "duration": 2.5,
+        }
+    ),
+)
+def test_refresh_welcome_thumbnails_exits_nonzero_on_partial_failure(
+    refresh_mock,
+    app_context,
+):
+    runner = current_app.test_cli_runner()
+
+    response = runner.invoke(
+        superset.cli.welcome_thumbnails.refresh_welcome_thumbnails,
+        ["--dashboard-id", "189"],
+    )
+
+    assert response.exit_code != 0
+    assert "updated=1 failed=1" in response.output
+    refresh_mock.assert_called_once_with([189])

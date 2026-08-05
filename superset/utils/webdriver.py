@@ -521,9 +521,13 @@ class WebDriverSelenium(WebDriverProxy):
 
     def auth(self, user: User) -> WebDriver:
         driver = self.create()
-        return machine_auth_provider_factory.instance.authenticate_webdriver(
-            driver, user
-        )
+        try:
+            return machine_auth_provider_factory.instance.authenticate_webdriver(
+                driver, user
+            )
+        except BaseException:  # pylint: disable=broad-except
+            self.destroy(driver, app.config["SCREENSHOT_SELENIUM_RETRIES"])
+            raise
 
     @staticmethod
     def destroy(driver: WebDriver, tries: int = 2) -> None:
@@ -597,12 +601,16 @@ class WebDriverSelenium(WebDriverProxy):
 
     def get_screenshot(self, url: str, element_name: str, user: User) -> bytes | None:  # noqa: C901
         driver = self.auth(user)
-        driver.set_window_size(*self._window)
-        driver.get(url)
-        img: bytes | None = None
-        selenium_headstart = app.config["SCREENSHOT_SELENIUM_HEADSTART"]
-        logger.debug("Sleeping for %i seconds", selenium_headstart)
-        sleep(selenium_headstart)
+        try:
+            driver.set_window_size(*self._window)
+            driver.get(url)
+            img: bytes | None = None
+            selenium_headstart = app.config["SCREENSHOT_SELENIUM_HEADSTART"]
+            logger.debug("Sleeping for %i seconds", selenium_headstart)
+            sleep(selenium_headstart)
+        except BaseException:  # pylint: disable=broad-except
+            self.destroy(driver, app.config["SCREENSHOT_SELENIUM_RETRIES"])
+            raise
 
         try:
             try:

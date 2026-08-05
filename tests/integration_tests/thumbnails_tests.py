@@ -18,6 +18,7 @@
 # from superset.models.dashboard import Dashboard
 
 import urllib.request
+from io import BytesIO
 from unittest import skipUnless
 from unittest.mock import ANY, call, MagicMock, patch
 
@@ -145,6 +146,56 @@ class TestWebDriverScreenshotErrorDetector(SupersetTestCase):
 
 
 class TestWebDriverSelenium(SupersetTestCase):
+    @patch.object(WebDriverSelenium, "destroy")
+    @patch.object(WebDriverSelenium, "auth")
+    def test_screenshot_cleans_up_when_navigation_fails(
+        self,
+        mock_auth,
+        mock_destroy,
+    ):
+        driver = MagicMock()
+        driver.get.side_effect = RuntimeError("navigation failed")
+        mock_auth.return_value = driver
+        webdriver = WebDriverSelenium("firefox")
+        user = security_manager.get_user_by_username(ADMIN_USERNAME)
+
+        with pytest.raises(RuntimeError, match="navigation failed"):
+            webdriver.get_screenshot(
+                "http://example.invalid",
+                "standalone",
+                user=user,
+            )
+
+        mock_destroy.assert_called_once_with(
+            driver,
+            app.config["SCREENSHOT_SELENIUM_RETRIES"],
+        )
+
+    @patch.object(WebDriverSelenium, "destroy")
+    @patch.object(WebDriverSelenium, "auth")
+    def test_screenshot_cleans_up_when_navigation_is_interrupted(
+        self,
+        mock_auth,
+        mock_destroy,
+    ):
+        driver = MagicMock()
+        driver.get.side_effect = KeyboardInterrupt
+        mock_auth.return_value = driver
+        webdriver = WebDriverSelenium("firefox")
+        user = security_manager.get_user_by_username(ADMIN_USERNAME)
+
+        with pytest.raises(KeyboardInterrupt):
+            webdriver.get_screenshot(
+                "http://example.invalid",
+                "standalone",
+                user=user,
+            )
+
+        mock_destroy.assert_called_once_with(
+            driver,
+            app.config["SCREENSHOT_SELENIUM_RETRIES"],
+        )
+
     @patch("superset.utils.webdriver.WebDriverWait")
     @patch("superset.utils.webdriver.firefox")
     @patch("superset.utils.webdriver.sleep")
@@ -247,6 +298,75 @@ class TestThumbnails(SupersetTestCase):
         resp = json.loads(rv.data.decode("utf-8"))
         obj = resp["result"][0]
         return obj["id"], obj["thumbnail_url"]
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @patch("superset.dashboards.api.cache_dashboard_thumbnail.delay")
+    @patch("superset.dashboards.api.get_welcome_thumbnail")
+    def test_welcome_thumbnail_cache_hit_does_not_enqueue(
+        self,
+        mock_get_welcome_thumbnail,
+        mock_delay,
+    ):
+        self.login(ADMIN_USERNAME)
+        dashboard = db.session.query(Dashboard).filter_by(slug="births").one()
+        dashboard.published = True
+        db.session.commit()
+        mock_get_welcome_thumbnail.return_value = BytesIO(self.mock_image)
+
+        rv = self.client.get(
+            f"{DASHBOARD_URL}{dashboard.id}/welcome-thumbnail/"
+        )
+
+        assert rv.status_code == 200
+        assert rv.data == self.mock_image
+        assert rv.mimetype == "image/png"
+        assert rv.headers["ETag"]
+        assert "private" in rv.headers["Cache-Control"]
+        conditional_rv = self.client.get(
+            f"{DASHBOARD_URL}{dashboard.id}/welcome-thumbnail/",
+            headers={"If-None-Match": rv.headers["ETag"]},
+        )
+        assert conditional_rv.status_code == 304
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @patch("superset.dashboards.api.cache_dashboard_thumbnail.delay")
+    @patch("superset.dashboards.api.get_welcome_thumbnail", return_value=None)
+    def test_welcome_thumbnail_cache_miss_does_not_enqueue(
+        self,
+        mock_get_welcome_thumbnail,
+        mock_delay,
+    ):
+        self.login(ADMIN_USERNAME)
+        dashboard = db.session.query(Dashboard).filter_by(slug="births").one()
+        dashboard.published = True
+        db.session.commit()
+
+        rv = self.client.get(
+            f"{DASHBOARD_URL}{dashboard.id}/welcome-thumbnail/"
+        )
+
+        assert rv.status_code == 404
+        mock_get_welcome_thumbnail.assert_called_once_with(dashboard.id)
+        mock_delay.assert_not_called()
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    @patch("superset.dashboards.api.get_welcome_thumbnail")
+    def test_welcome_thumbnail_rejects_unpublished_dashboard(
+        self,
+        mock_get_welcome_thumbnail,
+    ):
+        self.login(ADMIN_USERNAME)
+        dashboard = db.session.query(Dashboard).filter_by(slug="births").one()
+        dashboard.published = False
+        db.session.commit()
+
+        rv = self.client.get(
+            f"{DASHBOARD_URL}{dashboard.id}/welcome-thumbnail/"
+        )
+
+        assert rv.status_code == 404
+        mock_get_welcome_thumbnail.assert_not_called()
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     @with_feature_flags(THUMBNAILS=False)

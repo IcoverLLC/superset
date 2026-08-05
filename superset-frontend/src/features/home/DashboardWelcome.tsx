@@ -541,7 +541,10 @@ function DashboardWelcome({
           {dashboards.map(dashboard => (
             <DashboardCard
               key={dashboard.id}
-              dashboard={dashboard}
+              dashboard={{
+                ...dashboard,
+                thumbnail_url: `/api/v1/dashboard/${dashboard.id}/welcome-thumbnail/`,
+              }}
               description={getRecentlyViewedDescription(
                 welcomeData?.recently_viewed_at?.[String(dashboard.id)],
               )}
